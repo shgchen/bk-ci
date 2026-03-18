@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -32,91 +32,91 @@ import com.tencent.devops.common.api.pojo.Page
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.web.annotation.BkField
 import com.tencent.devops.common.web.constant.BkStyleEnum
-import com.tencent.devops.store.pojo.common.StoreDockingPlatformInfo
-import com.tencent.devops.store.pojo.common.StoreDockingPlatformRequest
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.validation.Valid
-import javax.ws.rs.Consumes
-import javax.ws.rs.DELETE
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.POST
-import javax.ws.rs.PUT
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import com.tencent.devops.store.pojo.common.platform.StoreDockingPlatformInfo
+import com.tencent.devops.store.pojo.common.platform.StoreDockingPlatformRequest
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.validation.Valid
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.DELETE
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.PUT
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["OP_STORE_DOCKING_PLATFORM"], description = "OP-STORE-对接平台")
+@Tag(name = "OP_STORE_DOCKING_PLATFORM", description = "OP-STORE-对接平台")
 @Path("/op/store/docking/platforms")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface OpStoreDockingPlatformResource {
 
-    @ApiOperation("添加对接平台")
+    @Operation(summary = "添加对接平台")
     @POST
     @Path("/add")
     fun add(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam(value = "对接平台请求报文体", required = true)
+        @Parameter(description = "对接平台请求报文体", required = true)
         @Valid
         storeDockingPlatformRequest: StoreDockingPlatformRequest
     ): Result<Boolean>
 
-    @ApiOperation("更新对接平台")
+    @Operation(summary = "更新对接平台")
     @PUT
     @Path("/ids/{id}/update")
     fun update(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("平台ID", required = true)
+        @Parameter(description = "平台ID", required = true)
         @PathParam("id")
         @BkField(patternStyle = BkStyleEnum.ID_STYLE)
         id: String,
-        @ApiParam(value = "对接平台请求报文体", required = true)
+        @Parameter(description = "对接平台请求报文体", required = true)
         @Valid
         storeDockingPlatformRequest: StoreDockingPlatformRequest
     ): Result<Boolean>
 
-    @ApiOperation("获取对接平台信息列表")
+    @Operation(summary = "获取对接平台信息列表")
     @GET
     @Path("/list")
     fun listPlatforms(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("平台名称", required = false)
+        @Parameter(description = "平台名称", required = false)
         @QueryParam("platformName")
         @BkField(patternStyle = BkStyleEnum.NAME_STYLE, required = false)
         platformName: String? = null,
-        @ApiParam("平台ID", required = false)
+        @Parameter(description = "平台ID", required = false)
         @QueryParam("id")
         @BkField(patternStyle = BkStyleEnum.ID_STYLE, required = false)
         id: String? = null,
-        @ApiParam("页码", required = true)
+        @Parameter(description = "页码", required = true)
         @QueryParam("page")
         @BkField(patternStyle = BkStyleEnum.NUMBER_STYLE, required = true)
         page: Int = 1,
-        @ApiParam("每页数量", required = true)
+        @Parameter(description = "每页数量", required = true)
         @QueryParam("pageSize")
         @BkField(patternStyle = BkStyleEnum.NUMBER_STYLE, required = true)
         pageSize: Int = 10
     ): Result<Page<StoreDockingPlatformInfo>?>
 
-    @ApiOperation("根据ID删除标签信息")
+    @Operation(summary = "根据ID删除标签信息")
     @DELETE
     @Path("/ids/{id}/delete")
     fun deletePlatformById(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("平台ID", required = true)
+        @Parameter(description = "平台ID", required = true)
         @PathParam("id")
         @BkField(patternStyle = BkStyleEnum.ID_STYLE)
         id: String

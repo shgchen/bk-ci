@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -31,6 +31,7 @@ import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.project.api.op.OPProjectResource
 import com.tencent.devops.project.pojo.OpProjectGraySetRequest
 import com.tencent.devops.project.pojo.OpProjectUpdateInfoRequest
+import com.tencent.devops.project.pojo.OperationalProductVO
 import com.tencent.devops.project.pojo.ProjectProperties
 import com.tencent.devops.project.pojo.ProjectUpdateCreatorDTO
 import com.tencent.devops.project.pojo.ProjectVO
@@ -40,7 +41,7 @@ import com.tencent.devops.project.service.OpProjectService
 import com.tencent.devops.project.service.ProjectService
 import com.tencent.devops.project.service.ProjectTagService
 import org.springframework.beans.factory.annotation.Autowired
-import javax.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletRequest
 
 @Suppress("ALL")
 @RestResource
@@ -76,10 +77,9 @@ class OPProjectResourceImpl @Autowired constructor(
 
     override fun updateProject(
         userId: String,
-        accessToken: String,
         projectInfoRequest: OpProjectUpdateInfoRequest
     ): Result<Int> {
-        return Result(data = opProjectService.updateProjectFromOp(userId, accessToken, projectInfoRequest))
+        return Result(data = opProjectService.updateProjectFromOp(userId, projectInfoRequest))
     }
 
     override fun updateProjectCreator(projectUpdateCreatorDtoList: List<ProjectUpdateCreatorDTO>): Result<Boolean> {
@@ -101,21 +101,29 @@ class OPProjectResourceImpl @Autowired constructor(
         grayFlag: Boolean,
         codeCCGrayFlag: Boolean,
         repoGrayFlag: Boolean,
+        remoteDevFlag: Boolean,
+        productId: Int?,
+        channelCode: String?,
         request: HttpServletRequest
     ): Result<Map<String, Any?>?> {
-        return projectTagService.getProjectListByFlag(
-            projectName = projectName,
-            englishName = englishName,
-            projectType = projectType,
-            isSecrecy = isSecrecy,
-            creator = creator,
-            approver = approver,
-            approvalStatus = approvalStatus,
-            offset = offset,
-            limit = limit,
-            grayFlag = grayFlag,
-            codeCCGrayFlag = codeCCGrayFlag,
-            repoGrayFlag = repoGrayFlag
+        return Result(
+            opProjectService.getProjectListByFlag(
+                projectName = projectName,
+                englishName = englishName,
+                projectType = projectType,
+                isSecrecy = isSecrecy,
+                creator = creator,
+                approver = approver,
+                approvalStatus = approvalStatus,
+                offset = offset,
+                limit = limit,
+                grayFlag = grayFlag,
+                codeCCGrayFlag = codeCCGrayFlag,
+                repoGrayFlag = repoGrayFlag,
+                remoteDevFlag = remoteDevFlag,
+                productId = productId,
+                channelCode = channelCode
+            )
         )
     }
 
@@ -133,5 +141,42 @@ class OPProjectResourceImpl @Autowired constructor(
         properties: ProjectProperties
     ): Result<Boolean> {
         return Result(opProjectService.updateProjectProperties(userId, projectCode, properties))
+    }
+
+    override fun enable(
+        enabled: Boolean,
+        englishNames: List<String>
+    ): Result<Boolean> {
+        englishNames.forEach {
+            projectService.updateUsableStatus(
+                englishName = it,
+                enabled = enabled,
+                checkPermission = false
+            )
+        }
+        return Result(true)
+    }
+
+    override fun updateProjectProductId(
+        projectCode: String,
+        productName: String
+    ): Result<Boolean> {
+        projectService.updateProjectProductId(
+            englishName = projectCode,
+            productName = productName
+        )
+        return Result(true)
+    }
+
+    override fun getOperationalProducts(userId: String): Result<List<OperationalProductVO>> {
+        return Result(
+            projectService.getOperationalProducts()
+        )
+    }
+
+    override fun setDisableWhenInactiveFlag(projectCodes: List<String>): Result<Boolean> {
+        return Result(
+            projectService.setDisableWhenInactiveFlag(projectCodes)
+        )
     }
 }

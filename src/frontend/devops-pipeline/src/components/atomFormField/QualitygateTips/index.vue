@@ -1,11 +1,22 @@
 <template>
     <div class="quality-gate-tips">
         <div class="tips-icon">
-            <logo name="logo-gate" size="19" style="fill:#fff;" />
+            <logo
+                name="logo-gate"
+                size="19"
+                style="fill:#fff;"
+            />
         </div>
         <div class="tips-content">
-            <div class="rule-detail" v-for="entry in relativeRuleList" :key="entry.taskId">
-                <p class="title" v-if="entry.ruleList.length">
+            <div
+                class="rule-detail"
+                v-for="entry in relativeRuleList"
+                :key="entry.taskId"
+            >
+                <p
+                    class="title"
+                    v-if="entry.ruleList.length"
+                >
                     <span class="caveat">{{ $t('details.quality.warning') }}</span>：{{ $t('details.quality.ruleNameTips') }}
                     <span
                         class="rule-name"
@@ -20,7 +31,10 @@
                     <span v-if="entry.controlStage.name === 'BEFORE'">{{ $t('details.quality.execCurrent') }}</span>
                     <span v-if="entry.controlStage.name === 'AFTER'">{{ $t('details.quality.execAfter') }}</span>
                 </p>
-                <div class="threshold-list" v-if="entry.thresholdList.length">
+                <div
+                    class="threshold-list"
+                    v-if="entry.thresholdList.length"
+                >
                     <p
                         class="threshold-item"
                         v-for="(threshold, index) in (entry.thresholdList)"
@@ -35,7 +49,7 @@
                 <p class="notice-type">
                     <span v-if="!entry.auditUserList.length">{{ $t('details.quality.stopConditions') }}</span>
                     <span v-if="entry.auditUserList.length">
-                        {{ $t('details.quality.by') }}
+                        {{ $t('editPage.by') }}
                         <span
                             v-for="(reviewr, index) in (entry.auditUserList)"
                             :key="index"
@@ -51,8 +65,8 @@
 </template>
 
 <script>
-    import atomFieldMixin from '../atomFieldMixin'
     import Logo from '@/components/Logo'
+    import atomFieldMixin from '../atomFieldMixin'
 
     export default {
         components: {

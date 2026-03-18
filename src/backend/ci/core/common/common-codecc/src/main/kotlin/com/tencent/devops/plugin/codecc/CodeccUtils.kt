@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -31,16 +31,20 @@ object CodeccUtils {
 
     const val BK_CI_CODECC_TASK_ID = "BK_CI_CODECC_TASK_ID"
 
+    const val BK_CI_CODECC_ATOM_ID_TO_TASK_ID = "BK_CI_CODECC_ATOM_ID_TO_TASK_ID"
+
     const val BK_CI_CODECC_V3_ATOM = "CodeccCheckAtomDebug"
 
     const val BK_CI_CODECC_COMMUNITY_ATOM = "CodeCCCheckAtom"
+
+    const val BK_CI_CODECC_REPORT_URL = "BK_CI_CODECC_REPORT_URL"
 
     fun isCodeccAtom(atomName: String?): Boolean {
         return isCodeccNewAtom(atomName)
     }
 
     private fun isCodeccNewAtom(atomName: String?): Boolean {
-        return isCodeccV2Atom(atomName) || isCodeccV3Atom(atomName)
+        return isCodeccV2Atom(atomName) || isCodeccV3Atom(atomName) || isCodeccCommunityAtom(atomName)
     }
 
     private fun isCodeccV2Atom(atomName: String?): Boolean {

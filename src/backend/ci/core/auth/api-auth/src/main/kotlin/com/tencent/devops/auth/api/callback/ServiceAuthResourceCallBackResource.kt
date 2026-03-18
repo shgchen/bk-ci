@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,17 +29,17 @@ package com.tencent.devops.auth.api.callback
 
 import com.tencent.bk.sdk.iam.dto.callback.request.CallbackRequestDTO
 import com.tencent.bk.sdk.iam.dto.callback.response.CallbackBaseResponseDTO
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["AUTH_RESOURCE_CALLBACK"], description = "权限-资源-回调接口")
+@Tag(name = "AUTH_RESOURCE_CALLBACK", description = "权限-资源-回调接口")
 @Path("/service/auth/resource")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -47,23 +47,23 @@ interface ServiceAuthResourceCallBackResource {
 
     @POST
     @Path("/projects")
-    @ApiOperation("项目列表")
+    @Operation(summary = "项目列表")
     fun projectInfo(
-        @ApiParam(value = "回调信息")
+        @Parameter(description = "回调信息")
         callBackInfo: CallbackRequestDTO,
         @HeaderParam("Authorization")
-        @ApiParam("token")
+        @Parameter(description = "token")
         token: String
     ): CallbackBaseResponseDTO?
 
     @POST
     @Path("/instances/list")
-    @ApiOperation("特定资源列表")
+    @Operation(summary = "特定资源列表")
     fun resourceList(
-        @ApiParam(value = "回调信息")
+        @Parameter(description = "回调信息")
         callBackInfo: CallbackRequestDTO,
         @HeaderParam("Authorization")
-        @ApiParam("token")
+        @Parameter(description = "token")
         token: String
     ): CallbackBaseResponseDTO?
 }

@@ -2,7 +2,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -20,6 +20,7 @@
 
 import {
     ARTIFACTORY_API_URL_PREFIX,
+    AUTH_URL_PREFIX,
     FETCH_ERROR,
     PROCESS_API_URL_PREFIX,
     QUALITY_API_URL_PREFIX,
@@ -35,11 +36,11 @@ import {
     QUALITY_ATOM_MUTATION,
     REFRESH_QUALITY_LOADING_MUNTATION,
     REPOSITORY_MUTATION,
-    RESET_PIPELINE_SETTING_MUNTATION,
+    SET_PAC_SUPPORT_SCM_TYPE_LIST,
+    SET_PROJECT_PERM,
     STORE_TEMPLATE_MUTATION,
     TEMPLATE_CATEGORY_MUTATION,
-    TEMPLATE_MUTATION,
-    UPDATE_PIPELINE_SETTING_MUNTATION
+    TEMPLATE_MUTATION
 } from './constants'
 
 function rootCommit (commit, ACTION_CONST, payload) {
@@ -49,15 +50,16 @@ function rootCommit (commit, ACTION_CONST, payload) {
 export const state = {
     templateCategory: null,
     refreshLoading: false,
-    pipelineTemplate: null,
+    pipelineTemplateMap: new Map(),
     storeTemplate: null,
     template: null,
     reposList: null,
     appNodes: {},
-    pipelineSetting: {},
     ruleList: [],
     templateRuleList: [],
-    qualityAtom: []
+    qualityAtom: [],
+    pacSupportScmTypeList: [],
+    hasProjectPermission: false
 }
 
 export const mutations = {
@@ -74,9 +76,9 @@ export const mutations = {
             templateCategory: [customCategory, ...categoryList, storeCategory]
         })
     },
-    [PIPELINE_TEMPLATE_MUTATION]: (state, { pipelineTemplate }) => {
+    [PIPELINE_TEMPLATE_MUTATION]: (state, { pipelineTemplateMap }) => {
         return Object.assign(state, {
-            pipelineTemplate
+            pipelineTemplateMap
         })
     },
     [STORE_TEMPLATE_MUTATION]: (state, { storeTemplate }) => {
@@ -120,21 +122,22 @@ export const mutations = {
         })
         return state
     },
-    [UPDATE_PIPELINE_SETTING_MUNTATION]: (state, { container, param }) => {
-        Object.assign(container, param)
-        return state
-    },
-    [RESET_PIPELINE_SETTING_MUNTATION]: (state, payload) => {
-        return Object.assign(state, {
-            pipelineSetting: {}
-        })
-    },
     [REFRESH_QUALITY_LOADING_MUNTATION]: (state, status) => {
         const refreshLoading = status
         Object.assign(state, {
             refreshLoading
         })
         return state
+    },
+    [SET_PAC_SUPPORT_SCM_TYPE_LIST]: (state, pacSupportScmTypeList) => {
+        Object.assign(state, {
+            pacSupportScmTypeList
+        })
+    },
+    [SET_PROJECT_PERM]: (state, hasProjectPermission) => {
+        Object.assign(state, {
+            hasProjectPermission
+        })
     }
 }
 
@@ -154,9 +157,23 @@ export const actions = {
     // 新增流水线时拉取模板
     requestPipelineTemplate: async ({ commit }, { projectId }) => {
         try {
-            const response = await request.get(`/${PROCESS_API_URL_PREFIX}/user/templates/projects/${projectId}/allTemplates`)
+            const response = await request.get(`/${PROCESS_API_URL_PREFIX}/user/pipeline/template/v2/${projectId}/allTemplates`)
+            const pipelineTemplateMap = new Map()
+            for (const key in (response?.data?.templates ?? {})) {
+                const item = response.data.templates[key]
+                const id = item.srcTemplateId || key
+                pipelineTemplateMap.set(id, {
+                    ...item,
+                    isStore: item.templateType === 'CONSTRAINT'
+                })
+            }
+            if (pipelineTemplateMap.size) { // 设置第一个模板为空模板
+                const firstKey = pipelineTemplateMap.keys().next().value
+                pipelineTemplateMap.get(firstKey).isEmptyTemplate = true
+            }
+            
             commit(PIPELINE_TEMPLATE_MUTATION, {
-                pipelineTemplate: (response.data || {}).templates
+                pipelineTemplateMap
             })
         } catch (e) {
             rootCommit(commit, FETCH_ERROR, e)
@@ -181,10 +198,7 @@ export const actions = {
             rootCommit(commit, FETCH_ERROR, e)
         }
     },
-    requestInterceptAtom: async ({ commit }, { projectId, pipelineId }) => {
-        const params = {
-            pipelineId: pipelineId
-        }
+    requestInterceptAtom: async ({ commit }, { projectId, ...params }) => {
         try {
             const response = await request.get(`/${QUALITY_API_URL_PREFIX}/user/rules/v2/${projectId}/matchRuleList`, { params })
 
@@ -243,8 +257,14 @@ export const actions = {
         })
     },
     requestOutputs: async ({ commit }, { projectId, pipelineId, buildId, ...params }) => {
-        const res = await request.post(`${ARTIFACTORY_API_URL_PREFIX}/user/pipeline/output/${projectId}/${pipelineId}/${buildId}/search`, params)
-        return res.data
+        const hasBuildId = !!buildId
+        const { data } = await request.post(`${ARTIFACTORY_API_URL_PREFIX}/user/pipeline/output/${projectId}/${pipelineId}/${hasBuildId ? `${buildId}/` : ''}search`, params)
+        return {
+            page: 1,
+            pageSize: data.pageSize ?? data.length,
+            count: data.count ?? data.length,
+            records: data.records ?? data
+        }
     },
     requestExternalUrl: async ({ commit }, { projectId, type, path }) => {
         return request.post(`${ARTIFACTORY_API_URL_PREFIX}/user/artifactories/${projectId}/${type}/externalUrl?path=${encodeURIComponent(path)}`).then(response => {
@@ -288,6 +308,11 @@ export const actions = {
             return response.data
         })
     },
+    getMetadataLabel: async ({ commit }, { projectId, pipelineId, debug }) => {
+        return request.get(`/${ARTIFACTORY_API_URL_PREFIX}/user/artifactories/quality/metadata/${projectId}/pipeline/${pipelineId}?debug=${debug}`).then(response => {
+            return response.data
+        })
+    },
     requestReportList: async ({ commit }, { projectId, pipelineId, buildId, taskId }) => {
         return request.get(`/${PROCESS_API_URL_PREFIX}/user/reports/${projectId}/${pipelineId}/${buildId}`, { params: { taskId } }).then(response => {
             return response.data
@@ -311,5 +336,42 @@ export const actions = {
 
     updateRefreshQualityLoading: ({ commit }, status) => {
         commit(REFRESH_QUALITY_LOADING_MUNTATION, status)
+    },
+    getSupportPacScmTypeList: async ({ commit, state }) => {
+        try {
+            if (state.pacSupportScmTypeList.length) {
+                return
+            }
+            const { data } = await request.get(`${REPOSITORY_API_URL_PREFIX}/user/repositories/pac/supportScmType`)
+            commit(SET_PAC_SUPPORT_SCM_TYPE_LIST, data)
+        } catch (e) {
+            console.log(e)
+        }
+    },
+    isPACOAuth: async (_, { projectId, ...query }) => {
+        const { data } = await request.get(`${REPOSITORY_API_URL_PREFIX}/user/repositories/${projectId}/isOauth`, {
+            params: query
+        })
+        return data
+    },
+    getPACRepoList: async (_, { projectId, ...params }) => {
+        try {
+            const { data } = await request.get(`${REPOSITORY_API_URL_PREFIX}/user/repositories/${projectId}/hasPermissionList`, {
+                params
+            })
+            return data
+        } catch (e) {
+            console.log(e)
+        }
+    },
+    getPACRepoCiDirList: (_, { projectId, repoHashId }) => {
+        return request.get(`${REPOSITORY_API_URL_PREFIX}/user/repositories/pac/${projectId}/${repoHashId}/ciSubDir`)
+    },
+    validatePermission: async (_, { projectId, ...params }) => {
+        return request.post(`${AUTH_URL_PREFIX}/user/auth/permission/batch/validate`, params, {
+            headers: {
+                'X-DEVOPS-PROJECT-ID': projectId
+            }
+        })
     }
 }

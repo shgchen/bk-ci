@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,20 +28,21 @@
 package com.tencent.devops.auth.pojo
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel
+@Schema
 data class DeptInfo(
-    @ApiModelProperty("组织ID")
+    @get:Schema(title = "组织ID")
     val id: Int,
-    @ApiModelProperty("组织名称")
+    @get:Schema(title = "组织名称")
     val name: String,
-    @ApiModelProperty("父级组织")
+    @get:Schema(title = "父级组织")
     val parent: Int,
-    @ApiModelProperty("是否有子级", name = "has_children")
+    @get:Schema(title = "是否有子级", description = "has_children")
     @JsonProperty("has_children")
     val hasChildren: Boolean,
-    @ApiModelProperty("是否启用")
-    val enabled: Boolean
+    @get:Schema(title = "是否启用")
+    val enabled: Boolean,
+    @get:Schema(title = "层级")
+    val level: Int = -1,
 )

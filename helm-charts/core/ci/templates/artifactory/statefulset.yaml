@@ -19,7 +19,7 @@ spec:
   {{ if ne .Values.config.bkCiArtifactoryRealm "local"}}
   strategy:
     rollingUpdate:
-      maxSurge: 1
+      maxSurge: 25%
       maxUnavailable: 0
     type: RollingUpdate
   {{ end }}
@@ -43,6 +43,7 @@ spec:
         app.kubernetes.io/name: artifactory
     spec:
       serviceAccountName: {{ .Values.rbac.serviceAccount }}
+      enableServiceLinks: false
       {{- if .Values.artifactory.hostAliases }}
       hostAliases: {{- include "common.tplvalues.render" (dict "value" .Values.artifactory.hostAliases "context" $) | nindent 8 }}
       {{- end }}
@@ -151,7 +152,7 @@ spec:
           volumeMounts:
             - name: storage
               mountPath: {{ .Values.persistence.mountPath }}
-            - mountPath: /data/workspace/dispatch/jvm
+            - mountPath: /data/workspace/artifactory/jvm
               name: log-volume
               subPathExpr: bkci/jvm/$(POD_NAME)
           lifecycle:
@@ -160,7 +161,7 @@ spec:
                   command:
                   - /bin/bash
                   - -c
-                  - sleep 10 && ps -ef|grep java|grep -v grep|awk '{print $2}'|xargs kill -15
+                  - sleep 20 && ps -ef|grep java|grep -v grep|awk '{print $2}'|xargs kill -15
       volumes:
         - name: storage
           {{- if and .Values.persistence.enabled (eq .Values.config.bkCiArtifactoryRealm "local") }}

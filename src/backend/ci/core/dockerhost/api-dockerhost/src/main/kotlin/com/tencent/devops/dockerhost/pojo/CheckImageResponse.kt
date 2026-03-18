@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,19 +27,18 @@
 
 package com.tencent.devops.dockerhost.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("验证镜像合法性返回报文体")
+@Schema(title = "验证镜像合法性返回报文体")
 data class CheckImageResponse(
-    @ApiModelProperty("作者", required = false)
+    @get:Schema(title = "作者", required = false)
     val author: String?,
-    @ApiModelProperty("评论", required = false)
+    @get:Schema(title = "评论", required = false)
     val comment: String?,
-    @ApiModelProperty("镜像大小", required = true)
+    @get:Schema(title = "镜像大小", required = true)
     val size: Long,
-    @ApiModelProperty("虚拟大小", required = false)
+    @get:Schema(title = "虚拟大小", required = false)
     val virtualSize: Long?,
-    @ApiModelProperty("tag列表", required = true)
+    @get:Schema(title = "tag列表", required = true)
     val repoTags: List<String>
 )

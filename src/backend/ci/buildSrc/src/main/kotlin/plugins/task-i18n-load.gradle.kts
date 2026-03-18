@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -26,7 +26,11 @@
  */
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
+import java.nio.charset.StandardCharsets
 import java.util.Properties
+import utils.ModuleUtil
 
 val i18nPath = joinPath(
     rootDir.absolutePath.replace("${File.separator}src${File.separator}backend${File.separator}ci", ""),
@@ -39,30 +43,8 @@ if (File(i18nPath).isDirectory) {
     // 编入i18n文件
     val i18nTask = tasks.register("i18n") {
         doLast {
-            val propertyName = "i18n.module.name"
-            var moduleName = if (project.hasProperty(propertyName)) {
-                project.property(propertyName)?.toString()
-            } else {
-                ""
-            }
-            if (moduleName.isNullOrBlank()) {
-                // 根据项目名称提取微服务名称
-                val parts = project.name.split("-")
-                val num = if (parts.size > 2) {
-                    parts.size - 1
-                } else {
-                    parts.size
-                }
-                val projectNameSb = StringBuilder()
-                for (i in 1 until num) {
-                    if (i != num - 1) {
-                        projectNameSb.append(parts[i]).append("-")
-                    } else {
-                        projectNameSb.append(parts[i])
-                    }
-                }
-                moduleName = projectNameSb.toString().let { if (it == "engine") "process" else it }
-            }
+            val moduleName =
+                ModuleUtil.getBkModuleName(project.name, project.findProperty("i18n.module.name")?.toString())
             val moduleFileNames = getFileNames(joinPath(i18nPath, moduleName))
 
             logger.debug("copy i18n into {} classpath... , moduleFileNames is : {}", moduleName, moduleFileNames)
@@ -89,14 +71,27 @@ if (File(i18nPath).isDirectory) {
                     val targetProperties = Properties()
                     if (commonPropertyFile.exists()) {
                         logger.debug("copy commonPropertyFile: ${commonPropertyFile.absolutePath} now...")
-                        targetProperties.load(FileInputStream(commonPropertyFile))
+                        targetProperties.load(
+                            InputStreamReader(
+                                FileInputStream(commonPropertyFile),
+                                StandardCharsets.UTF_8
+                            )
+                        )
                     }
                     // append second input to output file if it exists
                     if (propertyFile.exists()) {
                         logger.debug("copy modulePropertyFile: ${propertyFile.absolutePath} now...")
-                        targetProperties.load(FileInputStream(propertyFile))
+                        targetProperties.load(
+                            InputStreamReader(
+                                FileInputStream(propertyFile),
+                                StandardCharsets.UTF_8
+                            )
+                        )
                     }
-                    targetProperties.store(FileOutputStream(propertyFile), "i18n")
+                    targetProperties.store(
+                        OutputStreamWriter(FileOutputStream(propertyFile), StandardCharsets.UTF_8),
+                        "i18n"
+                    )
                 }
             }
         }

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,14 +28,13 @@
 package com.tencent.devops.quality.api.v2.pojo.op
 
 import com.fasterxml.jackson.annotation.JsonInclude
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
 @JsonInclude(JsonInclude.Include.ALWAYS)
-@ApiModel("质量红线-原子名称下拉列表键值对")
+@Schema(title = "质量红线-原子名称下拉列表键值对")
 data class ElementNameData(
-    @ApiModelProperty("原子的ClassType")
+    @get:Schema(title = "原子的ClassType")
     val elementType: String?,
-    @ApiModelProperty("原子中文名称")
+    @get:Schema(title = "原子中文名称")
     val elementName: String?
 )

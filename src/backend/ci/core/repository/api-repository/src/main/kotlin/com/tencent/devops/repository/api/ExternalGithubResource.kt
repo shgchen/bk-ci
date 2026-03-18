@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,61 +28,61 @@
 package com.tencent.devops.repository.api
 
 import com.tencent.devops.common.api.pojo.Result
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
-import javax.ws.rs.core.Response
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
+import jakarta.ws.rs.core.Response
 
-@Api(tags = ["EXTERNAL_GITHUB"], description = "External-Github")
+@Tag(name = "EXTERNAL_GITHUB", description = "External-Github")
 @Path("/external/github/")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface ExternalGithubResource {
 
-    @ApiOperation("Github仓库提交")
+    @Operation(summary = "Github仓库提交")
     @POST
     @Path("/webhook/commit")
     fun webhookCommit(
-        @ApiParam(value = "事件类型", required = true)
+        @Parameter(description = "事件类型", required = true)
         @HeaderParam("X-GitHub-Event")
         event: String,
-        @ApiParam(value = "事件ID", required = true)
+        @Parameter(description = "事件ID", required = true)
         @HeaderParam("X-Github-Delivery")
         guid: String,
-        @ApiParam(value = "secretKey签名(sha1)", required = true)
+        @Parameter(description = "secretKey签名(sha1)", required = true)
         @HeaderParam("X-Hub-Signature")
         signature: String,
         body: String
     ): Result<Boolean>
 
-    @ApiOperation("Github apps 回调")
+    @Operation(summary = "Github apps 回调")
     @GET
     @Path("/oauth/callback")
     fun oauthCallback(
-        @ApiParam(value = "code")
+        @Parameter(description = "code")
         @QueryParam("code")
         code: String,
-        @ApiParam(value = "state")
+        @Parameter(description = "state")
         @QueryParam("state")
         state: String
     ): Response
 
-    @ApiOperation("Oauth apps 回调")
+    @Operation(summary = "Oauth apps 回调")
     @GET
     @Path("/oauthApp/callback")
     fun oauthAppCallback(
-        @ApiParam(value = "code")
+        @Parameter(description = "code")
         @QueryParam("code")
         code: String,
-        @ApiParam(value = "state")
+        @Parameter(description = "state")
         @QueryParam("state")
         state: String
     ): Response

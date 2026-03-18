@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -33,52 +33,52 @@ import com.tencent.devops.common.api.enums.RepositoryType
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.repository.pojo.commit.CommitData
 import com.tencent.devops.repository.pojo.commit.CommitResponse
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["SERVICE_COMMIT"], description = "git提交记录")
+@Tag(name = "SERVICE_COMMIT", description = "git提交记录")
 @Path("/service/commit/")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface ServiceCommitResource {
 
-    @ApiOperation("获取流水线的最新一次commit")
+    @Operation(summary = "获取流水线的最新一次commit")
     @GET
     @Path("/getLatestCommit")
     fun getLatestCommit(
-        @ApiParam("流水线ID", required = true)
+        @Parameter(description = "流水线ID", required = true)
         @QueryParam("projectId")
         projectId: String,
-        @ApiParam("流水线ID", required = true)
+        @Parameter(description = "流水线ID", required = true)
         @QueryParam("pipelineId")
         pipelineId: String,
-        @ApiParam("原子ID", required = true)
+        @Parameter(description = "原子ID", required = true)
         @QueryParam("elementId")
         elementId: String,
-        @ApiParam("仓库ID或者仓库名", required = true)
+        @Parameter(description = "仓库ID或者仓库名", required = true)
         @QueryParam("repoId")
         repositoryId: String,
-        @ApiParam("代码库请求类型", required = false)
+        @Parameter(description = "代码库请求类型", required = false)
         @QueryParam("repositoryType")
         repositoryType: RepositoryType?
     ): Result<CommitData?>
 
-    @ApiOperation("根据构建ID获取提交记录")
+    @Operation(summary = "根据构建ID获取提交记录")
     @GET
     @Path("/getCommitsByBuildId")
     fun getCommitsByBuildId(
-        @ApiParam(value = "构建ID", required = true)
+        @Parameter(description = "构建ID", required = true)
         @HeaderParam(AUTH_HEADER_BUILD_ID)
         buildId: String,
-        @ApiParam("Agent ID", required = true)
+        @Parameter(description = "Agent ID", required = true)
         @HeaderParam(AUTH_HEADER_AGENT_ID)
         agentId: String
     ): Result<List<CommitResponse>>

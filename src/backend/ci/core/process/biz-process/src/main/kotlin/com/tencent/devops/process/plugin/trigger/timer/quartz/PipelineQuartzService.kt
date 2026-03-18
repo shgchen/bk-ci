@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -34,10 +34,15 @@ import com.tencent.devops.common.redis.RedisOperation
 import com.tencent.devops.common.service.utils.LogUtils
 import com.tencent.devops.common.service.utils.SpringContextUtil
 import com.tencent.devops.common.web.utils.BkApiUtil
+import com.tencent.devops.process.engine.service.PipelineRepositoryService
 import com.tencent.devops.process.plugin.trigger.lock.PipelineTimerTriggerLock
 import com.tencent.devops.process.plugin.trigger.pojo.event.PipelineTimerBuildEvent
 import com.tencent.devops.process.plugin.trigger.service.PipelineTimerService
 import com.tencent.devops.process.plugin.trigger.timer.SchedulerManager
+import com.tencent.devops.process.plugin.trigger.timer.quartz.PipelineQuartzJob.Companion.JOB_DATA_MAP_KEY_MD5
+import com.tencent.devops.process.plugin.trigger.timer.quartz.PipelineQuartzJob.Companion.JOB_DATA_MAP_KEY_PIPELINE_ID
+import com.tencent.devops.process.plugin.trigger.timer.quartz.PipelineQuartzJob.Companion.JOB_DATA_MAP_KEY_PROJECT_ID
+import com.tencent.devops.process.plugin.trigger.timer.quartz.PipelineQuartzJob.Companion.JOB_DATA_MAP_KEY_TASK_ID
 import com.tencent.devops.project.api.service.ServiceProjectTagResource
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.lang3.time.DateFormatUtils
@@ -49,7 +54,8 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import java.util.concurrent.atomic.AtomicBoolean
-import javax.annotation.PreDestroy
+import jakarta.annotation.PreDestroy
+import org.apache.commons.lang3.StringUtils
 
 /**
  * 调度服务框架
@@ -92,7 +98,12 @@ class PipelineQuartzService @Autowired constructor(
             list.forEach { timer ->
                 logger.info("TIMER_RELOAD| load crontab($timer)")
                 timer.crontabExpressions.forEach { crontab ->
-                    addJob(projectId = timer.projectId, pipelineId = timer.pipelineId, crontab = crontab)
+                    addJob(
+                        projectId = timer.projectId,
+                        pipelineId = timer.pipelineId,
+                        crontab = crontab,
+                        taskId = timer.taskId
+                    )
                 }
             }
             start += limit
@@ -101,13 +112,26 @@ class PipelineQuartzService @Autowired constructor(
         logger.warn("TIMER_RELOAD| reload ok!")
     }
 
-    fun addJob(projectId: String, pipelineId: String, crontab: String) {
+    fun addJob(projectId: String, pipelineId: String, crontab: String, taskId: String) {
         try {
             val md5 = DigestUtils.md5Hex(crontab)
-            val comboKey = "${pipelineId}_${md5}_$projectId"
+            val comboKey = if (taskId.isBlank()) {
+                "${pipelineId}_${md5}_$projectId"
+            } else {
+                "${pipelineId}_${md5}_${projectId}_$taskId"
+            }
+            // 移除旧的定时任务key
+            if (schedulerManager.checkExists(comboKey)) {
+                schedulerManager.deleteJob(comboKey)
+            }
             schedulerManager.addJob(
-                comboKey, crontab,
-                jobBeanClass
+                key = comboKey,
+                cronExpression = crontab,
+                jobBeanClass = jobBeanClass,
+                projectId = projectId,
+                pipelineId = pipelineId,
+                taskId = taskId,
+                md5 = md5
             )
         } catch (ignore: Exception) {
             logger.error("TIMER_RELOAD| add job error|pipelineId=$pipelineId|crontab=$crontab", ignore)
@@ -127,6 +151,13 @@ class PipelineQuartzService @Autowired constructor(
 }
 
 class PipelineQuartzJob : Job {
+    companion object {
+        const val JOB_DATA_MAP_KEY_PROJECT_ID = "projectId"
+        const val JOB_DATA_MAP_KEY_PIPELINE_ID = "pipelineId"
+        const val JOB_DATA_MAP_KEY_TASK_ID = "taskId"
+        const val JOB_DATA_MAP_KEY_MD5 = "md5"
+    }
+
     override fun execute(context: JobExecutionContext?) {
         SpringContextUtil.getBean(PipelineJobBean::class.java).execute(context)
     }
@@ -137,7 +168,8 @@ class PipelineJobBean(
     private val schedulerManager: SchedulerManager,
     private val pipelineTimerService: PipelineTimerService,
     private val redisOperation: RedisOperation,
-    private val client: Client
+    private val client: Client,
+    private val pipelineRepositoryService: PipelineRepositoryService
 ) {
 
     private val logger = LoggerFactory.getLogger(javaClass)!!
@@ -146,17 +178,32 @@ class PipelineJobBean(
     fun execute(context: JobExecutionContext?) {
         val jobKey = context?.jobDetail?.key ?: return
         val comboKey = jobKey.name
-        val comboKeys = comboKey.split(Regex("_"), 3)
-        val pipelineId = comboKeys[0]
-        val crontabMd5 = comboKeys[1]
-        val projectId = comboKeys[2]
+        val jobDataMap = context.jobDetail.jobDataMap ?: return
+        if (jobDataMap.isEmpty()) {
+            logger.warn("PIPELINE_TIMER_INVALID_DATA|jobDataMap is empty|comboKey=$comboKey")
+            return
+        }
+        // 格式：pipelineId_{md5}_{projectId}_{taskId}
+        val pipelineId = jobDataMap.getString(JOB_DATA_MAP_KEY_PIPELINE_ID)
+        val crontabMd5 = jobDataMap.getString(JOB_DATA_MAP_KEY_MD5)
+        val projectId = jobDataMap.getString(JOB_DATA_MAP_KEY_PROJECT_ID)
+        val taskId = jobDataMap.getString(JOB_DATA_MAP_KEY_TASK_ID) ?: ""
+        if (StringUtils.isAnyEmpty(pipelineId, projectId, crontabMd5)) {
+            // 缺少关键字段
+            logger.warn("PIPELINE_TIMER_INVALID_DATA|miss require param|$projectId|$pipelineId|$taskId|$crontabMd5")
+            return
+        }
         val watcher = Watcher(id = "timer|[$comboKey]")
         try {
+            if (redisOperation.isMember(BkApiUtil.getApiAccessLimitPipelinesKey(), pipelineId)) {
+                logger.warn("Pipeline[$pipelineId] has restricted build permissions,please try again later!")
+                return
+            }
             if (redisOperation.isMember(BkApiUtil.getApiAccessLimitProjectsKey(), projectId)) {
                 logger.warn("Project[$projectId] has restricted build permissions,please try again later!")
                 return
             }
-            val pipelineTimer = pipelineTimerService.get(projectId, pipelineId)
+            val pipelineTimer = pipelineTimerService.get(projectId, pipelineId, taskId)
             if (null == pipelineTimer) {
                 logger.info("[$comboKey]|PIPELINE_TIMER_EXPIRED|Timer is expire, delete it from queue!")
                 schedulerManager.deleteJob(comboKey)
@@ -178,7 +225,7 @@ class PipelineJobBean(
                 }
             }
             if (!find) {
-                logger.info("[$comboKey]|PIPELINE_TIMER_EXPIRED|can not find crontab, delete it from queue!")
+                logger.info("[$pipelineId]|PIPELINE_TIMER_EXPIRED|can not find crontab, delete it from queue!")
                 schedulerManager.deleteJob(comboKey)
                 return
             }
@@ -186,26 +233,37 @@ class PipelineJobBean(
             val scheduledFireTime = DateFormatUtils.format(context.scheduledFireTime, "yyyyMMddHHmmss")
             // 相同触发的要锁定，防止误差导致重复执行
             watcher.start("redisLock")
-            val redisLock = PipelineTimerTriggerLock(redisOperation, pipelineId, scheduledFireTime)
+            val pipelineLockKey = "$pipelineId:$taskId"
+            val redisLock = PipelineTimerTriggerLock(redisOperation, pipelineLockKey, scheduledFireTime)
             if (redisLock.tryLock()) {
                 try {
-                    logger.info("[$comboKey]|PIPELINE_TIMER|scheduledFireTime=$scheduledFireTime")
+                    logger.info("[$projectId]|$pipelineLockKey|PIPELINE_TIMER|scheduledFireTime=$scheduledFireTime")
                     watcher.start("dispatch")
                     pipelineEventDispatcher.dispatch(
                         PipelineTimerBuildEvent(
-                            source = "timer_trigger", projectId = pipelineTimer.projectId, pipelineId = pipelineId,
-                            userId = pipelineTimer.startUser, channelCode = pipelineTimer.channelCode
+                            source = "timer_trigger",
+                            projectId = pipelineTimer.projectId,
+                            pipelineId = pipelineId,
+                            userId = pipelineRepositoryService.getPipelineOauthUser(
+                                projectId = projectId,
+                                pipelineId = pipelineId
+                            ) ?: pipelineTimer.startUser,
+                            channelCode = pipelineTimer.channelCode,
+                            taskId = taskId,
+                            startParam = pipelineTimer.startParam,
+                            expectedStartTime = context.scheduledFireTime.time
                         )
                     )
                 } catch (ignored: Exception) {
                     logger.error(
-                        "[$comboKey]|PIPELINE_TIMER|scheduledFireTime=$scheduledFireTime|Dispatch event fail, " +
-                            "e=$ignored"
+                        "[$pipelineLockKey]|PIPELINE_TIMER|scheduledFireTime=$scheduledFireTime|Dispatch event fail",
+                        ignored
                     )
                 }
             } else {
                 logger.info(
-                    "[$comboKey]|PIPELINE_TIMER_CONCURRENT|scheduledFireTime=$scheduledFireTime| lock fail, skip!"
+                    "[$pipelineLockKey]|PIPELINE_TIMER_CONCURRENT|scheduledFireTime=$scheduledFireTime" +
+                            "|lock fail, skip!"
                 )
             }
         } finally {

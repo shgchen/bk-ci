@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -32,18 +32,20 @@ import com.tencent.devops.common.api.auth.AUTH_HEADER_USER_ID_DEFAULT_VALUE
 import com.tencent.devops.project.pojo.DeptInfo
 import com.tencent.devops.project.pojo.OrganizationInfo
 import com.tencent.devops.project.pojo.Result
+import com.tencent.devops.project.pojo.StaffInfo
 import com.tencent.devops.project.pojo.enums.OrganizationType
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["SERVICE_PROJECT_ORGANIZATION"], description = "蓝盾项目列表组织架构接口")
+@Tag(name = "SERVICE_PROJECT_ORGANIZATION", description = "蓝盾项目列表组织架构接口")
 @Path("/service/organizations")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -52,10 +54,10 @@ interface ServiceProjectOrganizationResource {
     @GET
     @Path("/ids/{id}")
     fun getDeptInfo(
-        @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String?,
-        @ApiParam("机构ID")
+        @Parameter(description = "机构ID")
         @PathParam("id")
         id: Int
     ): Result<DeptInfo>
@@ -63,13 +65,13 @@ interface ServiceProjectOrganizationResource {
     @GET
     @Path("/types/{type}/ids/{id}")
     fun getOrganizations(
-        @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("机构层级类型")
+        @Parameter(description = "机构层级类型")
         @PathParam("type")
         type: OrganizationType,
-        @ApiParam("机构ID")
+        @Parameter(description = "机构ID")
         @PathParam("id")
         id: Int
     ): Result<List<OrganizationInfo>>
@@ -77,11 +79,23 @@ interface ServiceProjectOrganizationResource {
     @GET
     @Path("/parent/deptIds/{deptId}/levels/{level}")
     fun getParentDeptInfos(
-        @ApiParam("机构ID")
+        @Parameter(description = "机构ID")
         @PathParam("deptId")
         deptId: String,
-        @ApiParam("向上查询的层级数")
+        @Parameter(description = "向上查询的层级数")
         @PathParam("level")
         level: Int
     ): Result<List<DeptInfo>>
+
+    @Operation(summary = "获取部门员工信息")
+    @GET
+    @Path("staffs/deptIds/{deptId}/levels/{level}")
+    fun getDeptStaffsWithLevel(
+        @Parameter(description = "机构ID")
+        @PathParam("deptId")
+        deptId: String,
+        @Parameter(description = "向上查询的层级数")
+        @PathParam("level")
+        level: Int
+    ): Result<List<StaffInfo>>
 }

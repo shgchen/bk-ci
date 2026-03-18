@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,19 +28,18 @@
 package com.tencent.devops.process.pojo.template
 
 import com.tencent.devops.common.pipeline.Model
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("模板详情")
+@Schema(title = "模板详情")
 data class TemplateDetailInfo(
-    @ApiModelProperty("模板代码", required = true)
+    @get:Schema(title = "模板代码", required = true)
     val templateCode: String,
-    @ApiModelProperty("模板名称", required = false)
+    @get:Schema(title = "模板名称", required = false)
     val templateName: String?,
-    @ApiModelProperty("模板模型", required = false)
+    @get:Schema(title = "模板模型", required = false)
     val templateModel: Model?,
-    @ApiModelProperty("模板版本号", required = true)
+    @get:Schema(title = "模板版本号", required = true)
     val templateVersion: Long = 0,
-    @ApiModelProperty("模板版本名称", required = false)
+    @get:Schema(title = "模板版本名称", required = false)
     val templateVersionName: String = "init"
 )

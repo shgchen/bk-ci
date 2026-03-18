@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,21 +27,21 @@
 
 package com.tencent.devops.store.pojo.container.agent
 
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
 /**
  * deng
  * 2019-04-10
  */
 data class AgentResponse(
-    @ApiModelProperty("env hash id", required = true)
+    @get:Schema(title = "env hash id", required = true)
     val id: String, // env hash id
-    @ApiModelProperty("env name", required = true)
+    @get:Schema(title = "env name", required = true)
     val name: String, // env name
-    @ApiModelProperty("agent status", required = true)
+    @get:Schema(title = "agent status", required = true)
     val label: String, // 正常: xx个，异常: xx个 | (agent status)
-    @ApiModelProperty("源项目", required = false)
+    @get:Schema(title = "源项目", required = false)
     val sharedProjectId: String? = null,
-    @ApiModelProperty("分享人", required = false)
+    @get:Schema(title = "分享人", required = false)
     val sharedUserId: String? = null
 )

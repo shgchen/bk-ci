@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -50,7 +50,7 @@ object ProjectMessageCode {
     const val PROJECT_NAME_EXIST = "2119002" // 项目名或英文名重复
     const val NAME_EMPTY = "2119003" // 名称不能为空
     const val NAME_TOO_LONG = "2119004" // 项目名至多1-64个字符
-    const val EN_NAME_INTERVAL_ERROR = "2119005" // 英文名长度在3-64个字符
+    const val EN_NAME_INTERVAL_ERROR = "2119005" // 英文名长度在3-32个字符
     const val EN_NAME_COMBINATION_ERROR = "2119006" // 英文名是字符+数字组成，并以小写字母开头
     const val EN_NAME_EXIST = "2119007" // 英文名已经存在
     const val PEM_CREATE_FAIL = "2119008" // 权限中心创建项目失败
@@ -96,11 +96,19 @@ object ProjectMessageCode {
     const val CANCEL_CREATION_PROJECT_FAIL = "2119048" // 取消创建中的项目失败
     const val APPROVAL_PROJECT_CANT_UPDATE = "2119049" // 审批下的下项目{0}不能修改
     const val UNDER_APPROVAL_PROJECT = "2119050" // 项目{0}审批中，请耐心等待，或联系审批人处理
+    const val ERROR_GROUP_NOT_BELONG_TO_PROJECT = "2119051" // 用户组不属于该项目
+    const val ERROR_PROJECT_NOT_RELATED_PRODUCT = "2119052" // 项目未关联产品ID
+    const val ERROR_PRODUCT_NOT_EXIST = "2119053" // 运营产品不存在
+    const val ERROR_ORGANIZATION_CAN_NOT_TO_BE_EMPTY = "2119054" // 组织架构不允许为空
+    const val ERROR_PIPELINE_NAME_FORMAT_TOO_LONG = "2119055" // 流水线命名规范不能超过200个字符
+    const val ERROR_PRODUCT_INVALID = "2119056" // 根据运营产品 [id]name 找不到有效的 KPI 业务，请选择正确的运营产品
+    const val ERROR_PRODUCT_NOT_BELONG_TO_BG = "2119057" // 运营产品[{0}]不归属[{1}],请重新选择正确的运营产品
 
     const val BK_CONTAINER_SERVICE = "bkContainerService" // 容器服务
     const val BK_FAILED_BSC_CREATE_PROJECT = "bkFailedBscCreateProject" // 调用BSC接口创建项目失败
     const val BK_FAILED_GET_PAASCC_INFORMATION = "bkFailedGetPaasccInformation" // 获取PAASCC项目信息失败
-
+    const val BK_SIGNATURE_PROJECTS_INFORMATION = "bkSignatureProjectsInformation"
+    const val BK_SIGNATURE_PROJECT_INFORMATION = "bkSignatureProjectInformation"
     const val BK_AUTH_CENTER_CREATE_PROJECT_INFO = "bkAuthCenterCreateProjectInfo" // 权限中心创建项目信息：
 
     const val T_SERVICE_PREFIX = "service."

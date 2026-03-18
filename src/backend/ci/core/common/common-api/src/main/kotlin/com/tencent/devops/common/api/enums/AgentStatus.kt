@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -54,5 +54,14 @@ enum class AgentStatus(val status: Int) {
         fun isUnImport(status: AgentStatus) = status == UN_IMPORT
 
         fun isImportException(status: AgentStatus) = status == IMPORT_EXCEPTION
+
+        fun fromString(status: String): AgentStatus {
+            values().forEach {
+                if (status == it.name) {
+                    return it
+                }
+            }
+            throw InvalidParamException("Unknown agent status($status)")
+        }
     }
 }

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,112 +27,124 @@
 
 package com.tencent.devops.store.api.common
 
-import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_ACCESS_TOKEN
 import com.tencent.devops.common.api.auth.AUTH_HEADER_USER_ID
 import com.tencent.devops.common.api.pojo.Result
-import com.tencent.devops.store.pojo.common.StoreMemberItem
-import com.tencent.devops.store.pojo.common.StoreMemberReq
+import com.tencent.devops.store.pojo.common.member.StoreMemberItem
+import com.tencent.devops.store.pojo.common.member.StoreMemberReq
 import com.tencent.devops.store.pojo.common.enums.StoreTypeEnum
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.DELETE
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.POST
-import javax.ws.rs.PUT
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.DELETE
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.PUT
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["USER_STORE_MEMBER"], description = "STORE-组件-用户")
+@Tag(name = "USER_STORE_MEMBER", description = "STORE-组件-用户")
 @Path("/user/market/desk/store/member/")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Suppress("ALL")
 interface UserStoreMemberResource {
 
-    @ApiOperation("获取store组件成员列表")
+    @Operation(summary = "获取store组件成员列表")
     @GET
     @Path("/list")
     fun list(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("store组件标识", required = true)
+        @Parameter(description = "store组件标识", required = true)
         @QueryParam("storeCode")
         storeCode: String,
-        @ApiParam("store组件类型", required = true)
+        @Parameter(description = "store组件类型", required = true)
         @QueryParam("storeType")
         storeType: StoreTypeEnum
     ): Result<List<StoreMemberItem?>>
 
-    @ApiOperation("添加store组件成员")
+    @Operation(summary = "添加store组件成员")
     @POST
     @Path("/add")
     fun add(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("添加成员请求报文")
+        @Parameter(description = "添加成员请求报文")
         storeMemberReq: StoreMemberReq
     ): Result<Boolean>
 
-    @ApiOperation("删除store组件成员")
+    @Operation(summary = "删除store组件成员")
     @DELETE
     @Path("/delete")
     fun delete(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("成员ID", required = true)
+        @Parameter(description = "成员ID", required = true)
         @QueryParam("id")
         id: String,
-        @ApiParam("store组件标识", required = true)
+        @Parameter(description = "store组件标识", required = true)
         @QueryParam("storeCode")
         storeCode: String,
-        @ApiParam("store组件类型", required = true)
+        @Parameter(description = "store组件类型", required = true)
         @QueryParam("storeType")
         storeType: StoreTypeEnum
     ): Result<Boolean>
 
-    @ApiOperation("查看store组件成员信息")
+    @Operation(summary = "查看store组件成员信息")
     @GET
     @Path("/view")
     fun view(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("store组件标识", required = true)
+        @Parameter(description = "store组件标识", required = true)
         @QueryParam("storeCode")
         storeCode: String,
-        @ApiParam("store组件类型", required = true)
+        @Parameter(description = "store组件类型", required = true)
         @QueryParam("storeType")
         storeType: StoreTypeEnum
     ): Result<StoreMemberItem?>
 
-    @ApiOperation("修改store组件成员的调试项目")
+    @Operation(summary = "修改store组件成员的调试项目")
     @PUT
     @Path("/test/project/change")
     fun changeMemberTestProjectCode(
-        @ApiParam("token", required = true)
-        @HeaderParam(AUTH_HEADER_DEVOPS_ACCESS_TOKEN)
-        accessToken: String,
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("store组件成员", required = true)
+        @Parameter(description = "store组件成员", required = true)
         @QueryParam("storeMember")
         storeMember: String,
-        @ApiParam("项目代码", required = true)
+        @Parameter(description = "项目代码", required = true)
         @QueryParam("projectCode")
         projectCode: String,
-        @ApiParam("store组件标识", required = true)
+        @Parameter(description = "store组件标识", required = true)
         @QueryParam("storeCode")
         storeCode: String,
-        @ApiParam("store组件类型", required = true)
+        @Parameter(description = "store组件类型", required = true)
+        @QueryParam("storeType")
+        storeType: StoreTypeEnum
+    ): Result<Boolean>
+
+    @Operation(summary = "判断用户是否是该组件的成员")
+    @GET
+    @Path("/codes/{storeCode}/user/validate")
+    fun isStoreMember(
+        @Parameter(description = "userId", required = true)
+        @HeaderParam(AUTH_HEADER_USER_ID)
+        userId: String,
+        @Parameter(description = "标识", required = true)
+        @PathParam("storeCode")
+        storeCode: String,
+        @Parameter(description = "类型", required = true)
         @QueryParam("storeType")
         storeType: StoreTypeEnum
     ): Result<Boolean>

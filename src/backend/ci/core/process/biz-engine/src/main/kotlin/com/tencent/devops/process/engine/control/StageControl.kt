@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -77,6 +77,7 @@ class StageControl @Autowired constructor(
     companion object {
         private val LOG = LoggerFactory.getLogger(StageControl::class.java)
         private const val CACHE_SIZE = 500L
+        private const val DEFAULT_DELAY = 1000
     }
 
     private val commandCache: LoadingCache<Class<out StageCmd>, StageCmd> = CacheBuilder.newBuilder()
@@ -95,9 +96,14 @@ class StageControl @Autowired constructor(
             val stageIdLock = StageIdLock(redisOperation, buildId, stageId)
             try {
                 watcher.start("lock")
-                stageIdLock.lock()
+                if (!stageIdLock.tryLock()) {
+                    LOG.info("ENGINE|$buildId|$pipelineId|$stageId|$source|StageIdLock try lock fail")
+                    retry()
+                    return
+                }
                 watcher.start("execute")
                 execute(watcher = watcher)
+                watcher.start("finish")
             } finally {
                 stageIdLock.unlock()
                 watcher.stop()
@@ -106,8 +112,22 @@ class StageControl @Autowired constructor(
         }
     }
 
+    private fun PipelineBuildStageEvent.retry() {
+        LOG.info("ENGINE|$buildId|$source|$pipelineId|RETRY_TO_STAGE_LOCK")
+        this.delayMills = DEFAULT_DELAY
+        pipelineEventDispatcher.dispatch(this)
+    }
+
     private fun PipelineBuildStageEvent.execute(watcher: Watcher) {
         watcher.start("init_context")
+        try {
+            executeStageEvent(watcher)
+        } finally {
+            watcher.stop() // 始终执行清理
+        }
+    }
+
+    private fun PipelineBuildStageEvent.executeStageEvent(watcher: Watcher) {
         val buildInfo = pipelineRuntimeService.getBuildInfo(projectId, buildId)
         // 已经结束的构建，不再受理，抛弃消息
         if (buildInfo == null || buildInfo.status.isFinish()) {
@@ -140,6 +160,12 @@ class StageControl @Autowired constructor(
         )
         val executeCount = buildVariableService.getBuildExecuteCount(projectId, pipelineId, buildId)
         val pipelineAsCodeEnabled = pipelineAsCodeService.asCodeEnabled(projectId, pipelineId)
+        // #10082 过滤Agent复用互斥的endJob信息
+        val mutexJobs = containers.filter {
+            it.controlOption.agentReuseMutex?.endJob == true &&
+                it.controlOption.agentReuseMutex?.reUseJobId != null
+        }.groupBy { it.controlOption.agentReuseMutex?.reUseJobId!! }
+            .mapValues { (_, jobs) -> jobs.size }.ifEmpty { null }?.toMutableMap()
         val stageContext = StageContext(
             buildStatus = stage.status, // 初始状态为Stage状态，中间流转会切换状态，并最终赋值Stage状态
             event = this,
@@ -150,11 +176,12 @@ class StageControl @Autowired constructor(
             variables = pipelineContextService.getAllBuildContext(variables), // 传递全量上下文
             pipelineAsCodeEnabled = pipelineAsCodeEnabled,
             executeCount = executeCount,
-            previousStageStatus = addPreviousStageStatus(stage)
+            previousStageStatus = addPreviousStageStatus(stage),
+            agentReuseMutexEndJob = mutexJobs,
+            debug = buildInfo.debug
         )
-        watcher.stop()
 
-        val commandList = listOf<StageCmd>(
+        val commandList = listOf(
             commandCache.get(CheckInterruptStageCmd::class.java), // 快速失败或者中断执行的检查
             commandCache.get(CheckConditionalSkipStageCmd::class.java), // 检查Stage条件跳过处理
             commandCache.get(CheckPauseReviewStageCmd::class.java), // Stage暂停&审核事件处理

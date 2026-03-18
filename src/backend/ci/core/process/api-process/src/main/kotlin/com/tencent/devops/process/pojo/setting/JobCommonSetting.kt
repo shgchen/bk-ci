@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,13 +27,12 @@
 
 package com.tencent.devops.process.pojo.setting
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("流水线job公共配置信息")
+@Schema(title = "流水线job公共配置信息")
 data class JobCommonSetting(
-    @ApiModelProperty("每个job最大task个数", required = true)
+    @get:Schema(title = "每个job最大task个数", required = true)
     val maxTaskNum: Int,
-    @ApiModelProperty("task公共配置", required = true)
+    @get:Schema(title = "task公共配置", required = true)
     val taskCommonSetting: TaskCommonSetting
 )

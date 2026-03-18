@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -32,7 +32,8 @@ enum class StoreTypeEnum(val type: Int) {
     TEMPLATE(1), // 模板
     IMAGE(2), // 镜像
     IDE_ATOM(3), // IDE插件
-    SERVICE(4); // 扩展服务
+    SERVICE(4), // 微扩展
+    DEVX(5); // 云开发
 
     companion object {
         fun getStoreType(type: Int): String {
@@ -42,19 +43,13 @@ enum class StoreTypeEnum(val type: Int) {
                 2 -> IMAGE.name
                 3 -> IDE_ATOM.name
                 4 -> SERVICE.name
+                5 -> DEVX.name
                 else -> ATOM.name
             }
         }
 
-        fun getStoreTypeObj(type: Int): StoreTypeEnum? {
-            return when (type) {
-                0 -> ATOM
-                1 -> TEMPLATE
-                2 -> IMAGE
-                3 -> IDE_ATOM
-                4 -> SERVICE
-                else -> null
-            }
+        fun getStoreTypeObj(type: Int): StoreTypeEnum {
+            return StoreTypeEnum.valueOf(getStoreType(type))
         }
     }
 }

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -36,7 +36,7 @@ import org.jooq.DSLContext
 import org.jooq.Result
 import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
-import javax.ws.rs.NotFoundException
+import jakarta.ws.rs.NotFoundException
 
 @Repository
 class RepositoryCodeGitLabDao {
@@ -93,7 +93,8 @@ class RepositoryCodeGitLabDao {
         projectName: String,
         userName: String,
         credentialId: String,
-        gitProjectId: Long?
+        gitProjectId: Long?,
+        authType: String
     ) {
         val now = LocalDateTime.now()
         with(TRepositoryCodeGitlab.T_REPOSITORY_CODE_GITLAB) {
@@ -104,6 +105,7 @@ class RepositoryCodeGitLabDao {
                     .set(USER_NAME, userName)
                     .set(CREDENTIAL_ID, credentialId)
                     .set(UPDATED_TIME, now)
+                    .set(AUTH_TYPE, authType)
                 if (gitProjectId != null) {
                     updateSetStep.set(GIT_PROJECT_ID, gitProjectId)
                 }

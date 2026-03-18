@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -48,6 +48,12 @@ class CommonConfig {
      */
     @Value("\${devopsGateway.host:#{null}}")
     val devopsHostGateway: String? = null
+
+    /**
+     * Devops白名单代理
+     */
+    @Value("\${devopsGateway.whiteProxy:#{null}}")
+    val devopsWhiteProxy: String? = null
 
     /**
      * DevOps API网关地址
@@ -144,4 +150,10 @@ class CommonConfig {
      */
     @Value("\${bkci.supportLanguages:$DEFAULT_LOCALE_LANGUAGE}")
     val devopsSupportLanguages: String = DEFAULT_LOCALE_LANGUAGE
+
+    /**
+     * codecc 访问地址
+     */
+    @Value("\${devopsGateway.codeccHostGateway:#{null}}")
+    val codeccHostGateway: String? = null
 }

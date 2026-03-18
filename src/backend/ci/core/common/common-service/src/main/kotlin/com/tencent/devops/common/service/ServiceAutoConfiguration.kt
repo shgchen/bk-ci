@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -31,9 +31,15 @@ import com.tencent.devops.common.service.config.CommonConfig
 import com.tencent.devops.common.service.filter.RequestChannelFilter
 import com.tencent.devops.common.service.gray.Gray
 import com.tencent.devops.common.service.prometheus.BkTimedAspect
+import com.tencent.devops.common.service.prometheus.UndertowThreadMetrics
 import com.tencent.devops.common.service.trace.TraceFilter
 import com.tencent.devops.common.service.utils.SpringContextUtil
+import io.micrometer.core.instrument.Meter
 import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Tags
+import io.micrometer.core.instrument.config.MeterFilter
+import org.slf4j.LoggerFactory
+import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer
 import org.springframework.boot.autoconfigure.AutoConfigureBefore
 import org.springframework.boot.autoconfigure.AutoConfigureOrder
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
@@ -76,4 +82,32 @@ class ServiceAutoConfiguration {
 
     @Bean
     fun bkTimedAspect(meterRegistry: MeterRegistry) = BkTimedAspect(meterRegistry)
+
+    @Bean
+    fun undertowThreadMetrics() = UndertowThreadMetrics()
+
+    /**
+     * 通过 MeterRegistryCustomizer 注册 MeterFilter，在 MeterRegistry 初始化阶段（早于任何 Meter 注册）
+     * 过滤掉 RabbitMQ 的 delivery_tag，防止 preFilterIdToMeterMap 因高基数 tag 无限膨胀导致内存泄漏。
+     */
+    @Bean
+    fun rabbitMqDeliveryTagMeterRegistryCustomizer(): MeterRegistryCustomizer<MeterRegistry> {
+        return MeterRegistryCustomizer { registry ->
+            registry.config().meterFilter(object : MeterFilter {
+                override fun map(id: Meter.Id): Meter.Id {
+                    if (id.name.startsWith("spring.rabbit.listener")) {
+                        val filteredTags = id.tags.filter {
+                            it.key != "messaging.rabbitmq.message.delivery_tag"
+                        }
+                        return Meter.Id(id.name, Tags.of(filteredTags), id.baseUnit, id.description, id.type)
+                    }
+                    return id
+                }
+            })
+        }
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(ServiceAutoConfiguration::class.java)
+    }
 }

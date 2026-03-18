@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -37,6 +37,8 @@ import com.tencent.devops.common.webhook.service.code.EventCacheService
 import com.tencent.devops.common.webhook.service.code.handler.p4.P4ChangeTriggerHandler
 import com.tencent.devops.common.webhook.service.code.loader.CodeWebhookHandlerRegistrar
 import com.tencent.devops.repository.pojo.CodeP4Repository
+import com.tencent.devops.scm.code.p4.api.P4ChangeList
+import com.tencent.devops.scm.code.p4.api.P4FileSpec
 import com.tencent.devops.scm.code.p4.api.P4ServerInfo
 import io.mockk.every
 import io.mockk.mockk
@@ -74,7 +76,10 @@ class P4WebHookMatcherTest {
                 repositoryType = RepositoryType.ID,
                 change = 1
             )
-        } returns (listOf("//demo/sRc/tt.txt"))
+        } returns (P4ChangeList(
+            description = "",
+            fileList = listOf(P4FileSpec(depotPathString = "//demo/sRc/tt.txt", opStatus = ""))
+        ))
         every {
             eventCacheService.getP4ServerInfo(
                 repo = repository,

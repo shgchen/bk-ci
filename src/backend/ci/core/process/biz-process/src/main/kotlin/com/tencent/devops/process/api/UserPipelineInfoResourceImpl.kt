@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,9 +27,11 @@
 
 package com.tencent.devops.process.api
 
+import com.tencent.bk.audit.annotations.AuditEntry
 import com.tencent.devops.common.api.exception.ParamBlankException
 import com.tencent.devops.common.api.pojo.Page
 import com.tencent.devops.common.api.pojo.Result
+import com.tencent.devops.common.auth.api.ActionId
 import com.tencent.devops.common.pipeline.enums.ChannelCode
 import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.process.api.user.UserPipelineInfoResource
@@ -72,14 +74,16 @@ class UserPipelineInfoResourceImpl @Autowired constructor(
     override fun searchByName(
         userId: String,
         projectId: String,
-        pipelineName: String?
+        pipelineName: String?,
+        archiveFlag: Boolean?
     ): Result<List<PipelineIdAndName>> {
         checkParam(userId, projectId)
         val pipelineInfos = pipelineListFacadeService.searchIdAndName(
             projectId = projectId,
             pipelineName = pipelineName,
             page = null,
-            pageSize = null
+            pageSize = null,
+            archiveFlag = archiveFlag
         )
         return Result(pipelineInfos)
     }
@@ -95,8 +99,21 @@ class UserPipelineInfoResourceImpl @Autowired constructor(
         )
     }
 
-    override fun getPipelineInfo(userId: String, projectId: String, pipelineId: String): Result<PipelineDetailInfo?> {
-        return Result(pipelineListFacadeService.getPipelineDetail(userId, projectId, pipelineId))
+    @AuditEntry(actionId = ActionId.PIPELINE_VIEW)
+    override fun getPipelineInfo(
+        userId: String,
+        projectId: String,
+        pipelineId: String,
+        archiveFlag: Boolean?
+    ): Result<PipelineDetailInfo?> {
+        return Result(
+            pipelineListFacadeService.getPipelineDetail(
+                userId = userId,
+                projectId = projectId,
+                pipelineId = pipelineId,
+                archiveFlag = archiveFlag
+            )
+        )
     }
 
     fun checkParam(userId: String, projectId: String) {

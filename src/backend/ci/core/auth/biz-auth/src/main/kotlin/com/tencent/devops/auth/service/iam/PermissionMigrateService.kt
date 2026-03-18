@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,8 +28,9 @@
 
 package com.tencent.devops.auth.service.iam
 
-import com.tencent.devops.common.auth.api.pojo.MigrateProjectConditionDTO
-import com.tencent.devops.common.auth.api.pojo.PermissionHandoverDTO
+import com.tencent.devops.auth.pojo.dto.MigrateResourceDTO
+import com.tencent.devops.auth.pojo.dto.PermissionHandoverDTO
+import com.tencent.devops.common.auth.api.pojo.ProjectConditionDTO
 
 /**
  * 权限中心迁移服务
@@ -54,7 +55,7 @@ interface PermissionMigrateService {
     /**
      * 按条件升级到rbac权限
      */
-    fun toRbacAuthByCondition(migrateProjectConditionDTO: MigrateProjectConditionDTO): Boolean
+    fun toRbacAuthByCondition(projectConditionDTO: ProjectConditionDTO): Boolean
 
     /**
      * 对比迁移鉴权结果
@@ -62,13 +63,20 @@ interface PermissionMigrateService {
     fun compareResult(projectCode: String): Boolean
 
     /**
-     * 迁移特定资源类型资源
+     * 根据条件重置项目权限
+     * 场景一：为流水线增加某个操作，如归档流水线权限，此时需要修改分级管理员范围、重置项目级用户组权限、重置流水线级别组权限
+     * 此时参数组合：migrateResource:true;filterResourceTypes:listOf(pipeline);filterActions:listOf(pipeline_archive)
+     * 场景二：新增服务需要接入权限中心，如SCC任务，只需要重置分级管员范围/项目级别用户组权限，不需要迁移资源，因为没有存量数据
+     * 此时参数组合：migrateResource:false;filterResourceTypes:listOf(scc_task);
+     * 场景三：已有的服务需要接入权限中心，如流水线模板，只需要重置分级管员范围/项目级别用户组权限/迁移资源，因为有存量数据
+     * 此时参数组合：migrateResource:true;filterResourceTypes:listOf(pipeline_template);
+     * 场景四：增加一个项目级别的操作，如project_manage-archived-pipeline/project_api-operate
+     * 此时参数组合：migrateResource:false;filterResourceTypes:listOf(project);
+     * filterActions:listOf(project_api-operate,project_api-operate)
      */
-    fun migrateResource(
-        projectCode: String,
-        resourceType: String,
-        projectCreator: String
-    ): Boolean
+    fun resetProjectPermissions(migrateResourceDTO: MigrateResourceDTO): Boolean
+
+    fun resetPermissionsWhenEnabledProject(projectCode: String): Boolean
 
     /**
      * 授予项目下自定义用户组RBAC新增的权限
@@ -76,7 +84,48 @@ interface PermissionMigrateService {
     fun grantGroupAdditionalAuthorization(projectCodes: List<String>): Boolean
 
     /**
+     * 权限交接--全量
+     */
+    fun handoverAllPermissions(permissionHandoverDTO: PermissionHandoverDTO): Boolean
+
+    /**
      * 权限交接
      */
     fun handoverPermissions(permissionHandoverDTO: PermissionHandoverDTO): Boolean
+
+    /**
+     * 迁移监控空间权限资源--该接口仅用于迁移“已迁移成功”的项目
+     */
+    fun migrateMonitorResource(
+        projectCodes: List<String>,
+        asyncMigrateManagerGroup: Boolean = true,
+        asyncMigrateOtherGroup: Boolean = true
+    ): Boolean
+
+    fun autoRenewal(
+        validExpiredDay: Int,
+        projectConditionDTO: ProjectConditionDTO
+    ): Boolean
+
+    /**
+     * 迁移资源授权--按照项目
+     */
+    fun migrateResourceAuthorization(
+        projectCodes: List<String>
+    ): Boolean
+
+    /**
+     * 全量迁移资源授权
+     */
+    fun migrateAllResourceAuthorization(): Boolean
+
+    /**
+     * 修复资源组数据，存在同步iam资源组数据，数据库 iam组id为NULL的情况，需要进行修复
+     */
+    fun fixResourceGroups(projectCodes: List<String>): Boolean
+
+    /**
+     * 开启流水线列表权限控制开关
+     */
+    fun enablePipelineListPermissionControl(projectCodes: List<String>): Boolean
 }

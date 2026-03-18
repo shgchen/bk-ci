@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,6 +29,7 @@ package com.tencent.devops.project.service
 
 import com.tencent.devops.common.api.enums.SystemModuleEnum
 import com.tencent.devops.common.api.pojo.ShardingRoutingRule
+import com.tencent.devops.common.api.pojo.ShardingRuleTypeEnum
 import com.tencent.devops.project.pojo.TableShardingConfig
 import com.tencent.devops.project.pojo.enums.ProjectChannelCode
 
@@ -53,12 +54,14 @@ interface ShardingRoutingRuleAssignService {
      * 分配DB分片路由规则
      * @param moduleCode 模块代码
      * @param routingName 规则名称
+     * @param ruleType 规则类型
      * @param dataTag 数据标签
      * @return DB分片路由规则
      */
     fun assignDbShardingRoutingRule(
         moduleCode: SystemModuleEnum,
         routingName: String,
+        ruleType: ShardingRuleTypeEnum = ShardingRuleTypeEnum.DB,
         dataTag: String? = null
     ): ShardingRoutingRule
 
@@ -67,11 +70,13 @@ interface ShardingRoutingRuleAssignService {
      * @param tableShardingConfig 数据库表分片配置
      * @param dataSourceName 数据源名称
      * @param routingName 规则名称
+     * @param ruleType 规则类型
      * @return DB分片路由规则
      */
     fun assignTableShardingRoutingRule(
         tableShardingConfig: TableShardingConfig,
         dataSourceName: String,
-        routingName: String
+        routingName: String,
+        ruleType: ShardingRuleTypeEnum = ShardingRuleTypeEnum.TABLE
     ): ShardingRoutingRule
 }

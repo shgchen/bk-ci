@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,54 +28,124 @@
 package com.tencent.devops.repository.api
 
 import com.tencent.devops.common.api.auth.AUTH_HEADER_BUILD_ID
+import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_BUILD_ID
+import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_PIPELINE_ID
 import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_PROJECT_ID
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.repository.pojo.github.GithubToken
 import com.tencent.devops.repository.pojo.oauth.GitToken
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["BUILD_REPOSITORY_OAUTH"], description = "构建-oauth相关")
+@Tag(name = "BUILD_REPOSITORY_OAUTH", description = "构建-oauth相关")
 @Path("/build/oauth")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface BuildOauthResource {
 
-    @ApiOperation("获取git代码库accessToken信息")
+    @Operation(summary = "获取git代码库accessToken信息")
     @GET
     @Path("/git/{userId}")
     fun gitGet(
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_PROJECT_ID)
         projectId: String,
-        @ApiParam("构建ID", required = true)
+        @Parameter(description = "构建ID", required = true)
         @HeaderParam(AUTH_HEADER_BUILD_ID)
         buildId: String,
-        @ApiParam("用户ID", required = true)
+        @Parameter(description = "用户ID", required = true)
         @PathParam("userId")
         userId: String
     ): Result<GitToken?>
 
-    @ApiOperation("获取git代码库accessToken信息")
+    @Operation(summary = "获取git代码库accessToken信息")
     @GET
     @Path("/github/{userId}")
     fun githubGet(
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_PROJECT_ID)
         projectId: String,
-        @ApiParam("构建ID", required = true)
+        @Parameter(description = "构建ID", required = true)
         @HeaderParam(AUTH_HEADER_BUILD_ID)
         buildId: String,
-        @ApiParam("用户ID", required = true)
+        @Parameter(description = "用户ID", required = true)
         @PathParam("userId")
         userId: String
     ): Result<GithubToken?>
+
+    @Operation(summary = "获取授权链接")
+    @GET
+    @Path("/git/oauthUrl")
+    fun gitOauthUrl(
+        @Parameter(description = "项目ID", required = true)
+        @HeaderParam(AUTH_HEADER_DEVOPS_PROJECT_ID)
+        projectId: String,
+        @Parameter(description = "流水线ID", required = true)
+        @HeaderParam(AUTH_HEADER_DEVOPS_PIPELINE_ID)
+        pipelineId: String,
+        @Parameter(description = "构建ID", required = true)
+        @HeaderParam(AUTH_HEADER_DEVOPS_BUILD_ID)
+        buildId: String,
+        @QueryParam("userId")
+        userId: String
+    ): Result<String>
+
+    @Operation(summary = "获取授权链接")
+    @GET
+    @Path("/github/oauthUrl")
+    fun githubOauthUrl(
+        @Parameter(description = "项目ID", required = true)
+        @HeaderParam(AUTH_HEADER_DEVOPS_PROJECT_ID)
+        projectId: String,
+        @Parameter(description = "流水线ID", required = true)
+        @HeaderParam(AUTH_HEADER_DEVOPS_PIPELINE_ID)
+        pipelineId: String,
+        @Parameter(description = "构建ID", required = true)
+        @HeaderParam(AUTH_HEADER_DEVOPS_BUILD_ID)
+        buildId: String,
+        @QueryParam("userId")
+        userId: String
+    ): Result<String>
+
+    @Operation(summary = "获取accessToken信息[SCM_REPO]")
+    @GET
+    @Path("scm/repo/{repoHashId}")
+    fun scmRepoOauthToken(
+        @Parameter(description = "项目ID", required = true)
+        @HeaderParam(AUTH_HEADER_DEVOPS_PROJECT_ID)
+        projectId: String,
+        @Parameter(description = "构建ID", required = true)
+        @HeaderParam(AUTH_HEADER_BUILD_ID)
+        buildId: String,
+        @Parameter(description = "代码库HashId", required = true)
+        @PathParam("repoHashId")
+        repoHashId: String
+    ): Result<GitToken?>
+
+    @Operation(summary = "获取授权链接[SCM_REPO]")
+    @GET
+    @Path("/{scmCode}/oauthUrl")
+    fun scmRepoOauthUrl(
+        @Parameter(description = "项目ID", required = true)
+        @HeaderParam(AUTH_HEADER_DEVOPS_PROJECT_ID)
+        projectId: String,
+        @Parameter(description = "流水线ID", required = true)
+        @HeaderParam(AUTH_HEADER_DEVOPS_PIPELINE_ID)
+        pipelineId: String,
+        @Parameter(description = "构建ID", required = true)
+        @HeaderParam(AUTH_HEADER_DEVOPS_BUILD_ID)
+        buildId: String,
+        @Parameter(description = "代码库标识", required = true)
+        @PathParam("scmCode")
+        scmCode: String
+    ): Result<String>
 }

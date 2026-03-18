@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,25 +27,24 @@
 
 package com.tencent.devops.store.pojo.atom
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("流水线信息")
+@Schema(title = "流水线信息")
 data class AtomPipeline(
-    @ApiModelProperty("流水线ID", required = true)
+    @get:Schema(title = "流水线ID", required = true)
     val pipelineId: String,
-    @ApiModelProperty("流水线名称", required = true)
+    @get:Schema(title = "流水线名称", required = true)
     var pipelineName: String,
-    @ApiModelProperty("流水线使用的插件版本")
+    @get:Schema(title = "流水线使用的插件版本")
     var atomVersion: String,
-    @ApiModelProperty("项目标识", required = true)
+    @get:Schema(title = "项目标识", required = true)
     val projectCode: String,
-    @ApiModelProperty("所属项目")
+    @get:Schema(title = "所属项目")
     val projectName: String,
-    @ApiModelProperty("所属BG")
+    @get:Schema(title = "所属BG")
     val bgName: String,
-    @ApiModelProperty("所属部门")
+    @get:Schema(title = "所属部门")
     val deptName: String,
-    @ApiModelProperty("所属中心")
+    @get:Schema(title = "所属中心")
     val centerName: String
 )

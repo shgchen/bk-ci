@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,17 +28,19 @@
 package com.tencent.devops.environment.api
 
 import com.tencent.devops.common.api.pojo.Result
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.POST
-import javax.ws.rs.PUT
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.PUT
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["OP_ENVIRONMENT"], description = "OP-环境服务数据刷新")
+@Tag(name = "OP_ENVIRONMENT", description = "OP-环境服务数据刷新")
 @Path("/op/env")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -47,12 +49,19 @@ interface OpEnvironmentResource {
     @PUT
     @Path("/refresh_gateway")
     fun refreshGateway(
-        @ApiParam("新旧网关映射")
+        @Parameter(description = "新旧网关映射")
         oldToNewMap: Map<String, String>
     ): Result<Boolean>
 
-    @ApiOperation("用于对数据库表填充哈希值")
+    @Operation(summary = "用于对数据库表填充哈希值")
     @POST
     @Path("/addhashid")
     fun addHashId()
+
+    @Operation(summary = "刷新节点标签数据")
+    @GET
+    @Path("/refreshNodeTag")
+    fun refreshNodeTag(
+        @QueryParam("projectId") projectId: String?
+    )
 }

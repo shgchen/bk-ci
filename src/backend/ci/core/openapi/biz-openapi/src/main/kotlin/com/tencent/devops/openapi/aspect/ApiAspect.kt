@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -26,6 +26,7 @@
  */
 package com.tencent.devops.openapi.aspect
 
+import com.github.benmanes.caffeine.cache.Caffeine
 import com.tencent.devops.common.api.constant.HTTP_500
 import com.tencent.devops.common.api.exception.CustomException
 import com.tencent.devops.common.api.exception.ParamBlankException
@@ -36,10 +37,16 @@ import com.tencent.devops.common.redis.RedisOperation
 import com.tencent.devops.common.service.BkTag
 import com.tencent.devops.common.web.utils.I18nUtil
 import com.tencent.devops.openapi.IgnoreProjectId
+import com.tencent.devops.openapi.constant.OpenAPIMessageCode
 import com.tencent.devops.openapi.constant.OpenAPIMessageCode.PARAM_VERIFY_FAIL
+import com.tencent.devops.openapi.es.ESMessage
+import com.tencent.devops.openapi.es.IESService
 import com.tencent.devops.openapi.service.OpenapiPermissionService
 import com.tencent.devops.openapi.service.op.AppCodeService
 import com.tencent.devops.openapi.utils.ApiGatewayUtil
+import io.swagger.v3.oas.annotations.Operation
+import jakarta.ws.rs.core.Response
+import java.util.concurrent.TimeUnit
 import org.aspectj.lang.JoinPoint
 import org.aspectj.lang.ProceedingJoinPoint
 import org.aspectj.lang.annotation.Around
@@ -48,7 +55,8 @@ import org.aspectj.lang.reflect.MethodSignature
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
-import javax.ws.rs.core.Response
+import org.springframework.web.context.request.RequestContextHolder
+import org.springframework.web.context.request.ServletRequestAttributes
 import kotlin.reflect.jvm.kotlinFunction
 
 @Aspect
@@ -58,7 +66,8 @@ class ApiAspect(
     private val apiGatewayUtil: ApiGatewayUtil,
     private val redisOperation: RedisOperation,
     private val bkTag: BkTag,
-    private val permissionService: OpenapiPermissionService
+    private val permissionService: OpenapiPermissionService,
+    private val esService: IESService
 ) {
 
     companion object {
@@ -67,6 +76,15 @@ class ApiAspect(
 
     @Value("\${openapi.verify.project: #{null}}")
     val verifyProjectFlag: String = "false"
+
+    private val apiTagCache = Caffeine.newBuilder()
+        .maximumSize(500)
+        .build<String/*method-name*/, String/*api-tag*/>()
+
+    private val projectConsulTagCache = Caffeine.newBuilder()
+        .expireAfterWrite(1, TimeUnit.MINUTES)
+        .maximumSize(30000)
+        .build<String/*projectId*/, String/*tag*/>()
 
     /**
      * 前置增强：目标方法执行之前执行
@@ -100,6 +118,28 @@ class ApiAspect(
             }
         }
 
+        kotlin.runCatching {
+            if (esService.esReady()) {
+                val request = (RequestContextHolder.currentRequestAttributes() as ServletRequestAttributes).request
+                val apiType = apigwType?.split("-")?.getOrNull(1) ?: ""
+                esService.addMessage(
+                    ESMessage(
+                        api = getApiTag(jp = jp, apiType = apiType),
+                        key = when {
+                            apiType.isBlank() -> "null"
+                            apiType.contains("user") -> "user:$userId"
+                            else -> "app:$appCode"
+                        },
+                        projectId = projectId ?: "",
+                        path = request.requestURI,
+                        timestamp = System.currentTimeMillis()
+                    )
+                )
+            }
+        }.onFailure {
+            logger.error("es add message error ${it.message}", it)
+        }
+
         if (logger.isDebugEnabled) {
 
             val methodName: String = jp.signature.name
@@ -131,7 +171,9 @@ class ApiAspect(
 
         if (projectId != null) {
             // openAPI 网关无法判别项目信息, 切面捕获project信息。 剩余一种URI内无${projectId}的情况,接口自行处理
-            val projectConsulTag = redisOperation.hget(PROJECT_TAG_REDIS_KEY, projectId)
+            val projectConsulTag = projectConsulTagCache.get(projectId) {
+                redisOperation.hget(PROJECT_TAG_REDIS_KEY, projectId)
+            }
             if (!projectConsulTag.isNullOrEmpty()) {
                 bkTag.setGatewayTag(projectConsulTag)
             }
@@ -150,7 +192,11 @@ class ApiAspect(
 
             if (appCode != null && apigwType == "apigw-app" && !appCodeService.validAppCode(appCode, projectId)) {
                 throw PermissionForbiddenException(
-                    message = "Permission denied: apigwType[$apigwType],appCode[$appCode],ProjectId[$projectId]"
+                    message = "Permission denied: apigwType[$apigwType]," +
+                            "appCode[$appCode],ProjectId[$projectId] " + I18nUtil.getCodeLanMessage(
+                        messageCode = OpenAPIMessageCode.APP_CODE_PERMISSION_DENIED_MESSAGE,
+                        language = I18nUtil.getLanguage(userId)
+                    )
                 )
             }
         }
@@ -222,5 +268,23 @@ class ApiAspect(
     fun afterMethod() {
         // 删除线程ThreadLocal数据,防止线程池复用。导致流量指向被污染
         bkTag.removeGatewayTag()
+    }
+
+    private fun getApiTag(jp: JoinPoint, apiType: String): String {
+        val method = (jp.signature as MethodSignature).method
+        val methodName = method.declaringClass.typeName + "." + method.name
+        return apiTagCache.get(methodName) {
+            jp.target
+                ?.javaClass
+                ?.interfaces
+                ?.first()
+                ?.getDeclaredMethod(
+                    method.name, *method.parameterTypes
+                )
+                ?.getAnnotation(Operation::class.java)
+                ?.tags
+                ?.first()
+                ?.replace(Regex("app|user"), apiType) ?: methodName
+        } ?: methodName
     }
 }

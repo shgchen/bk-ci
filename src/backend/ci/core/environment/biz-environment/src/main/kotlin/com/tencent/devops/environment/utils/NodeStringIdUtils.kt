@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,6 +28,7 @@
 package com.tencent.devops.environment.utils
 
 import com.tencent.devops.common.api.util.HashUtil
+import com.tencent.devops.common.api.util.timestampmilli
 import com.tencent.devops.environment.pojo.NodeBaseInfo
 import com.tencent.devops.environment.pojo.enums.NodeType
 import com.tencent.devops.model.environment.tables.records.TNodeRecord
@@ -42,16 +43,13 @@ object NodeStringIdUtils {
         }
     }
 
-    fun getRefineDisplayName(nodeStringId: String, displayName: String): String {
-        return if (displayName.isBlank()) {
-            nodeStringId
-        } else {
-            displayName
-        }
+    fun getRefineDisplayName(nodeStringId: String, displayName: String?): String {
+        return displayName?.ifBlank { nodeStringId } ?: nodeStringId
     }
 
     fun getNodeBaseInfo(nodeRecord: TNodeRecord): NodeBaseInfo {
         val nodeStringId = getNodeStringId(nodeRecord)
+        val displayName = getRefineDisplayName(nodeStringId, displayName = nodeRecord.displayName)
         return NodeBaseInfo(
             nodeHashId = HashUtil.encodeLongId(nodeRecord.nodeId),
             nodeId = nodeStringId,
@@ -65,7 +63,10 @@ object NodeStringIdUtils {
             operator = nodeRecord.operator,
             bakOperator = nodeRecord.bakOperator,
             gateway = "",
-            displayName = getRefineDisplayName(nodeStringId, nodeRecord.displayName)
+            displayName = displayName,
+            envEnableNode = null,
+            nodeName = nodeRecord.nodeName,
+            lastModifyTime = (nodeRecord.lastModifyTime ?: nodeRecord.createdTime).timestampmilli()
         )
     }
 }

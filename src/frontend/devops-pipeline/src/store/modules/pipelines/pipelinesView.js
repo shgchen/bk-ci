@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -17,15 +17,14 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import ajax from '@/utils/request'
 import {
     PROCESS_API_URL_PREFIX
 } from '@/store/constants'
+import ajax from '@/utils/request'
 
 const prefix = `/${PROCESS_API_URL_PREFIX}/user`
 
 const state = {
-    pageLoading: false,
     showViewManage: false,
     showViewCreate: false,
     isManage: false,
@@ -51,9 +50,6 @@ const getters = {
 }
 
 const mutations = {
-    showPageLoading (state, loading) {
-        state.pageLoading = loading
-    },
     // 是否展示视图选择框
     toggleShowViewManage (state, res) {
         state.showViewManage = res

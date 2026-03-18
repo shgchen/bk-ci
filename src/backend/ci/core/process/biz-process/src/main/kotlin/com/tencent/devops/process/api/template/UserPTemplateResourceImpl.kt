@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,22 +27,33 @@
 
 package com.tencent.devops.process.api.template
 
+import com.tencent.bk.audit.annotations.AuditEntry
 import com.tencent.devops.common.api.exception.InvalidParamException
 import com.tencent.devops.common.api.pojo.Result
+import com.tencent.devops.common.auth.api.ActionId
+import com.tencent.devops.common.auth.api.AuthPermission
 import com.tencent.devops.common.pipeline.Model
+import com.tencent.devops.common.pipeline.pojo.setting.PipelineRunLockType
+import com.tencent.devops.common.pipeline.pojo.setting.PipelineSetting
 import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.common.web.utils.I18nUtil
 import com.tencent.devops.process.constant.ProcessMessageCode
-import com.tencent.devops.process.pojo.setting.PipelineRunLockType
-import com.tencent.devops.process.pojo.setting.PipelineSetting
+import com.tencent.devops.process.pojo.PTemplateOrderByType
+import com.tencent.devops.process.pojo.PTemplateSortType
 import com.tencent.devops.process.pojo.template.CopyTemplateReq
+import com.tencent.devops.process.pojo.template.HighlightType
 import com.tencent.devops.process.pojo.template.OptionalTemplateList
 import com.tencent.devops.process.pojo.template.SaveAsTemplateReq
 import com.tencent.devops.process.pojo.template.TemplateId
 import com.tencent.devops.process.pojo.template.TemplateListModel
 import com.tencent.devops.process.pojo.template.TemplateModelDetail
+import com.tencent.devops.process.pojo.template.TemplatePreviewDetail
 import com.tencent.devops.process.pojo.template.TemplateType
+import com.tencent.devops.process.service.template.TemplateCommonService
 import com.tencent.devops.process.service.template.TemplateFacadeService
+import com.tencent.devops.process.service.template.TemplatePACService
+import com.tencent.devops.process.service.template.TemplateSettingService
+import com.tencent.devops.process.service.template.v2.PipelineTemplateCompatibilityAdapter
 import com.tencent.devops.process.utils.PIPELINE_SETTING_MAX_QUEUE_SIZE_MAX
 import com.tencent.devops.process.utils.PIPELINE_SETTING_MAX_QUEUE_SIZE_MIN
 import com.tencent.devops.process.utils.PIPELINE_SETTING_WAIT_QUEUE_TIME_MINUTE_MAX
@@ -54,40 +65,68 @@ import org.springframework.beans.factory.annotation.Autowired
  * 2019-01-08
  */
 @RestResource
-class UserPTemplateResourceImpl @Autowired constructor(private val templateFacadeService: TemplateFacadeService) :
-    UserPTemplateResource {
+class UserPTemplateResourceImpl @Autowired constructor(
+    private val templateFacadeService: TemplateFacadeService,
+    private val templatePACService: TemplatePACService,
+    private val templateSettingService: TemplateSettingService,
+    private val templateCommonService: TemplateCommonService,
+    private val pipelineTemplateCompatibilityAdapter: PipelineTemplateCompatibilityAdapter
+) : UserPTemplateResource {
 
+    @AuditEntry(actionId = ActionId.PIPELINE_TEMPLATE_CREATE)
     override fun createTemplate(userId: String, projectId: String, template: Model): Result<TemplateId> {
-        return Result(TemplateId(templateFacadeService.createTemplate(projectId, userId, template)))
+        return Result(
+            TemplateId(
+                pipelineTemplateCompatibilityAdapter.createTemplate(
+                    projectId = projectId,
+                    userId = userId,
+                    template = template
+                )
+            )
+        )
     }
 
+    @AuditEntry(actionId = ActionId.PIPELINE_TEMPLATE_DELETE)
     override fun deleteTemplate(userId: String, projectId: String, templateId: String): Result<Boolean> {
-        return Result(templateFacadeService.deleteTemplate(projectId, userId, templateId))
+        return Result(
+            pipelineTemplateCompatibilityAdapter.deleteTemplate(
+                projectId = projectId,
+                userId = userId,
+                templateId = templateId
+            )
+        )
     }
 
+    @AuditEntry(actionId = ActionId.PIPELINE_TEMPLATE_DELETE)
     override fun deleteTemplate(userId: String, projectId: String, templateId: String, version: Long): Result<Boolean> {
-        return Result(templateFacadeService.deleteTemplate(
-            projectId = projectId,
-            userId = userId,
-            templateId = templateId,
-            version = version
-        ))
+        return Result(
+            pipelineTemplateCompatibilityAdapter.deleteVersion(
+                projectId = projectId,
+                userId = userId,
+                templateId = templateId,
+                version = version
+            )
+        )
     }
 
+    @AuditEntry(actionId = ActionId.PIPELINE_TEMPLATE_DELETE)
     override fun deleteTemplate(
         userId: String,
         projectId: String,
         templateId: String,
         versionName: String
     ): Result<Boolean> {
-        return Result(templateFacadeService.deleteTemplate(
-            projectId = projectId,
-            userId = userId,
-            templateId = templateId,
-            versionName = versionName
-        ))
+        return Result(
+            templateFacadeService.deleteTemplate(
+                projectId = projectId,
+                userId = userId,
+                templateId = templateId,
+                versionName = versionName
+            )
+        )
     }
 
+    @AuditEntry(actionId = ActionId.PIPELINE_TEMPLATE_EDIT)
     override fun updateTemplate(
         userId: String,
         projectId: String,
@@ -95,7 +134,15 @@ class UserPTemplateResourceImpl @Autowired constructor(private val templateFacad
         versionName: String,
         template: Model
     ): Result<Boolean> {
-        return Result(templateFacadeService.updateTemplate(projectId, userId, templateId, versionName, template) > 0)
+        return Result(
+            pipelineTemplateCompatibilityAdapter.updateTemplate(
+                projectId = projectId,
+                userId = userId,
+                templateId = templateId,
+                versionName = versionName,
+                template = template
+            ) > 0
+        )
     }
 
     override fun listTemplate(
@@ -103,10 +150,23 @@ class UserPTemplateResourceImpl @Autowired constructor(private val templateFacad
         projectId: String,
         templateType: TemplateType?,
         storeFlag: Boolean?,
+        orderBy: PTemplateOrderByType?,
+        sort: PTemplateSortType?,
         page: Int?,
         pageSize: Int?
     ): Result<TemplateListModel> {
-        return Result(templateFacadeService.listTemplate(projectId, userId, templateType, storeFlag, page, pageSize))
+        return Result(
+            templateFacadeService.listTemplate(
+                projectId = projectId,
+                userId = userId,
+                templateType = templateType,
+                storeFlag = storeFlag,
+                orderBy = orderBy,
+                sort = sort,
+                page = page,
+                pageSize = pageSize
+            )
+        )
     }
 
     override fun listAllTemplate(
@@ -116,7 +176,7 @@ class UserPTemplateResourceImpl @Autowired constructor(private val templateFacad
         page: Int?,
         pageSize: Int?
     ): Result<OptionalTemplateList> {
-        return Result(templateFacadeService.listAllTemplate(projectId, templateType, null, page, pageSize))
+        return Result(templateFacadeService.listAllTemplate(userId, projectId, templateType, null, page, pageSize))
     }
 
     override fun getTemplate(
@@ -129,6 +189,7 @@ class UserPTemplateResourceImpl @Autowired constructor(private val templateFacad
     }
 
     @Suppress("ALL")
+    @AuditEntry(actionId = ActionId.PIPELINE_TEMPLATE_EDIT)
     override fun updateTemplateSetting(
         userId: String,
         projectId: String,
@@ -136,7 +197,10 @@ class UserPTemplateResourceImpl @Autowired constructor(private val templateFacad
         setting: PipelineSetting
     ): Result<Boolean> {
         if (setting.runLockType == PipelineRunLockType.SINGLE ||
-            setting.runLockType == PipelineRunLockType.SINGLE_LOCK) {
+            setting.runLockType == PipelineRunLockType.SINGLE_LOCK ||
+            setting.runLockType == PipelineRunLockType.GROUP_LOCK ||
+            setting.runLockType == PipelineRunLockType.MULTIPLE
+        ) {
             if (setting.waitQueueTimeMinute < PIPELINE_SETTING_WAIT_QUEUE_TIME_MINUTE_MIN ||
                 setting.waitQueueTimeMinute > PIPELINE_SETTING_WAIT_QUEUE_TIME_MINUTE_MAX
             ) {
@@ -150,7 +214,7 @@ class UserPTemplateResourceImpl @Autowired constructor(private val templateFacad
                 )
             }
         }
-        return Result(templateFacadeService.updateTemplateSetting(projectId, userId, templateId, setting))
+        return Result(templateSettingService.updateTemplateSetting(projectId, userId, templateId, setting))
     }
 
     override fun getTemplateSetting(
@@ -158,9 +222,10 @@ class UserPTemplateResourceImpl @Autowired constructor(private val templateFacad
         projectId: String,
         templateId: String
     ): Result<PipelineSetting> {
-        return Result(templateFacadeService.getTemplateSetting(projectId, userId, templateId))
+        return Result(templateSettingService.getTemplateSetting(projectId, userId, templateId))
     }
 
+    @AuditEntry(actionId = ActionId.PIPELINE_TEMPLATE_EDIT)
     override fun copyTemplate(
         userId: String,
         projectId: String,
@@ -170,6 +235,7 @@ class UserPTemplateResourceImpl @Autowired constructor(private val templateFacad
         return Result(TemplateId(templateFacadeService.copyTemplate(userId, projectId, templateId, copyTemplateReq)))
     }
 
+    @AuditEntry(actionId = ActionId.PIPELINE_TEMPLATE_EDIT)
     override fun saveAsTemplate(
         userId: String,
         projectId: String,
@@ -179,6 +245,35 @@ class UserPTemplateResourceImpl @Autowired constructor(private val templateFacad
     }
 
     override fun hasManagerPermission(userId: String, projectId: String): Result<Boolean> {
-        return Result(templateFacadeService.hasManagerPermission(projectId, userId))
+        return Result(templateCommonService.hasManagerPermission(projectId, userId))
+    }
+
+    override fun previewTemplate(
+        userId: String,
+        projectId: String,
+        templateId: String,
+        highlightType: HighlightType?
+    ): Result<TemplatePreviewDetail> {
+        return Result(templatePACService.previewTemplate(userId, projectId, templateId, highlightType))
+    }
+
+    override fun hasPipelineTemplatePermission(
+        userId: String,
+        projectId: String,
+        templateId: String?,
+        permission: AuthPermission
+    ): Result<Boolean> {
+        return Result(
+            templateFacadeService.hasPipelineTemplatePermission(
+                userId = userId,
+                projectId = projectId,
+                templateId = templateId,
+                permission = permission
+            )
+        )
+    }
+
+    override fun enableTemplatePermissionManage(userId: String, projectId: String): Result<Boolean> {
+        return Result(templateFacadeService.enableTemplatePermissionManage(projectId))
     }
 }

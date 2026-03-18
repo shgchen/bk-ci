@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -33,5 +33,16 @@ enum class NotifyType {
     WECHAT,
     SMS,
     WEWORK,
-    WEWORK_GROUP
+    WEWORK_GROUP,
+    VOICE
+    ;
+
+    /**
+     * OP系统可以编辑的通知模板
+     */
+    companion object {
+        fun opEditable(): List<NotifyType> {
+            return listOf(EMAIL, RTX, WECHAT, WEWORK_GROUP)
+        }
+    }
 }

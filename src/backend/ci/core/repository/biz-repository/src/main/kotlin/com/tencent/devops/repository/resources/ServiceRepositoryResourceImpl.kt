@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,22 +27,29 @@
 
 package com.tencent.devops.repository.resources
 
+import com.tencent.bk.audit.annotations.AuditEntry
 import com.tencent.devops.common.api.enums.RepositoryType
 import com.tencent.devops.common.api.enums.ScmType
 import com.tencent.devops.common.api.exception.ParamBlankException
 import com.tencent.devops.common.api.pojo.Page
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.api.util.PageUtil
+import com.tencent.devops.common.auth.api.ActionId
 import com.tencent.devops.common.auth.api.AuthPermission
 import com.tencent.devops.common.pipeline.utils.RepositoryConfigUtils.buildConfig
 import com.tencent.devops.common.service.prometheus.BkTimed
 import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.repository.api.ServiceRepositoryResource
+import com.tencent.devops.repository.pojo.AtomRefRepositoryInfo
+import com.tencent.devops.repository.pojo.RepoPipelineRefRequest
 import com.tencent.devops.repository.pojo.Repository
 import com.tencent.devops.repository.pojo.RepositoryId
 import com.tencent.devops.repository.pojo.RepositoryInfo
 import com.tencent.devops.repository.pojo.RepositoryInfoWithPermission
+import com.tencent.devops.repository.pojo.commit.CommitResponse
 import com.tencent.devops.repository.pojo.enums.Permission
+import com.tencent.devops.repository.service.CommitService
+import com.tencent.devops.repository.service.RepoPipelineService
 import com.tencent.devops.repository.service.RepositoryService
 import org.springframework.beans.factory.annotation.Autowired
 import java.net.URLDecoder
@@ -50,10 +57,13 @@ import java.net.URLDecoder
 @RestResource
 @Suppress("ALL")
 class ServiceRepositoryResourceImpl @Autowired constructor(
-    private val repositoryService: RepositoryService
+    private val repositoryService: RepositoryService,
+    private val repoPipelineService: RepoPipelineService,
+    private val commitService: CommitService
 ) : ServiceRepositoryResource {
 
     @BkTimed(extraTags = ["operate", "create"])
+    @AuditEntry(actionId = ActionId.REPERTORY_CREATE)
     override fun create(userId: String, projectId: String, repository: Repository): Result<RepositoryId> {
         if (userId.isBlank()) {
             throw ParamBlankException("Invalid userId")
@@ -115,7 +125,8 @@ class ServiceRepositoryResourceImpl @Autowired constructor(
         permission: Permission,
         page: Int?,
         pageSize: Int?,
-        aliasName: String?
+        aliasName: String?,
+        scmCode: String?
     ): Result<Page<RepositoryInfo>> {
         if (userId.isBlank()) {
             throw ParamBlankException("Invalid userId")
@@ -140,7 +151,8 @@ class ServiceRepositoryResourceImpl @Autowired constructor(
             authPermission = bkAuthPermission,
             offset = limit.offset,
             limit = limit.limit,
-            aliasName = aliasName
+            aliasName = aliasName,
+            scmCode = scmCode
         )
         return Result(Page(pageNotNull, pageSizeNotNull, result.count, result.records))
     }
@@ -172,6 +184,7 @@ class ServiceRepositoryResourceImpl @Autowired constructor(
         return Result(Page(pageNotNull, pageSizeNotNull, result.count, result.records))
     }
 
+    @AuditEntry(actionId = ActionId.REPERTORY_DELETE)
     override fun delete(userId: String, projectId: String, repositoryHashId: String): Result<Boolean> {
         if (userId.isBlank()) {
             throw ParamBlankException("Invalid userId")
@@ -186,6 +199,7 @@ class ServiceRepositoryResourceImpl @Autowired constructor(
         return Result(true)
     }
 
+    @AuditEntry(actionId = ActionId.REPERTORY_EDIT)
     override fun edit(
         userId: String,
         projectId: String,
@@ -201,5 +215,44 @@ class ServiceRepositoryResourceImpl @Autowired constructor(
         repositoryIds: Set<String>
     ): Result<List<Repository>> {
         return (Result(repositoryService.getRepositoryByHashIds(repositoryIds.toList())))
+    }
+
+    override fun updatePipelineRef(
+        userId: String,
+        projectId: String,
+        request: RepoPipelineRefRequest
+    ): Result<Boolean> {
+        repoPipelineService.updatePipelineRef(
+            userId = userId,
+            projectId = projectId,
+            request = request
+        )
+        return Result(true)
+    }
+
+    override fun updateAtomRepoFlag(
+        userId: String,
+        atomRefRepositoryInfo: List<AtomRefRepositoryInfo>
+    ): Result<Boolean> {
+        repositoryService.updateAtomRepoFlag(
+            userId = userId,
+            atomRefRepositoryInfo = atomRefRepositoryInfo
+        )
+        return Result(true)
+    }
+
+    override fun getGitProjectIdByRepositoryHashId(
+        userId: String,
+        repositoryHashIdList: List<String>
+    ): Result<List<String>> {
+        return Result(repositoryService.getGitProjectIdByRepositoryHashId(userId, repositoryHashIdList))
+    }
+
+    override fun updateStoreRepoProject(userId: String, projectId: String, repositoryId: Long): Result<Boolean> {
+        return repositoryService.updateStoreRepoProject(userId, projectId, repositoryId)
+    }
+
+    override fun getCommit(buildId: String): Result<List<CommitResponse>> {
+        return Result(commitService.getCommit(buildId))
     }
 }

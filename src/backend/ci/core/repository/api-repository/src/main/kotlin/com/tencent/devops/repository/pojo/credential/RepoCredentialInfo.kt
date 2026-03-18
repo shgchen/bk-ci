@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -26,21 +26,20 @@
  */
 package com.tencent.devops.repository.pojo.credential
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("仓库授权信息")
+@Schema(title = "仓库授权信息")
 data class RepoCredentialInfo(
-    @ApiModelProperty("授权Token")
-    val token: String = "",
-    @ApiModelProperty("授权私钥")
+    @get:Schema(title = "授权Token")
+    var token: String = "",
+    @get:Schema(title = "授权私钥")
     val privateKey: String = "",
-    @ApiModelProperty("私钥密码")
+    @get:Schema(title = "私钥密码")
     val passPhrase: String? = "",
-    @ApiModelProperty("用户名")
+    @get:Schema(title = "用户名")
     val username: String = "",
-    @ApiModelProperty("密码")
+    @get:Schema(title = "密码")
     val password: String = "",
-    @ApiModelProperty("凭证类型")
+    @get:Schema(title = "凭证类型")
     val credentialType: String = ""
 )

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,63 +30,63 @@ package com.tencent.devops.store.api.common
 import com.tencent.devops.common.api.auth.AUTH_HEADER_USER_ID
 import com.tencent.devops.common.api.pojo.Page
 import com.tencent.devops.common.api.pojo.Result
-import com.tencent.devops.store.pojo.common.SensitiveApiApproveReq
-import com.tencent.devops.store.pojo.common.SensitiveApiInfo
+import com.tencent.devops.store.pojo.common.sensitive.SensitiveApiApproveReq
+import com.tencent.devops.store.pojo.common.sensitive.SensitiveApiInfo
 import com.tencent.devops.store.pojo.common.enums.StoreTypeEnum
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.PUT
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.PUT
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["OP_SDK_SENSITIVEAPI"], description = "OP-敏感API")
+@Tag(name = "OP_SDK_SENSITIVEAPI", description = "OP-敏感API")
 @Path("/op/sdk/sensitiveApi/")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Suppress("ALL")
 interface OpSensitiveApiResource {
 
-    @ApiOperation("查看敏感API列表")
+    @Operation(summary = "查看敏感API列表")
     @Path("list")
     @GET
     fun list(
-        @ApiParam("store组件类别 ATOM:插件 TEMPLATE:模板 IMAGE:镜像 IDE_ATOM:IDE插件")
+        @Parameter(description = "store组件类别 ATOM:插件 TEMPLATE:模板 IMAGE:镜像 IDE_ATOM:IDE插件")
         @QueryParam("storeType")
         storeType: StoreTypeEnum?,
-        @ApiParam("store组件代码")
+        @Parameter(description = "store组件代码")
         @QueryParam("storeCode")
         storeCode: String?,
-        @ApiParam("API名称")
+        @Parameter(description = "API名称")
         @QueryParam("apiName")
         apiName: String?,
-        @ApiParam("API等级 NORMAL: 普通 SENSITIVE: 敏感")
+        @Parameter(description = "API等级 NORMAL: 普通 SENSITIVE: 敏感")
         @QueryParam("apiLevel")
         apiLevel: String?,
-        @ApiParam("API状态 WAIT:待审批，PASS:通过，REFUSE:拒绝, CANCEL: 取消")
+        @Parameter(description = "API状态 WAIT:待审批，PASS:通过，REFUSE:拒绝, CANCEL: 取消")
         @QueryParam("apiStatus")
         apiStatus: String?,
-        @ApiParam("第几页", required = false)
+        @Parameter(description = "第几页", required = false)
         @QueryParam("page")
         page: Int?,
-        @ApiParam("每页条数", required = false)
+        @Parameter(description = "每页条数", required = false)
         @QueryParam("pageSize")
         pageSize: Int?
     ): Result<Page<SensitiveApiInfo>>
 
-    @ApiOperation("敏感API审批")
+    @Operation(summary = "敏感API审批")
     @Path("approve")
     @PUT
     fun approve(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("敏感API审批请求体")
+        @Parameter(description = "敏感API审批请求体")
         sensitiveApiApproveReq: SensitiveApiApproveReq
     ): Result<Boolean>
 }

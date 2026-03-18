@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C)) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C)) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -35,13 +35,11 @@ dependencies {
     api(project(":core:common:common-scm"))
     api(project(":core:repository:api-repository"))
     api(project(":core:repository:model-repository"))
-    api(project(":core:repository:plugin-tapd"))
-    api(project(":core:repository:plugin-github"))
     api(project(":core:common:common-db"))
     api(project(":core:auth:api-auth"))
     api(project(":core:project:api-project"))
-    api(project(":core:common:common-auth:common-auth-rbac"))
-
+    api(project(":core:common:common-auth:common-auth-provider"))
+    api(project(":core:repository:biz-base-scm"))
     api("com.google.code.gson:gson")
     api("org.eclipse.jgit:org.eclipse.jgit")
 }

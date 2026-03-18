@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -61,7 +61,8 @@ data class PipelineBuildTask(
     var errorMsg: String? = null,
     val atomCode: String? = null,
     val stepId: String? = null,
-    var totalTime: Long? = null
+    var totalTime: Long? = null,
+    val jobId: String? = null
 ) {
     fun getTaskParam(paramName: String): String {
         return if (taskParams[paramName] != null) {

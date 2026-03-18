@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -41,16 +41,22 @@ class ServiceQualityIndicatorMarketResourceImpl @Autowired constructor(
     override fun setTestIndicator(
         userId: String,
         atomCode: String,
+        tag: String,
         indicatorUpdateList: Collection<IndicatorUpdate>
     ): Result<Int> {
-        return Result(qualityIndicatorService.setTestIndicator(userId, atomCode, indicatorUpdateList))
+        return Result(qualityIndicatorService.setTestIndicator(
+            userId = userId,
+            elementType = atomCode,
+            tag = tag,
+            indicatorUpdateList = indicatorUpdateList
+        ))
     }
 
     override fun refreshIndicator(elementType: String, metadataMap: Map<String, String>): Result<Int> {
         return Result(qualityIndicatorService.serviceRefreshIndicator(elementType, metadataMap))
     }
 
-    override fun deleteTestIndicator(elementType: String): Result<Int> {
-        return Result(qualityIndicatorService.serviceDeleteTestIndicator(elementType))
+    override fun deleteTestIndicator(elementType: String, extra: String): Result<Int> {
+        return Result(qualityIndicatorService.serviceDeleteTestIndicator(elementType, extra))
     }
 }

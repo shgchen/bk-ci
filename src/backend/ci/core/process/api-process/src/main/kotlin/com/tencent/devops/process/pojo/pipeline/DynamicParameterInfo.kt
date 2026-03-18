@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,10 +27,10 @@
 
 package com.tencent.devops.process.pojo.pipeline
 
-import io.swagger.annotations.ApiModel
+import io.swagger.v3.oas.annotations.media.Schema
 import com.fasterxml.jackson.annotation.JsonProperty
 
-@ApiModel("DynamicParameter模型-ID")
+@Schema(title = "DynamicParameter模型-ID")
 data class DynamicParameterInfo(
     @JsonProperty("id")
     val id: String, // 该行的唯一标识，必填

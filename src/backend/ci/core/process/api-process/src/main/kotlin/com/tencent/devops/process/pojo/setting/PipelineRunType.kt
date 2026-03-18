@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,18 +27,17 @@
 
 package com.tencent.devops.process.pojo.setting
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("流水线运行锁定方式")
+@Schema(title = "流水线运行锁定方式")
 enum class PipelineRunType {
-    @ApiModelProperty("可同时运行多个构建任务（默认）")
+    @Schema(title = "可同时运行多个构建任务（默认）")
     MULTIPLE,
-    @ApiModelProperty("同一时间最多只能运行一个构建任务")
+    @Schema(title = "同一时间最多只能运行一个构建任务")
     SINGLE,
-    @ApiModelProperty("最多只能运行一个构建任务，且失败时锁定")
+    @Schema(title = "最多只能运行一个构建任务，且失败时锁定")
     SINGLE_LOCK,
-    @ApiModelProperty("锁定流水线，任何触发方式都无法运行")
+    @Schema(title = "锁定流水线，任何触发方式都无法运行")
     LOCK;
 
     companion object {

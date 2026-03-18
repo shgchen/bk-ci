@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,6 +28,7 @@
 package com.tencent.devops.project.service
 
 import com.tencent.devops.common.api.enums.SystemModuleEnum
+import com.tencent.devops.common.api.pojo.ShardingRuleTypeEnum
 import com.tencent.devops.common.redis.RedisOperation
 import com.tencent.devops.project.dao.ShardingRoutingRuleDao
 import com.tencent.devops.project.dispatch.ShardingRoutingRuleDispatcher
@@ -53,12 +54,14 @@ class SampleShardingRoutingRuleServiceImpl(
      * 获取可用数据源名称
      * @param clusterName db集群名称
      * @param moduleCode 模块代码
+     * @param ruleType 规则类型
      * @param dataSourceNames 数据源名称集合
      * @return 可用数据源名称
      */
     override fun getValidDataSourceName(
         clusterName: String,
         moduleCode: SystemModuleEnum,
+        ruleType: ShardingRuleTypeEnum,
         dataSourceNames: List<String>
     ): String {
         // 从可用的数据源中随机选择一个分配给该项目
@@ -69,19 +72,25 @@ class SampleShardingRoutingRuleServiceImpl(
 
     /**
      * 获取可用数据库表名称
+     * @param ruleType 规则类型
      * @param dataSourceName 数据源名称
      * @param tableShardingConfig 分表配置
      * @return 可用数据库表名称
      */
     override fun getValidTableName(
+        ruleType: ShardingRuleTypeEnum,
         dataSourceName: String,
         tableShardingConfig: TableShardingConfig
     ): String {
         // 从可用的数据库表中随机选择一个分配给该项目
         val tableName = tableShardingConfig.tableName
         val shardingNum = tableShardingConfig.shardingNum
-        val maxSizeIndex = shardingNum - 1
-        val randomIndex = (0..maxSizeIndex).random()
-        return "${tableName}_$randomIndex"
+        return if (shardingNum > 1) {
+            val maxSizeIndex = shardingNum - 1
+            val randomIndex = (0..maxSizeIndex).random()
+            "${tableName}_$randomIndex"
+        } else {
+            tableName
+        }
     }
 }

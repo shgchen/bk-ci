@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,6 +28,7 @@
 package com.tencent.devops.common.pipeline.option
 
 import com.fasterxml.jackson.core.type.TypeReference
+import com.tencent.devops.common.api.constant.CommonMessageCode.BK_JOB_MATRIX_STR_ERROR
 import com.tencent.devops.common.api.util.EnvUtils
 import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.api.util.KeyReplacement
@@ -35,32 +36,32 @@ import com.tencent.devops.common.api.util.ReplacementUtils
 import com.tencent.devops.common.api.util.YamlUtil
 import com.tencent.devops.common.pipeline.matrix.DispatchInfo
 import com.tencent.devops.common.pipeline.matrix.MatrixConfig
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
-import org.slf4j.LoggerFactory
+import com.tencent.devops.common.web.utils.I18nUtil
+import io.swagger.v3.oas.annotations.media.Schema
 import java.util.regex.Pattern
+import org.slf4j.LoggerFactory
 
 /**
  *  构建矩阵配置项
  */
-@ApiModel("构建矩阵配置项模型")
+@Schema(title = "构建矩阵配置项模型")
 @Suppress("ReturnCount")
 data class MatrixControlOption(
-    @ApiModelProperty("分裂策略（支持变量、Json、参数映射表）", required = true)
+    @get:Schema(title = "分裂策略（支持变量、Json、参数映射表）", required = true)
     val strategyStr: String? = null, // Map<String, List<String>>
-    @ApiModelProperty("额外的参数组合（变量名到特殊值映射的数组）", required = false)
+    @get:Schema(title = "额外的参数组合（变量名到特殊值映射的数组）", required = false)
     val includeCaseStr: String? = null, // List<Map<String, String>>
-    @ApiModelProperty("排除的参数组合（变量名到特殊值映射的数组）", required = false)
+    @get:Schema(title = "排除的参数组合（变量名到特殊值映射的数组）", required = false)
     val excludeCaseStr: String? = null, // List<Map<String, String>>
-    @ApiModelProperty("是否启用容器失败快速终止整个矩阵", required = false)
+    @get:Schema(title = "是否启用容器失败快速终止整个矩阵", required = false)
     val fastKill: Boolean? = false,
-    @ApiModelProperty("Job运行的最大并发量", required = false)
+    @get:Schema(title = "Job运行的最大并发量", required = false)
     var maxConcurrency: Int? = 5,
-    @ApiModelProperty("自定义调度类型（用于生成DispatchType的任意对象）", required = false)
+    @get:Schema(title = "自定义调度类型（用于生成DispatchType的任意对象）", required = false)
     var customDispatchInfo: DispatchInfo? = null, // DispatchTypeParser的传入和解析保持一致即可
-    @ApiModelProperty("矩阵组的总数量", required = false)
+    @get:Schema(title = "矩阵组的总数量", required = false)
     var totalCount: Int? = null,
-    @ApiModelProperty("完成执行的数量", required = false)
+    @get:Schema(title = "完成执行的数量", required = false)
     var finishCount: Int? = null
 ) {
 
@@ -73,7 +74,7 @@ data class MatrixControlOption(
     /**
      * 根据[strategyStr], [includeCaseStr], [excludeCaseStr]计算后得到的矩阵配置
      */
-    fun convertMatrixConfig(buildContext: Map<String, String>, asCodeEnabled: Boolean? = false): MatrixConfig {
+    fun convertMatrixConfig(buildContext: Map<String, String>): MatrixConfig {
         val matrixConfig = try {
             // 由于yaml和json结构不同，就不放在同一函数进行解析了
             convertStrategyYaml(buildContext)
@@ -86,8 +87,7 @@ data class MatrixControlOption(
         return matrixConfig
     }
 
-    fun convertMatrixToYamlConfig(): Any? {
-        val result = mutableMapOf<String, Any>()
+    fun convertMatrixToYamlStrategy(): Any? {
         val matrixConfig = try {
             // 由于yaml和json结构不同，就不放在同一函数进行解析了
             convertStrategyYaml(emptyMap())
@@ -95,30 +95,25 @@ data class MatrixControlOption(
             logger.warn("convert Strategy from Yaml error. try parse with JSON. Error message: ${ignore.message}")
             return strategyStr
         }
-        result.putAll(matrixConfig.strategy ?: emptyMap())
-        with(matrixConfig.include ?: mutableListOf()) {
-            try {
-                this.addAll(convertCase(includeCaseStr))
-                if (this.size > 0) {
-                    result["include"] = this
-                }
-            } catch (e: Exception) {
-                logger.warn("this because of formJSON:${e.message}")
-                result["include"] = includeCaseStr ?: return@with
-            }
+        return matrixConfig.strategy
+    }
+
+    fun convertMatrixToYamlInclude(): Any? {
+        return try {
+            convertCase(includeCaseStr)
+        } catch (e: Exception) {
+            logger.warn("this because of formJSON:${e.message}")
+            includeCaseStr
         }
-        with(matrixConfig.exclude ?: mutableListOf()) {
-            try {
-                this.addAll(convertCase(excludeCaseStr))
-                if (this.size > 0) {
-                    result["include"] = this
-                }
-            } catch (e: Exception) {
-                logger.warn("this because of formJSON:${e.message}")
-                result["exclude"] = excludeCaseStr ?: return@with
-            }
+    }
+
+    fun convertMatrixToYamlExclude(): Any? {
+        return try {
+            convertCase(excludeCaseStr)
+        } catch (e: Exception) {
+            logger.warn("this because of formJSON:${e.message}")
+            excludeCaseStr
         }
-        return result
     }
 
     /**
@@ -167,11 +162,11 @@ data class MatrixControlOption(
                 emptyMap(), mutableListOf(), mutableListOf()
             )
         }
+        val contextStr = replaceJsonPattern(
+            command = strategyStr,
+            buildContext = buildContext
+        )
         try {
-            val contextStr = replaceJsonPattern(
-                command = strategyStr,
-                buildContext = buildContext
-            )
             // 适用于matrix中是包含了key的map类型JSON，这种情况必包含strategy，可能包含include和exclude
             val matrixMap = JsonUtil.to<Map<String, List<Any>?>>(contextStr)
             return MatrixConfig(
@@ -190,7 +185,9 @@ data class MatrixControlOption(
             )
         } catch (ignore: Exception) {
             // 适用于不包含key的list类型JSON,这种情况只会是strategy
-            val str = YamlUtil.to<Map<String, Any>>(strategyStr)
+            val str = kotlin.runCatching { YamlUtil.to<Map<String, Any>>(strategyStr) }.getOrElse {
+                throw Exception(I18nUtil.getCodeLanMessage(BK_JOB_MATRIX_STR_ERROR, params = arrayOf(contextStr)))
+            }
             return MatrixConfig(
                 strategy = str.map {
                     it.key to when (it.value) {
@@ -200,6 +197,7 @@ data class MatrixControlOption(
                                 buildContext = buildContext
                             )
                         )
+
                         is List<*> -> it.value as List<String>
                         else -> throw Exception("strategyStr must be fromJSON String or List")
                     }
@@ -225,7 +223,9 @@ data class MatrixControlOption(
                 command = caseStr,
                 buildContext = buildContext ?: throw Exception("empty buildContext")
             )
-            JsonUtil.to(contextStr)
+            kotlin.runCatching { JsonUtil.to<List<Map<String, String>>>(contextStr) }.getOrElse {
+                throw Exception(I18nUtil.getCodeLanMessage(BK_JOB_MATRIX_STR_ERROR, params = arrayOf(contextStr)))
+            }
         }
         return includeCaseList.map { map ->
             map.map {

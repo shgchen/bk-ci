@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,21 +27,20 @@
 
 package com.tencent.devops.auth.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("iam回调接口注册参数")
+@Schema(title = "iam回调接口注册参数")
 data class IamCallBackInterfaceDTO(
-    @ApiModelProperty("网关地址")
+    @get:Schema(title = "网关地址")
     val gateway: String,
-    @ApiModelProperty("资源类型")
+    @get:Schema(title = "资源类型")
     val resource: String,
-    @ApiModelProperty("回调接口路径")
+    @get:Schema(title = "回调接口路径")
     val path: String,
-    @ApiModelProperty("注册系统")
+    @get:Schema(title = "注册系统")
     val system: String,
-    @ApiModelProperty("依赖资源")
+    @get:Schema(title = "依赖资源")
     val relatedResource: List<String>? = emptyList(),
-    @ApiModelProperty("依赖资源是否必须关联")
+    @get:Schema(title = "依赖资源是否必须关联")
     val relatedFlag: Boolean? = false
 )

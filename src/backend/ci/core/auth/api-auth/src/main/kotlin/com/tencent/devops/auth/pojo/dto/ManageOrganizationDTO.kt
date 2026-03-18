@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,19 +27,18 @@
 
 package com.tencent.devops.auth.pojo.dto
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel
+@Schema
 data class ManageOrganizationDTO(
-    @ApiModelProperty("名称")
+    @get:Schema(title = "名称")
     val name: String,
-    @ApiModelProperty("组织Id")
+    @get:Schema(title = "组织Id")
     val organizationId: Int,
-    @ApiModelProperty("组织层级, 1--BG  2--部门  3--中心")
+    @get:Schema(title = "组织层级, 1--BG  2--部门  3--中心")
     val level: Int,
-    @ApiModelProperty("策略Id")
+    @get:Schema(title = "策略Id")
     val strategyId: Int,
-    @ApiModelProperty("父组织Id")
+    @get:Schema(title = "父组织Id")
     val parentOrgId: List<Int>
 )

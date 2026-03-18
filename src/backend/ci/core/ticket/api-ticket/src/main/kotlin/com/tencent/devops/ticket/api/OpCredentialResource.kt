@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -32,45 +32,45 @@ import com.tencent.devops.common.api.auth.AUTH_HEADER_USER_ID_DEFAULT_VALUE
 import com.tencent.devops.common.api.pojo.Page
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.ticket.pojo.CredentialWithPermission
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["OP_CREDENTIAL"], description = "OP-凭据资源")
+@Tag(name = "OP_CREDENTIAL", description = "OP-凭据资源")
 @Path("/op/credentials")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Suppress("ALL")
 interface OpCredentialResource {
 
-    @ApiOperation("获取凭据列表")
+    @Operation(summary = "获取凭据列表")
     @Path("/projects/{projectId}/")
     @GET
     fun list(
-        @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @PathParam("projectId")
         projectId: String,
-        @ApiParam("凭证类型列表，用逗号分隔", required = false, defaultValue = "")
+        @Parameter(description = "凭证类型列表，用逗号分隔", required = false, example = "")
         @QueryParam("credentialTypes")
         credentialTypesString: String?,
-        @ApiParam("第几页", required = false, defaultValue = "1")
+        @Parameter(description = "第几页", required = false, example = "1")
         @QueryParam("page")
         page: Int?,
-        @ApiParam("每页多少条", required = false, defaultValue = "20")
+        @Parameter(description = "每页多少条", required = false, example = "20")
         @QueryParam("pageSize")
         pageSize: Int?,
-        @ApiParam("关键字", required = false)
+        @Parameter(description = "关键字", required = false)
         @QueryParam("keyword")
         keyword: String?
     ): Result<Page<CredentialWithPermission>>

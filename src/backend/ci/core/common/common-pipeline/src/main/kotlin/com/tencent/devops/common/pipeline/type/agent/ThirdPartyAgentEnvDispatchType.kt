@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,22 +30,22 @@ package com.tencent.devops.common.pipeline.type.agent
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.tencent.devops.common.api.util.EnvUtils
 import com.tencent.devops.common.pipeline.type.BuildType
-import com.tencent.devops.common.pipeline.type.DispatchType
-import io.swagger.annotations.ApiModelProperty
 
 data class ThirdPartyAgentEnvDispatchType(
     @JsonProperty("value")
     var envName: String,
-    @ApiModelProperty("共享环境时必填，值为提供共享环境的项目id")
+    override var workspace: String?,
+    // 共享环境时必填，值为提供共享环境的项目id
     var envProjectId: String?,
-    @ApiModelProperty("工作空间")
-    var workspace: String?,
-    @ApiModelProperty("agent类型,默认NAME")
-    val agentType: AgentType = AgentType.NAME,
-    // 第三方构建机用docker作为构建机
-    val dockerInfo: ThirdPartyAgentDockerInfo?
-) : DispatchType(
-    envName
+    override val agentType: AgentType = AgentType.NAME,
+    override val dockerInfo: ThirdPartyAgentDockerInfo?,
+    override var reusedInfo: ReusedInfo?
+) : ThirdPartyAgentDispatch(
+    value = envName,
+    workspace = workspace,
+    agentType = agentType,
+    dockerInfo = dockerInfo,
+    reusedInfo = reusedInfo
 ) {
     override fun cleanDataBeforeSave() {
         this.envName = this.envName.trim()

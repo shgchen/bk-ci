@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -49,15 +49,16 @@ import com.tencent.devops.model.metrics.tables.records.TProjectPipelineLabelInfo
 import com.tencent.devops.process.api.service.ServicePipelineResource
 import com.tencent.devops.project.api.service.ServiceAllocIdResource
 import com.tencent.devops.project.api.service.ServiceProjectResource
+import org.jooq.DSLContext
+import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.stereotype.Service
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
-import org.jooq.DSLContext
-import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.stereotype.Service
+import kotlin.concurrent.thread
 
 @Service
 class ProjectInfoServiceImpl @Autowired constructor(
@@ -218,6 +219,10 @@ class ProjectInfoServiceImpl @Autowired constructor(
             }
         } catch (ignore: Throwable) {
             logger.warn("op ProjectInfoServiceImpl sync project atom data fail", ignore)
+        } finally {
+            thread {
+                executor.shutdown()
+            }
         }
         return true
     }

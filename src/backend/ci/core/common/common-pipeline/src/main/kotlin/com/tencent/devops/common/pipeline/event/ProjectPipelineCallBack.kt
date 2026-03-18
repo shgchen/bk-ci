@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,21 +27,28 @@
 
 package com.tencent.devops.common.pipeline.event
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import com.tencent.devops.common.pipeline.pojo.secret.ISecretParam
+import io.swagger.v3.oas.annotations.media.Schema
+import java.time.LocalDateTime
 
-@ApiModel("项目的流水线回调配置")
+@Schema(title = "项目的流水线回调配置")
 data class ProjectPipelineCallBack(
-    @ApiModelProperty("流水线id", required = false)
+    @get:Schema(title = "流水线id", required = false)
     val id: Long? = null,
-    @ApiModelProperty("项目id", required = false)
+    @get:Schema(title = "项目id", required = false)
     val projectId: String,
-    @ApiModelProperty("回调url地址", required = false)
+    @get:Schema(title = "回调url地址", required = false)
     val callBackUrl: String,
-    @ApiModelProperty("事件", required = false)
+    @get:Schema(title = "事件", required = false)
     val events: String,
-    @ApiModelProperty("密钥", required = false)
+    @get:Schema(title = "密钥", required = false)
     val secretToken: String?,
-    @ApiModelProperty("回调是否启用", required = false)
-    val enable: Boolean? = true
+    @get:Schema(title = "回调是否启用", required = false)
+    val enable: Boolean? = true,
+    @get:Schema(title = "回调是否启用", required = false)
+    val failureTime: LocalDateTime? = null,
+    @get:Schema(title = "凭证参数", required = false)
+    val secretParam: ISecretParam? = null,
+    @get:Schema(title = "回调名称", required = false)
+    val name: String? = null
 )

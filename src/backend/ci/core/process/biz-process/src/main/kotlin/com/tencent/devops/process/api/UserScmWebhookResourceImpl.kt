@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,29 +28,19 @@
 package com.tencent.devops.process.api
 
 import com.tencent.devops.common.api.enums.ScmType
-import com.tencent.devops.common.api.model.SQLPage
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.pipeline.pojo.element.trigger.enums.CodeEventType
 import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.process.api.user.UserScmWebhookResource
-import com.tencent.devops.process.engine.service.PipelineWebhookBuildLogService
 import com.tencent.devops.process.engine.service.PipelineWebhookService
 import com.tencent.devops.process.pojo.webhook.PipelineWebhook
-import com.tencent.devops.process.pojo.webhook.PipelineWebhookBuildLogDetail
 import com.tencent.devops.process.pojo.webhook.WebhookEventType
 import org.springframework.beans.factory.annotation.Autowired
 
 @RestResource
 class UserScmWebhookResourceImpl @Autowired constructor(
-    private val pipelineWebhookService: PipelineWebhookService,
-    private val pipelineWebhookBuildLogService: PipelineWebhookBuildLogService
+    private val pipelineWebhookService: PipelineWebhookService
 ) : UserScmWebhookResource {
-
-    override fun updateProjectNameAndTaskId(): Result<Boolean> {
-        pipelineWebhookService.updateProjectNameAndTaskId()
-        return Result(true)
-    }
-
     override fun getEventType(scmType: String): Result<List<WebhookEventType>> {
         val eventTypeList = when (scmType) {
             ScmType.CODE_GIT.name, ScmType.CODE_TGIT.name ->
@@ -94,29 +84,6 @@ class UserScmWebhookResourceImpl @Autowired constructor(
                 pipelineId = pipelineId,
                 page = page,
                 pageSize = pageSize
-            )
-        )
-    }
-
-    override fun listPipelineWebhookBuildLog(
-        userId: String,
-        projectId: String,
-        pipelineId: String,
-        repoName: String?,
-        commitId: String?,
-        page: Int?,
-        pageSize: Int?
-    ): Result<SQLPage<PipelineWebhookBuildLogDetail>?> {
-        return Result(
-            pipelineWebhookBuildLogService.listWebhookBuildLogDetail(
-                userId = userId,
-                projectId = projectId,
-                pipelineId = pipelineId,
-                repoName = repoName,
-                commitId = commitId,
-                page = page,
-                pageSize = pageSize
-
             )
         )
     }

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -61,12 +61,19 @@ const atomFieldMixin = {
         descTooltips: {
             type: String,
             default: ''
+        },
+        readOnly: {
+            type: Boolean,
+            default: false
+        },
+        readOnlyCheck: {
+            type: Boolean,
+            default: true
         }
     },
     data () {
         return {
-            title: '',
-            readOnly: false
+            title: ''
         }
     },
     watch: {
@@ -78,10 +85,8 @@ const atomFieldMixin = {
         const ele = document.querySelector('.atom-form-box')
         if (this.descTooltips.length && this.disabled) {
             this.title = this.descTooltips
-            this.readOnly = true
         } else if ((ele && ele.classList.contains('readonly')) || this.disabled) {
             this.title = this.value
-            this.readOnly = true
         }
     },
     methods: {

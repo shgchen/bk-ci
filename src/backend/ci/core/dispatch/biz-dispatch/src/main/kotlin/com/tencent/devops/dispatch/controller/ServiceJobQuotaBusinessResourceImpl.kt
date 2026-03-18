@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,10 +28,11 @@
 package com.tencent.devops.dispatch.controller
 
 import com.tencent.devops.common.api.pojo.Result
+import com.tencent.devops.common.pipeline.enums.ChannelCode
 import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.dispatch.api.ServiceJobQuotaBusinessResource
 import com.tencent.devops.dispatch.pojo.enums.JobQuotaVmType
-import com.tencent.devops.dispatch.service.JobQuotaBusinessService
+import com.tencent.devops.dispatch.service.jobquota.JobQuotaBusinessService
 import org.springframework.beans.factory.annotation.Autowired
 
 @RestResource
@@ -45,16 +46,18 @@ class ServiceJobQuotaBusinessResourceImpl @Autowired constructor(
         vmSeqId: String,
         executeCount: Int,
         containerId: String,
-        containerHashId: String?
+        containerHashId: String?,
+        channelCode: String?
     ): Result<Boolean> {
         val result = jobQuotaBusinessService.checkAndAddRunningJob(
             projectId = projectId,
-            vmType = vmType,
+            jobType = vmType,
             buildId = buildId,
             vmSeqId = vmSeqId,
             executeCount = executeCount,
             containerId = containerId,
-            containerHashId = containerHashId
+            containerHashId = containerHashId,
+            channelCode = channelCode ?: ChannelCode.BS.name
         )
         return Result(result)
     }

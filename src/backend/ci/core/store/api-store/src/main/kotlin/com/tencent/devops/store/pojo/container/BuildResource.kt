@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,21 +27,20 @@
 
 package com.tencent.devops.store.pojo.container
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("流水线-构建资源信息")
+@Schema(title = "流水线-构建资源信息")
 data class BuildResource(
-    @ApiModelProperty("构建资源ID", required = true)
+    @get:Schema(title = "构建资源ID", required = true)
     val id: String,
-    @ApiModelProperty("构建资源代码", required = true)
+    @get:Schema(title = "构建资源代码", required = true)
     val buildResourceCode: String,
-    @ApiModelProperty("构建资源名称", required = true)
+    @get:Schema(title = "构建资源名称", required = true)
     val buildResourceName: String,
-    @ApiModelProperty("是否为默认构建资源，TRUE：是 FALSE：否", required = true)
+    @get:Schema(title = "是否为默认构建资源，TRUE：是 FALSE：否", required = true)
     val defaultFlag: Boolean,
-    @ApiModelProperty("创建日期")
+    @get:Schema(title = "创建日期")
     val createTime: Long = 0,
-    @ApiModelProperty("更新日期")
+    @get:Schema(title = "更新日期")
     val updateTime: Long = 0
 )

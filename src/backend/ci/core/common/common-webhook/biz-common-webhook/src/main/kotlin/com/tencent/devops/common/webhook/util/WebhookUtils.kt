@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,6 +30,7 @@ package com.tencent.devops.common.webhook.util
 import com.google.common.base.Splitter
 import com.tencent.devops.common.api.constant.CommonMessageCode
 import com.tencent.devops.common.api.util.DateTimeUtil
+import com.tencent.devops.common.pipeline.pojo.element.trigger.enums.PathFilterType
 import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_BASE_REF
 import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_HEAD_REF
 import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_MR_DESC
@@ -49,6 +50,7 @@ import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_MR_ID
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_MR_LABELS
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_MR_MILESTONE
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_MR_MILESTONE_DUE_DATE
+import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_MR_MILESTONE_ID
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_MR_NUMBER
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_MR_REVIEWERS
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_MR_SOURCE_BRANCH
@@ -76,8 +78,10 @@ import com.tencent.devops.common.webhook.pojo.code.PIPELINE_WEBHOOK_MR_COMMITTER
 import com.tencent.devops.common.webhook.pojo.code.PIPELINE_WEBHOOK_MR_ID
 import com.tencent.devops.common.webhook.pojo.code.PIPELINE_WEBHOOK_SOURCE_BRANCH
 import com.tencent.devops.common.webhook.pojo.code.PIPELINE_WEBHOOK_SOURCE_PROJECT_ID
+import com.tencent.devops.common.webhook.pojo.code.PIPELINE_WEBHOOK_SOURCE_URL
 import com.tencent.devops.common.webhook.pojo.code.PIPELINE_WEBHOOK_TARGET_BRANCH
 import com.tencent.devops.common.webhook.pojo.code.PIPELINE_WEBHOOK_TARGET_PROJECT_ID
+import com.tencent.devops.common.webhook.pojo.code.PIPELINE_WEBHOOK_TARGET_URL
 import com.tencent.devops.common.webhook.pojo.code.WebHookParams
 import com.tencent.devops.common.webhook.pojo.code.git.GitCommit
 import com.tencent.devops.common.webhook.pojo.code.github.GithubPullRequest
@@ -88,8 +92,8 @@ import com.tencent.devops.process.utils.PIPELINE_BUILD_MSG
 import com.tencent.devops.scm.pojo.GitCommitReviewInfo
 import com.tencent.devops.scm.pojo.GitMrInfo
 import com.tencent.devops.scm.pojo.GitMrReviewInfo
-import java.util.regex.Pattern
 import org.slf4j.LoggerFactory
+import java.util.regex.Pattern
 
 object WebhookUtils {
 
@@ -97,6 +101,10 @@ object WebhookUtils {
     private const val MAX_VARIABLE_COUNT = 32
     // p4自定义触发器插件版本号
     const val CUSTOM_P4_TRIGGER_VERSION = 2
+    // GitAction触发器插件版本号
+    const val ACTION_GIT_TRIGGER_VERSION = 2
+    // MR描述信息最大长度
+    const val MR_DESC_MAX_LENGTH = 2000
 
     private val logger = LoggerFactory.getLogger(WebhookUtils::class.java)
 
@@ -215,10 +223,18 @@ object WebhookUtils {
         startParams[BK_REPO_GIT_WEBHOOK_MR_UPDATE_TIMESTAMP] = DateTimeUtil.zoneDateToTimestamp(mrInfo?.updateTime)
         startParams[BK_REPO_GIT_WEBHOOK_MR_ID] = mrInfo?.mrId ?: ""
         startParams[BK_REPO_GIT_WEBHOOK_MR_NUMBER] = mrInfo?.mrNumber ?: ""
-        startParams[BK_REPO_GIT_WEBHOOK_MR_DESCRIPTION] = mrInfo?.description ?: ""
+        val mrDesc = (mrInfo?.description ?: "").let {
+            if (it.length > MR_DESC_MAX_LENGTH) {
+                it.substring(0, MR_DESC_MAX_LENGTH)
+            } else {
+                it
+            }
+        }
+        startParams[BK_REPO_GIT_WEBHOOK_MR_DESCRIPTION] = mrDesc
         startParams[BK_REPO_GIT_WEBHOOK_MR_TITLE] = mrInfo?.title ?: ""
         startParams[BK_REPO_GIT_WEBHOOK_MR_ASSIGNEE] = mrInfo?.assignee?.username ?: ""
         startParams[BK_REPO_GIT_WEBHOOK_MR_MILESTONE] = mrInfo?.milestone?.title ?: ""
+        startParams[BK_REPO_GIT_WEBHOOK_MR_MILESTONE_ID] = mrInfo?.milestone?.id ?: ""
         startParams[BK_REPO_GIT_WEBHOOK_MR_MILESTONE_DUE_DATE] = mrInfo?.milestone?.dueDate ?: ""
         startParams[BK_REPO_GIT_WEBHOOK_MR_LABELS] = mrInfo?.labels?.joinToString(",") ?: ""
         startParams[BK_REPO_GIT_WEBHOOK_MR_BASE_COMMIT] = mrInfo?.baseCommit ?: ""
@@ -238,10 +254,10 @@ object WebhookUtils {
         startParams[PIPELINE_GIT_MR_ID] = mrInfo?.mrId ?: ""
         startParams[PIPELINE_GIT_MR_IID] = mrInfo?.mrNumber ?: ""
         startParams[PIPELINE_GIT_MR_TITLE] = mrInfo?.title ?: ""
-        startParams[PIPELINE_GIT_MR_DESC] = mrInfo?.description ?: ""
+        startParams[PIPELINE_GIT_MR_DESC] = mrDesc
         startParams[PIPELINE_GIT_MR_PROPOSER] = mrInfo?.author?.username ?: ""
-        if (!homepage.isNullOrBlank()) {
-            startParams[PIPELINE_GIT_MR_URL] = "$homepage/merge_requests/${mrInfo?.mrNumber}"
+        if (!homepage.isNullOrBlank() && mrInfo?.mrNumber != null) {
+            startParams[PIPELINE_GIT_MR_URL] = "$homepage/merge_requests/${mrInfo.mrNumber}"
         }
         return startParams
     }
@@ -257,7 +273,9 @@ object WebhookUtils {
         startParams[BK_REPO_GIT_WEBHOOK_MR_TARGET_BRANCH] = pullRequest.base.ref ?: ""
         startParams[BK_REPO_GIT_WEBHOOK_MR_SOURCE_BRANCH] = pullRequest.head.ref ?: ""
         startParams[PIPELINE_WEBHOOK_SOURCE_PROJECT_ID] = pullRequest.head.repo.id ?: ""
+        startParams[PIPELINE_WEBHOOK_SOURCE_URL] = pullRequest.head.repo.cloneUrl ?: ""
         startParams[PIPELINE_WEBHOOK_TARGET_PROJECT_ID] = pullRequest.base.repo.id ?: ""
+        startParams[PIPELINE_WEBHOOK_TARGET_URL] = pullRequest.base.repo.cloneUrl ?: ""
         startParams[PIPELINE_WEBHOOK_MR_ID] = pullRequest.id
         startParams[PIPELINE_WEBHOOK_MR_COMMITTER] = pullRequest.user.login ?: ""
         startParams[BK_REPO_GIT_WEBHOOK_MR_AUTHOR] = pullRequest.user.login ?: ""
@@ -273,6 +291,7 @@ object WebhookUtils {
         startParams[BK_REPO_GIT_WEBHOOK_MR_REVIEWERS] =
             pullRequest.requestedReviewers.joinToString(",") { it.login } ?: ""
         startParams[BK_REPO_GIT_WEBHOOK_MR_MILESTONE] = pullRequest.milestone?.title ?: ""
+        startParams[BK_REPO_GIT_WEBHOOK_MR_MILESTONE_ID] = pullRequest.milestone?.id ?: ""
         startParams[BK_REPO_GIT_WEBHOOK_MR_MILESTONE_DUE_DATE] = pullRequest.milestone?.dueOn ?: ""
         startParams[BK_REPO_GIT_WEBHOOK_MR_LABELS] = pullRequest.labels.joinToString(",") ?: ""
         startParams[BK_REPO_GIT_WEBHOOK_MR_BASE_COMMIT] = pullRequest.base.sha ?: ""
@@ -330,6 +349,10 @@ object WebhookUtils {
         return getMajorVersion(version) >= CUSTOM_P4_TRIGGER_VERSION
     }
 
+    fun isActionGitTriggerVersion(version: String?): Boolean {
+        return getMajorVersion(version) >= ACTION_GIT_TRIGGER_VERSION
+    }
+
     /**
      * 代码评审启动参数填充
      */
@@ -343,4 +366,42 @@ object WebhookUtils {
         ))
         return startParams
     }
+
+    fun joinToString(list: List<String>?): String {
+        return if (list.isNullOrEmpty()) {
+            ""
+        } else {
+            list.joinToString(",")
+        }
+    }
+
+    fun getSvnIncludePaths(webHookParams: WebHookParams, projectRelativePath: String) =
+        with(webHookParams) {
+            // 如果没有配置包含路径，则需要跟代码库url做对比
+            if (relativePath.isNullOrBlank()) {
+                // 模糊匹配需要包含整个路径
+                if (pathFilterType == PathFilterType.NamePrefixFilter) {
+                    listOf(
+                        WebhookUtils.getFullPath(
+                            projectRelativePath = projectRelativePath,
+                            relativeSubPath = ""
+                        )
+                    )
+                } else {
+                    listOf(
+                        WebhookUtils.getFullPath(
+                            projectRelativePath = projectRelativePath,
+                            relativeSubPath = "**"
+                        )
+                    )
+                }
+            } else {
+                WebhookUtils.convert(relativePath).map { path ->
+                    WebhookUtils.getFullPath(
+                        projectRelativePath = projectRelativePath,
+                        relativeSubPath = path
+                    )
+                }
+            }
+        }
 }

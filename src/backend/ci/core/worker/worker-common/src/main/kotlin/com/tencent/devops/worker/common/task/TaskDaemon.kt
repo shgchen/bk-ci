@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,8 +28,10 @@
 package com.tencent.devops.worker.common.task
 
 import com.tencent.devops.common.api.exception.TaskExecuteException
+import com.tencent.devops.common.api.pojo.AtomMonitorData
 import com.tencent.devops.common.api.pojo.ErrorCode
 import com.tencent.devops.common.api.pojo.ErrorType
+import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.service.utils.CommonUtils
 import com.tencent.devops.process.pojo.BuildTask
 import com.tencent.devops.process.pojo.BuildTaskResult
@@ -37,6 +39,7 @@ import com.tencent.devops.process.pojo.BuildVariables
 import com.tencent.devops.process.utils.PIPELINE_TASK_MESSAGE_STRING_LENGTH_MAX
 import com.tencent.devops.worker.common.logger.LoggerService
 import com.tencent.devops.worker.common.service.SensitiveValueService
+import com.tencent.devops.worker.common.utils.BatScriptUtil
 import com.tencent.devops.worker.common.utils.TaskUtil
 import java.io.File
 import java.util.concurrent.Callable
@@ -88,8 +91,16 @@ class TaskDaemon(
         return task.getAllEnv()
     }
 
+    private fun addMonitorData(monitorDataMap: Map<String, Any>) {
+        task.addMonitorData(monitorDataMap)
+    }
+
     private fun getMonitorData(): Map<String, Any> {
         return task.getMonitorData()
+    }
+
+    private fun getSensitiveKeys(): Set<String> {
+        return task.getSensitiveKeys()
     }
 
     fun getBuildResult(
@@ -101,6 +112,7 @@ class TaskDaemon(
 
         val allEnv = getAllEnv()
         val buildResult = mutableMapOf<String, String>()
+        val sensitiveKeys = getSensitiveKeys().toMutableSet()
         if (allEnv.isNotEmpty()) {
             allEnv.forEach { (key, value) ->
                 if (value.length > PARAM_MAX_LENGTH) {
@@ -118,12 +130,22 @@ class TaskDaemon(
             }
         }
 
+        // 对内置bat脚本执行失败进行监控
+        if (BatScriptUtil.retryTimes() > 0) {
+            val extData: MutableMap<String, Any> = getMonitorData()[AtomMonitorData::extData.name]?.let {
+                JsonUtil.toMutableMap(it)
+            } ?: mutableMapOf()
+            extData["task-daemon-bat-auto-retry-times"] = BatScriptUtil.retryTimes()
+            addMonitorData(mapOf(AtomMonitorData::extData.name to extData))
+            BatScriptUtil.retryClean()
+        }
         return BuildTaskResult(
             taskId = buildTask.taskId!!,
             elementId = buildTask.taskId!!,
             containerId = buildVariables.containerHashId,
             elementVersion = buildTask.elementVersion,
             success = isSuccess,
+            executeCount = buildTask.executeCount,
             buildResult = buildResult,
             message = errorMessage?.let {
                 CommonUtils.interceptStringInLength(
@@ -136,11 +158,12 @@ class TaskDaemon(
             errorCode = errorCode,
             platformCode = task.getPlatformCode(),
             platformErrorCode = task.getPlatformErrorCode(),
-            monitorData = getMonitorData()
+            monitorData = getMonitorData(),
+            sensitiveKeys = sensitiveKeys.takeIf { it.isNotEmpty() }
         )
     }
 
     companion object {
-        private const val PARAM_MAX_LENGTH = 4000 // 流水线参数最大长度
+        const val PARAM_MAX_LENGTH = 4000 // 流水线参数最大长度
     }
 }

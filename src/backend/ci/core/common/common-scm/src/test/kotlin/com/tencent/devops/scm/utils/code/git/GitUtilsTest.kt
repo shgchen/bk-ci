@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,6 +29,7 @@ package com.tencent.devops.scm.utils.code.git
 
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class GitUtilsTest {
@@ -44,6 +45,20 @@ class GitUtilsTest {
         domainAndRepoName = GitUtils.getDomainAndRepoName("http://github.com/Tencent/bk-ci.git")
         assertEquals(domain, domainAndRepoName.first)
         assertEquals(repoName, domainAndRepoName.second)
+    }
+
+    @Test
+    fun getSpecialDomainAndRepoName() {
+        val baseRepoName = "aaa-bbb/aaa_github"
+        var domainAndRepoName = GitUtils.getDomainAndRepoName("https://github.com/aaa-bbb/aaa_github.git")
+        assertEquals(domain, domainAndRepoName.first)
+        assertEquals(baseRepoName, domainAndRepoName.second)
+        domainAndRepoName = GitUtils.getDomainAndRepoName("https://github.com/aaa-bbb/aaa_github")
+        assertEquals(domain, domainAndRepoName.first)
+        assertEquals(baseRepoName, domainAndRepoName.second)
+        domainAndRepoName = GitUtils.getDomainAndRepoName("git@github.com:aaa-bbb/aaa_github.git")
+        assertEquals(domain, domainAndRepoName.first)
+        assertEquals(baseRepoName, domainAndRepoName.second)
     }
 
     @Test
@@ -156,5 +171,23 @@ class GitUtilsTest {
     fun getShortSha() {
         assertEquals(GitUtils.getShortSha("e49ca115cf9a5fd433cbb539ee37316b67bde243"), "e49ca115")
         assertEquals(GitUtils.getShortSha(""), "")
+    }
+
+    @Test
+    fun tryGetRepoName() {
+        var repoUrl = "git@git.xxx.com:Tencent/bk-ci.git"
+        assertTrue(GitUtils.isValidGitUrl(repoUrl))
+        assertEquals(GitUtils.tryGetRepoName(repoUrl), repoName)
+
+        repoUrl = "http://github.com:8080/Tencent/bk-ci.git"
+        assertTrue(GitUtils.isValidGitUrl(repoUrl))
+        assertEquals(GitUtils.tryGetRepoName(repoUrl), repoName)
+
+        repoUrl = "https://github.com/Tencent/bk-ci.git"
+        assertTrue(GitUtils.isValidGitUrl(repoUrl))
+        assertEquals(GitUtils.tryGetRepoName(repoUrl), repoName)
+
+        repoUrl = "Tencent/bk-ci"
+        assertEquals(GitUtils.tryGetRepoName(repoUrl), repoUrl)
     }
 }

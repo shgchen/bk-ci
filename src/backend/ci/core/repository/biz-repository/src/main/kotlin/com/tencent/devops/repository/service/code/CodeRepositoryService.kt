@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,8 +27,10 @@
 package com.tencent.devops.repository.service.code
 
 import com.tencent.devops.model.repository.tables.records.TRepositoryRecord
+import com.tencent.devops.repository.pojo.RepoCondition
 import com.tencent.devops.repository.pojo.Repository
-import com.tencent.devops.repository.pojo.auth.RepoAuthInfo
+import com.tencent.devops.repository.pojo.RepositoryDetailInfo
+import com.tencent.devops.scm.pojo.GitFileInfo
 
 interface CodeRepositoryService<T> {
 
@@ -55,5 +57,37 @@ interface CodeRepositoryService<T> {
     /**
      * 获取授权信息
      */
-    fun getAuthInfo(repositoryIds: List<Long>): Map<Long, RepoAuthInfo>
+    fun getRepoDetailMap(repositoryIds: List<Long>): Map<Long, RepositoryDetailInfo>
+
+    /**
+     * 获取开启pac的项目ID
+     */
+    fun getPacProjectId(userId: String, repoUrl: String): String?
+
+    /**
+     * 开启pac校验
+     */
+    fun pacCheckEnabled(projectId: String, userId: String, record: TRepositoryRecord, retry: Boolean)
+
+    // TODO 暂时放这里,后面代码库统一优化平台层接口
+    fun getGitFileTree(projectId: String, userId: String, record: TRepositoryRecord): List<GitFileInfo>
+
+    fun getPacRepository(externalId: String): TRepositoryRecord?
+
+    fun listByCondition(
+        repoCondition: RepoCondition,
+        limit: Int,
+        offset: Int
+    ): List<Repository>? = emptyList()
+
+    fun countByCondition(
+        repoCondition: RepoCondition
+    ): Long = 0L
+
+    fun addResourceAuthorization(
+        projectId: String,
+        userId: String,
+        repositoryId: Long,
+        repository: T
+    )
 }

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,17 +28,19 @@
 package com.tencent.devops.common.event.pojo.measure
 
 import com.tencent.devops.common.event.annotation.Event
-import com.tencent.devops.common.event.dispatcher.pipeline.mq.MQ
-import io.swagger.annotations.ApiModelProperty
+import com.tencent.devops.common.event.pojo.IEvent
+import com.tencent.devops.common.stream.constants.StreamBinder
+import com.tencent.devops.common.stream.constants.StreamBinding
+import io.swagger.v3.oas.annotations.media.Schema
 
-@Event(exchange = MQ.EXCHANGE_QUALITY_DAILY_FANOUT, routeKey = MQ.ROUTE_QUALITY_DAILY_FANOUT)
+@Event(destination = StreamBinding.METRICS_STATISTIC_QUALITY_DAILY, binder = StreamBinder.EXTEND_RABBIT)
 data class QualityReportEvent(
-    @ApiModelProperty("统计时间")
+    @get:Schema(title = "统计时间")
     val statisticsTime: String,
-    @ApiModelProperty("项目ID")
+    @get:Schema(title = "项目ID")
     val projectId: String,
-    @ApiModelProperty("红线拦截次数")
+    @get:Schema(title = "红线拦截次数")
     val interceptedCount: Int,
-    @ApiModelProperty("红线执行总次数")
+    @get:Schema(title = "红线执行总次数")
     val totalCount: Int
-)
+) : IEvent()

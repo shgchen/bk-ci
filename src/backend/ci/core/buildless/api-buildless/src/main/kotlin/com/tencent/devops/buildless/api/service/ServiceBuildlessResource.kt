@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,35 +30,35 @@ package com.tencent.devops.buildless.api.service
 import com.tencent.devops.buildless.pojo.BuildLessEndInfo
 import com.tencent.devops.buildless.pojo.BuildLessStartInfo
 import com.tencent.devops.common.api.pojo.Result
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.DELETE
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.DELETE
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["SERVICE_BUILDLESS"], description = "服务-无编译构建")
+@Tag(name = "SERVICE_BUILDLESS", description = "服务-无编译构建")
 @Path("/service/build")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface ServiceBuildlessResource {
 
-    @ApiOperation("启动无编译流水线容器构建")
+    @Operation(summary = "启动无编译流水线容器构建")
     @POST
     @Path("/start")
     fun startBuild(
-        @ApiParam("构建任务", required = true)
+        @Parameter(description = "构建任务", required = true)
         buildLessEndInfo: BuildLessStartInfo
     ): Result<String>
 
-    @ApiOperation("终止无编译流水线容器构建")
+    @Operation(summary = "终止无编译流水线容器构建")
     @DELETE
     @Path("/end")
     fun endBuild(
-        @ApiParam("构建任务", required = true)
+        @Parameter(description = "构建任务", required = true)
         buildLessEndInfo: BuildLessEndInfo
     ): Result<Boolean>
 }

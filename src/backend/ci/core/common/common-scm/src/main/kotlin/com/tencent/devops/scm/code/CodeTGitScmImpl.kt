@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -40,7 +40,10 @@ import com.tencent.devops.scm.pojo.GitMrChangeInfo
 import com.tencent.devops.scm.pojo.GitMrInfo
 import com.tencent.devops.scm.pojo.GitMrReviewInfo
 import com.tencent.devops.scm.pojo.GitProjectInfo
+import com.tencent.devops.scm.pojo.GitTagInfo
+import com.tencent.devops.scm.pojo.LoginSession
 import com.tencent.devops.scm.pojo.RevisionInfo
+import com.tencent.devops.scm.pojo.TapdWorkItem
 import com.tencent.devops.scm.utils.code.git.GitUtils
 import com.tencent.devops.scm.utils.code.git.GitUtils.urlEncode
 import org.eclipse.jgit.api.Git
@@ -110,8 +113,9 @@ class CodeTGitScmImpl constructor(
         } catch (ignored: Throwable) {
             logger.warn("Fail to list all branches", ignored)
             throw ScmException(
-                ignored.message ?: I18nUtil.getCodeLanMessage(
-                    CommonMessageCode.TGIT_TOKEN_EMPTY
+                I18nUtil.getCodeLanMessage(
+                    CommonMessageCode.THIRD_PARTY_SERVICE_OPERATION_FAILED,
+                    params = arrayOf(ScmType.CODE_TGIT.name, ignored.message ?: "")
                 ),
                 ScmType.CODE_TGIT.name
             )
@@ -126,9 +130,9 @@ class CodeTGitScmImpl constructor(
         } catch (ignored: Throwable) {
             logger.warn("Fail to check the private key of git", ignored)
             throw ScmException(
-                ignored.message ?: I18nUtil.getCodeLanMessage(
-                    CommonMessageCode.TGIT_SECRET_WRONG
-                ),
+                GitUtils.matchExceptionCode(ignored.message ?: "")?.let {
+                    I18nUtil.getCodeLanMessage(it)
+                } ?: ignored.message ?: I18nUtil.getCodeLanMessage(CommonMessageCode.TGIT_SECRET_WRONG),
                 ScmType.CODE_TGIT.name
             )
         }
@@ -151,7 +155,8 @@ class CodeTGitScmImpl constructor(
             logger.warn("Fail to list all branches", ignored)
             throw ScmException(
                 I18nUtil.getCodeLanMessage(
-                    CommonMessageCode.TGIT_TOKEN_EMPTY
+                    CommonMessageCode.THIRD_PARTY_SERVICE_OPERATION_FAILED,
+                    params = arrayOf(ScmType.CODE_TGIT.name, ignored.message ?: "")
                 ),
                 ScmType.CODE_TGIT.name
             )
@@ -165,7 +170,9 @@ class CodeTGitScmImpl constructor(
         } catch (ignored: Throwable) {
             logger.warn("Fail to check the username and password of git", ignored)
             throw ScmException(
-                ignored.message ?: I18nUtil.getCodeLanMessage(
+                GitUtils.matchExceptionCode(ignored.message ?: "")?.let {
+                    I18nUtil.getCodeLanMessage(it)
+                } ?: ignored.message ?: I18nUtil.getCodeLanMessage(
                     CommonMessageCode.TGIT_LOGIN_FAIL
                 ),
                 ScmType.CODE_TGIT.name
@@ -298,6 +305,35 @@ class CodeTGitScmImpl constructor(
             host = apiUrl,
             token = token,
             url = url
+        )
+    }
+
+    override fun getLoginSession(): LoginSession? {
+        val url = "session"
+        return gitApi.getGitSession(
+            host = apiUrl,
+            url = url,
+            username = privateKey!!,
+            password = passPhrase!!
+        )
+    }
+
+    override fun getTag(tagName: String): GitTagInfo? {
+        val url = "projects/${urlEncode(projectName)}/repository/tags/${urlEncode(tagName)}"
+        return gitApi.getTagInfo(
+            host = apiUrl,
+            url = url,
+            token = token
+        )
+    }
+
+    override fun getTapdWorkItems(refType: String, iid: Long): List<TapdWorkItem> {
+        return gitApi.getTapdWorkitems(
+            host = apiUrl,
+            token = token,
+            id = projectName,
+            type = refType,
+            iid = iid
         )
     }
 

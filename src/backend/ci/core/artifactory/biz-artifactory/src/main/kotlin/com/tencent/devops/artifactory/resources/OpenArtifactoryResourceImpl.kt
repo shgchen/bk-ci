@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -36,9 +36,11 @@ import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.client.Client
 import com.tencent.devops.common.client.ClientTokenService
 import com.tencent.devops.common.web.RestResource
+import com.tencent.devops.common.web.annotation.BkApiPermission
+import com.tencent.devops.common.web.constant.BkApiHandleType
 import com.tencent.devops.process.api.service.ServicePipelineRuntimeResource
 import org.slf4j.LoggerFactory
-import javax.ws.rs.core.Response
+import jakarta.ws.rs.core.Response
 
 @RestResource
 class OpenArtifactoryResourceImpl(
@@ -47,11 +49,12 @@ class OpenArtifactoryResourceImpl(
     private val client: Client
 ) : OpenArtifactoryResource {
 
+    @BkApiPermission([BkApiHandleType.API_OPEN_TOKEN_CHECK])
     override fun updateArtifactList(
         token: String,
         nodeCreatedEventPayload: NodeCreatedEventPayload
     ) {
-        val validateTokenFlag = clientTokenService.checkToken(null, token)
+        val validateTokenFlag = clientTokenService.checkToken(token)
         if (!validateTokenFlag) {
             throw ErrorCodeException(
                 errorCode = CommonMessageCode.PARAMETER_IS_INVALID,
@@ -63,6 +66,7 @@ class OpenArtifactoryResourceImpl(
         val projectId = nodeCreatedEventPayload.node.projectId
         val pipelineId = nodeCreatedEventPayload.node.metadata["pipelineId"]?.toString()
         val buildId = nodeCreatedEventPayload.node.metadata["buildId"]?.toString()
+            ?: nodeCreatedEventPayload.node.metadata["bk_ci_bid"]?.toString()
 
         if (pipelineId == null || buildId == null) {
             throw ErrorCodeException(

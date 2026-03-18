@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,20 +29,20 @@ package com.tencent.devops.auth.api.service
 
 import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_USER_ID
 import com.tencent.devops.common.api.pojo.Result
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.DELETE
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.DELETE
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["AUTH_USER_BLACKLIST"], description = "黑名单用户")
+@Tag(name = "AUTH_USER_BLACKLIST", description = "黑名单用户")
 @Path("/service/user/blacklist")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -50,13 +50,13 @@ interface ServiceUserBlackListResource {
 
     @POST
     @Path("/")
-    @ApiOperation("添加黑名单用户")
+    @Operation(summary = "添加黑名单用户")
     fun createBlackListUser(
         @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
-        @ApiParam("待拉黑用户Id")
+        @Parameter(description = "待拉黑用户Id")
         userId: String,
         @QueryParam("remark")
-        @ApiParam("拉黑原因")
+        @Parameter(description = "拉黑原因")
         remark: String?
     ): Result<Boolean>
 
@@ -66,10 +66,10 @@ interface ServiceUserBlackListResource {
 
     @DELETE
     @Path("/")
-    @ApiOperation("移出黑名单用户")
+    @Operation(summary = "移出黑名单用户")
     fun removeBlackListUser(
         @QueryParam(AUTH_HEADER_DEVOPS_USER_ID)
-        @ApiParam("待移出用户Id")
+        @Parameter(description = "待移出用户Id")
         removeUserId: String
     ): Result<Boolean>
 }

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,17 +30,7 @@ package com.tencent.devops.common.api.util
 import com.tencent.devops.common.api.constant.CommonMessageCode.ERROR_HTTP_RESPONSE_BODY_TOO_LARGE
 import com.tencent.devops.common.api.exception.ErrorCodeException
 import com.tencent.devops.common.api.exception.RemoteServiceException
-import okhttp3.ConnectionPool
-import okhttp3.Headers.Companion.toHeaders
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody
-import okhttp3.Response
-import org.slf4j.LoggerFactory
-import org.springframework.util.FileCopyUtils
+import jakarta.servlet.http.HttpServletResponse
 import java.io.CharArrayWriter
 import java.io.File
 import java.io.FileOutputStream
@@ -53,7 +43,21 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
-import javax.servlet.http.HttpServletResponse
+import okhttp3.ConnectionPool
+import okhttp3.Dns
+import okhttp3.Headers.Companion.toHeaders
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import org.slf4j.LoggerFactory
+import org.springframework.util.FileCopyUtils
+import java.net.InetAddress
+import java.net.URL
 
 @SuppressWarnings("ALL")
 object OkhttpUtils {
@@ -122,6 +126,39 @@ object OkhttpUtils {
         .hostnameVerifier { _, _ -> true }
         .build()
 
+    fun genOkHttpClientSupDns(host: String, ips: Set<String>) = OkHttpClient.Builder()
+        .dns(object : Dns {
+            override fun lookup(hostname: String): List<InetAddress> {
+                return if (hostname == host) {
+                    ips.map { InetAddress.getByName(it) }.toList()
+                } else {
+                    Dns.SYSTEM.lookup(hostname)
+                }
+            }
+        })
+        .connectTimeout(connectTimeout, TimeUnit.SECONDS)
+        .readTimeout(readTimeout, TimeUnit.SECONDS)
+        .writeTimeout(writeTimeout, TimeUnit.SECONDS)
+        .sslSocketFactory(sslSocketFactory(), trustAllCerts[0] as X509TrustManager)
+        .hostnameVerifier { _, _ -> true }
+        .build()
+
+    private fun getOkHttpClientWithCustomTimeout(
+        connectTimeout: Long,
+        readTimeout: Long,
+        writeTimeout: Long,
+        followRedirects: Boolean = false
+    ): OkHttpClient {
+        return OkHttpClient.Builder()
+            .connectTimeout(connectTimeout, TimeUnit.SECONDS)
+            .readTimeout(readTimeout, TimeUnit.SECONDS)
+            .writeTimeout(writeTimeout, TimeUnit.SECONDS)
+            .sslSocketFactory(sslSocketFactory(), trustAllCerts[0] as X509TrustManager)
+            .followRedirects(followRedirects)
+            .hostnameVerifier { _, _ -> true }
+            .build()
+    }
+
     @Throws(UnsupportedEncodingException::class)
     fun joinParams(params: Map<String, String>): String {
         val paramItem = ArrayList<String>()
@@ -139,6 +176,10 @@ object OkhttpUtils {
         return doHttp(okHttpClient, request)
     }
 
+    fun doShortGet(url: String, headers: Map<String, String> = mapOf()): Response {
+        return doGet(shortOkHttpClient, url, headers)
+    }
+
     fun doLongGet(url: String, headers: Map<String, String> = mapOf()): Response {
         return doGet(longHttpClient, url, headers)
     }
@@ -151,12 +192,23 @@ object OkhttpUtils {
         return doHttp(shortOkHttpClient, request)
     }
 
+    fun doShortPost(url: String, jsonParam: String, headers: Map<String, String> = mapOf()): Response {
+        val builder = getBuilder(url, headers)
+        val body = jsonParam.toRequestBody(jsonMediaType)
+        val request = builder.post(body).build()
+        return doShortHttp(request)
+    }
+
+    private fun doCustomClientHttp(customOkHttpClient: OkHttpClient, request: Request): Response {
+        return doHttp(customOkHttpClient, request)
+    }
+
     fun <R> doRedirectHttp(request: Request, handleResponse: (Response) -> R): R {
         doHttp(redirectOkHttpClient, request).use { response ->
             if (
                 request.method == "POST" &&
                 (response.code == HttpURLConnection.HTTP_MOVED_PERM ||
-                    response.code == HttpURLConnection.HTTP_MOVED_TEMP)
+                        response.code == HttpURLConnection.HTTP_MOVED_TEMP)
             ) {
                 val location = response.header("Location")
                 if (location != null) {
@@ -176,9 +228,26 @@ object OkhttpUtils {
 
     fun doPost(url: String, jsonParam: String, headers: Map<String, String> = mapOf()): Response {
         val builder = getBuilder(url, headers)
-        val body = RequestBody.create(jsonMediaType, jsonParam)
+        val body = jsonParam.toRequestBody(jsonMediaType)
         val request = builder.post(body).build()
         return doHttp(request)
+    }
+
+    fun doCustomTimeoutPost(
+        connectTimeout: Long,
+        readTimeout: Long,
+        writeTimeout: Long,
+        url: String,
+        jsonParam: String,
+        headers: Map<String, String> = mapOf()
+    ): Response {
+        val builder = getBuilder(url, headers)
+        val body = jsonParam.toRequestBody(jsonMediaType)
+        val request = builder.post(body).build()
+        val customTimeoutOkHttpClient = getOkHttpClientWithCustomTimeout(
+            connectTimeout = connectTimeout, readTimeout = readTimeout, writeTimeout = writeTimeout
+        )
+        return doCustomClientHttp(customTimeoutOkHttpClient, request)
     }
 
     private fun getBuilder(url: String, headers: Map<String, String>? = null): Request.Builder {
@@ -203,7 +272,7 @@ object OkhttpUtils {
         fileFieldName: String = "file",
         fileName: String = uploadFile.name
     ): Response {
-        val fileBody = RequestBody.create(octetStream, uploadFile)
+        val fileBody = uploadFile.asRequestBody(octetStream)
         val requestBody = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart(fileFieldName, fileName, fileBody)
@@ -220,13 +289,30 @@ object OkhttpUtils {
         return doHttp(request)
     }
 
-    fun downloadFile(url: String, destPath: File, headers: Map<String, String>? = null) {
+    fun downloadFile(
+        url: String,
+        destPath: File,
+        headers: Map<String, String>? = null,
+        connectTimeoutInSec: Long? = null,
+        readTimeoutInSec: Long? = null,
+        writeTimeoutInSec: Long? = null
+    ) {
         val request = if (headers == null) {
             Request.Builder().url(url).get().build()
         } else {
             Request.Builder().url(url).headers(headers.toHeaders()).get().build()
         }
-        longHttpClient.newCall(request).execute().use { response ->
+        val httpClient = if (connectTimeoutInSec != null || readTimeoutInSec != null || writeTimeoutInSec != null) {
+            getOkHttpClientWithCustomTimeout(
+                connectTimeout = connectTimeoutInSec ?: connectTimeout,
+                readTimeout = readTimeoutInSec ?: readTimeout,
+                writeTimeout = writeTimeoutInSec ?: writeTimeout,
+                followRedirects = true
+            )
+        } else {
+            okHttpClient
+        }
+        httpClient.newCall(request).execute().use { response ->
             if (response.code == 404) {
                 logger.warn("The file $url is not exist")
                 throw RemoteServiceException("File is not exist!")
@@ -277,16 +363,16 @@ object OkhttpUtils {
         FileCopyUtils.copy(httpResponse.body!!.byteStream(), response.outputStream)
     }
 
-    fun downloadFile(url: String): javax.ws.rs.core.Response {
+    fun downloadFile(url: String): jakarta.ws.rs.core.Response {
         val httpResponse = getFileHttpResponse(url)
         val fileName: String?
         try {
             fileName = URLEncoder.encode(File(url).name, "UTF-8")
         } catch (e: UnsupportedEncodingException) {
-            return javax.ws.rs.core.Response.status(javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR).build()
+            return jakarta.ws.rs.core.Response.status(jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR).build()
         }
-        return javax.ws.rs.core.Response
-            .ok(httpResponse.body!!.byteStream(), javax.ws.rs.core.MediaType.APPLICATION_OCTET_STREAM_TYPE)
+        return jakarta.ws.rs.core.Response
+            .ok(httpResponse.body!!.byteStream(), jakarta.ws.rs.core.MediaType.APPLICATION_OCTET_STREAM_TYPE)
             .header("Content-disposition", "attachment;filename=" + fileName!!)
             .header("Cache-Control", "no-cache").build()
     }
@@ -297,6 +383,8 @@ object OkhttpUtils {
         if (!httpResponse.isSuccessful) {
             logger.error("FAIL|Download file from $url| message=${httpResponse.message}| code=${httpResponse.code}")
             throw RemoteServiceException(httpResponse.message)
+        } else {
+            logger.info("getFileHttpResponse isSuccessful url:$url")
         }
         return httpResponse
     }
@@ -340,6 +428,17 @@ object OkhttpUtils {
         } catch (e: IllegalArgumentException) {
             logger.warn("url Invalid: ${e.message}")
             false
+        }
+    }
+
+    fun getPort(urlStr: String): Int? {
+        return try {
+            val url = URL(urlStr)
+            return url.port
+        } catch (ignored: Exception) {
+            logger.warn("url[] Invalid", ignored)
+            // 处理无效URL格式的异常
+            null
         }
     }
 }

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -86,6 +86,25 @@ object RetryUtils {
                 Thread.sleep(retryPeriodMills)
             }
             retryAnyException(action = action, retryTime = retryTime - 1, retryPeriodMills = retryPeriodMills)
+        }
+    }
+
+    fun retry(
+        retries: Int,
+        action: () -> Unit
+    ) {
+        var remainingRetries = retries
+        while (remainingRetries > 0) {
+            try {
+                action()
+                return
+            } catch (ignore: Exception) {
+                remainingRetries--
+                logger.info("retry execute:$remainingRetries|${ignore.message}")
+                if (remainingRetries == 0) {
+                    throw ignore
+                }
+            }
         }
     }
 

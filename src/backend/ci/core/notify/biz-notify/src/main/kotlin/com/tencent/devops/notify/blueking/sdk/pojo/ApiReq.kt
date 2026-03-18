@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -32,4 +32,15 @@ abstract class ApiReq(
     open var bk_app_secret: String?,
     open var bk_token: String?,
     open val bk_username: String?
-)
+) {
+    fun toMap(): Map<String, String> {
+        return mapOf(
+            "X-Bkapi-Authorization" to """{
+            "bk_app_code":"$bk_app_code",
+            "bk_app_secret":"$bk_app_secret",
+            "bk_username":"$bk_username",
+            "bk_token":"$bk_token"
+            }""".trimIndent().replace("\\s".toRegex(), "")
+        )
+    }
+}

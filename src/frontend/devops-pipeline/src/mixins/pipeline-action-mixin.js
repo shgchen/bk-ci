@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -18,38 +18,54 @@
  */
 
 import { statusAlias } from '@/utils/pipelineStatus'
-import triggerType from '@/utils/triggerType'
-import { convertMStoStringByRule, convertTime, navConfirm } from '@/utils/util'
-import { mapActions, mapGetters, mapMutations } from 'vuex'
+import { convertMStoStringByRule, convertMStoString, convertTime, isShallowEqual, navConfirm } from '@/utils/util'
+import { mapActions, mapGetters, mapMutations, mapState } from 'vuex'
 
 import {
     ALL_PIPELINE_VIEW_ID,
+    ARCHIVE_VIEW_ID,
     COLLECT_VIEW_ID,
     DELETED_VIEW_ID,
     MY_PIPELINE_VIEW_ID,
     RECENT_USED_VIEW_ID,
     UNCLASSIFIED_PIPELINE_VIEW_ID
 } from '@/store/constants'
+import {
+    handleProjectNoPermission,
+    PROJECT_RESOURCE_ACTION,
+    RESOURCE_ACTION,
+    RESOURCE_TYPE,
+    TEMPLATE_RESOURCE_ACTION
+} from '@/utils/permission'
 
-import { ORDER_ENUM, PIPELINE_SORT_FILED } from '@/utils/pipelineConst'
+import { ORDER_ENUM, PIPELINE_SORT_FILED, pipelineTabIdMap, VERSION_STATUS_ENUM } from '@/utils/pipelineConst'
 
 export default {
     data () {
         return {
-            pipelineMap: {},
-            hasTemplatePermission: false
+            pipelineMap: {}
         }
     },
     computed: {
         ...mapGetters('pipelines', [
             'groupMap'
         ]),
+        ...mapState('pipelines', [
+            'isManage'
+        ]),
         currentGroup () {
             return this.groupMap?.[this.$route.params.viewId]
+        },
+        statusIconMap () {
+            return {
+                SUCCEED: 'check-circle-shape',
+                FAILED: 'close-circle-shape',
+                RUNNING: 'circle-2-1',
+                PAUSE: 'play-circle-shape',
+                CANCELED: 'abort',
+                SKIP: 'redo-arrow'
+            }
         }
-    },
-    created () {
-        this.checkHasTemplatePermission()
     },
     methods: {
         ...mapMutations('pipelines', [
@@ -58,23 +74,15 @@ export default {
         ]),
         ...mapActions('pipelines', [
             'requestAllPipelinesListByFilter',
-            'requestToggleCollect',
-            'requestTemplatePermission',
             'requestRecyclePipelineList',
+            'requestArchivePipelineList',
             'requestToggleCollect',
             'deletePipeline',
             'copyPipeline',
-            'restorePipeline'
+            'restorePipeline',
+            'deleteMigrateArchive',
+            'lockPipeline'
         ]),
-        async checkHasTemplatePermission () {
-            this.hasTemplatePermission = await this.requestTemplatePermission(this.$route.params.projectId)
-            this.$nextTick(() => {
-                console.log(this.hasTemplatePermission, 'this.hasTemplatePermission')
-                Object.keys(this.pipelineMap).forEach(pipelineId => {
-                    this.pipelineMap[pipelineId].pipelineActions = this.getPipelineActions(this.pipelineMap[pipelineId])
-                })
-            })
-        },
         async getPipelines (query = {}) {
             try {
                 const { viewId, ...restQuery } = query
@@ -84,38 +92,49 @@ export default {
                     ...this.$route.query,
                     ...restQuery
                 }
+                const otherViews = viewId !== DELETED_VIEW_ID && viewId !== ARCHIVE_VIEW_ID
+
+                const requestParams = {
+                    projectId: this.$route.params.projectId,
+                    ...queryParams,
+                    viewId,
+                    ...(otherViews ? { showDelete: true } : {})
+                }
+
                 if (viewId === DELETED_VIEW_ID) {
-                    return this.requestRecyclePipelineList({
-                        projectId: this.$route.params.projectId,
-                        ...queryParams,
-                        viewId
-                    })
-                } else {
-                    this.$router.push({
-                        ...this.$route,
-                        query: queryParams
-                    })
-                    const { page, count, records } = await this.requestAllPipelinesListByFilter({
-                        showDelete: true,
-                        projectId: this.$route.params.projectId,
-                        ...queryParams,
-                        viewId
-                    })
-                    const pipelineList = records.map((item, index) => Object.assign(item, {
+                    return this.requestRecyclePipelineList(requestParams)
+                }
+
+                if (otherViews) {
+                    if (!isShallowEqual(queryParams, this.$route.query)) {
+                        this.$router.replace({ query: queryParams })
+                    }
+                }
+                const apiRequest = viewId === ARCHIVE_VIEW_ID
+                    ? this.requestArchivePipelineList
+                    : this.requestAllPipelinesListByFilter
+                const { page, count, records } = await apiRequest(requestParams)
+                const pipelineList = records.map((item, index) => {
+                    const isArchive = viewId === ARCHIVE_VIEW_ID
+                    const archiveQuery = isArchive ? { archiveFlag: true } : {}
+                    const isDraft = item.latestVersionStatus === VERSION_STATUS_ENUM.COMMITTING
+
+                    const archiveObj = {
+                        ...item,
                         latestBuildStartDate: this.getLatestBuildFromNow(item.latestBuildStartTime),
+                        updater: item.lastModifyUser,
                         updateDate: convertTime(item.updateTime),
                         duration: this.calcDuration(item),
-                        progress: this.calcProgress(item),
-                        pipelineActions: this.getPipelineActions(item, index),
-                        trigger: triggerType[item.trigger],
-                        disabled: this.isDisabledPipeline(item),
-                        tooltips: this.disabledTips(item),
+                        latestBuildUserId: item.lastModifyUser,
+                        onlyDraftVersion: isDraft,
                         historyRoute: {
-                            name: 'pipelinesHistory',
+                            name: isDraft ? 'pipelinesEdit' : 'pipelinesHistory',
                             params: {
                                 projectId: item.projectId,
-                                pipelineId: item.pipelineId
-                            }
+                                pipelineId: item.pipelineId,
+                                type: item.onlyDraftVersion ? pipelineTabIdMap.pipeline : 'history'
+                            },
+                            query: archiveQuery
                         },
                         latestBuildRoute: {
                             name: 'pipelinesDetail',
@@ -124,26 +143,52 @@ export default {
                                 projectId: item.projectId,
                                 pipelineId: item.pipelineId,
                                 buildNo: item.latestBuildId
-                            }
+                            },
+                            query: archiveQuery
                         }
-                    }))
-                    this.pipelineMap = pipelineList.reduce((acc, item) => {
-                        return {
-                            ...acc,
-                            [item.pipelineId]: item
-                        }
-                    }, {})
-                    return {
-                        page,
-                        count,
-                        records: pipelineList
                     }
+
+                    if (otherViews) {
+                        return Object.assign(archiveObj, {
+                            latestBuildUserId: item.latestBuildUserId,
+                            progress: this.calcProgress(item),
+                            pipelineActions: this.getPipelineActions(item, index),
+                            disabled: this.isDisabledPipeline(item),
+                            tooltips: this.disabledTips(item),
+                            latestBuildStageStatus: this.getLatestBuildStageStatus(item),
+                            released: item.latestVersionStatus === VERSION_STATUS_ENUM.RELEASED,
+                            onlyBranchVersion: item.latestVersionStatus === VERSION_STATUS_ENUM.BRANCH
+                        })
+                    } else {
+                        return archiveObj
+                    }
+                })
+
+                if (otherViews) {
+                    this.pipelineMap = pipelineList.reduce((acc, item) => {
+                        acc[item.pipelineId] = item
+                        return acc
+                    }, {})
+                }
+                return {
+                    page,
+                    count,
+                    records: pipelineList
                 }
             } catch (e) {
-                this.$showTips({
-                    message: e.message || e,
-                    theme: 'error'
-                })
+                if (e.code === 403) {
+                    handleProjectNoPermission({
+                        projectId: this.$route.params.projectId,
+                        resourceCode: this.$route.params.projectId,
+                        action: PROJECT_RESOURCE_ACTION.MANAGE
+                    })
+                } else {
+                    this.$showTips({
+                        message: e.message || e,
+                        theme: 'error'
+                    })
+                }
+                return false
             }
         },
         getLatestBuildFromNow (latestBuildStartTime) {
@@ -177,26 +222,88 @@ export default {
                 UNCLASSIFIED_PIPELINE_VIEW_ID,
                 RECENT_USED_VIEW_ID
             ].includes(this.$route.params.viewId)
+            const removedActionAuthMap = this.currentGroup?.projected
+                ? {
+                    hasPermission: this.isManage,
+                    disablePermissionApi: true,
+                    permissionData: {
+                        projectId: pipeline.projectId,
+                        resourceType: 'project',
+                        resourceCode: pipeline.projectId,
+                        action: PROJECT_RESOURCE_ACTION.MANAGE
+                    }
+                }
+                : {}
             const isDynamicGroup = this.currentGroup?.viewType === 1
+            const isBuilding = pipeline.runningBuildCount > 0
+            
+            const isDraft = pipeline.latestVersionStatus === VERSION_STATUS_ENUM.COMMITTING
+            let archiveTooltip
+            if (isBuilding) {
+                archiveTooltip = this.$t('archive.unableToFile')
+            } else if (isDraft) {
+                archiveTooltip = this.$t('archive.onlyDraftVersion')
+            } else if (pipeline.archivingFlag) {
+                archiveTooltip = this.$t('archive.archiving')
+            } else {
+                archiveTooltip = false
+            }
+            const editPermData = {
+                projectId: pipeline.projectId,
+                resourceType: RESOURCE_TYPE.PIPELINE,
+                resourceCode: pipeline.pipelineId,
+                action: RESOURCE_ACTION.EDIT
+            }
+
             return [
+                {
+                    text: this.$t(pipeline.lock ? 'enable' : 'disable'),
+                    handler: this.lockPipelineHandler,
+                    hasPermission: pipeline.permissions.canEdit,
+                    disablePermissionApi: true,
+                    permissionData: editPermData
+                },
                 {
                     text: this.$t('addTo'),
                     handler: this.addToHandler
                 },
+                ...(pipeline.templateId
+                    ? [{
+                        text: this.$t('copyAsTemplateInstance'),
+                        handler: () => this.copyAsTemplateInstance(pipeline),
+                        hasPermission: pipeline.permissions.canManage,
+                        disablePermissionApi: true,
+                        permissionData: {
+                            projectId: pipeline.projectId,
+                            resourceType: RESOURCE_TYPE.PROJECT,
+                            resourceCode: pipeline.projectId,
+                            action: RESOURCE_ACTION.CREATE
+                        }
+                    }]
+                    : []),
                 {
                     text: this.$t('newlist.copyAs'),
-                    handler: this.copyAs
+                    handler: this.copyAs,
+                    hasPermission: pipeline.permissions.canEdit,
+                    disablePermissionApi: true,
+                    permissionData: editPermData
                 },
                 {
                     text: this.$t('newlist.saveAsTemp'),
-                    disable: !this.hasTemplatePermission,
-                    handler: this.saveAsTempHandler
+                    handler: this.saveAsTempHandler,
+                    hasPermission: this.isManage,
+                    disablePermissionApi: true,
+                    permissionData: {
+                        projectId: pipeline.projectId,
+                        resourceType: RESOURCE_TYPE.PROJECT,
+                        resourceCode: pipeline.projectId,
+                        action: TEMPLATE_RESOURCE_ACTION.CREATE
+                    }
                 },
-                ...(pipeline.isInstanceTemplate
+                ...(pipeline.instanceFromTemplate
                     ? [{
                         text: this.$t('newlist.jumpToTemp'),
-                        handler: this.jumpToTemplate,
-                        isJumpToTem: true
+                        handler: this.jumpToTemplate
                     }]
                     : []),
                 ...(isShowRemovedAction
@@ -204,12 +311,35 @@ export default {
                         text: this.$t('removeFrom'),
                         disable: isDynamicGroup,
                         tooltips: isDynamicGroup ? this.$t('dynamicGroupRemoveDisableTips') : false,
-                        handler: this.removeHandler
+                        handler: this.removeHandler,
+                        ...removedActionAuthMap
                     }]
                     : []),
                 {
+                    text: this.$t('archive.archive'),
+                    disable: isBuilding || isDraft || pipeline.archivingFlag,
+                    tooltips: archiveTooltip,
+                    handler: this.archiveHandler,
+                    hasPermission: pipeline.permissions.canArchive,
+                    disablePermissionApi: true,
+                    permissionData: {
+                        projectId: pipeline.projectId,
+                        resourceType: RESOURCE_TYPE.PIPELINE,
+                        resourceCode: pipeline.pipelineId,
+                        action: RESOURCE_ACTION.ARCHIVED
+                    }
+                },
+                {
                     text: this.$t('delete'),
-                    handler: this.deleteHandler
+                    handler: this.deleteHandler,
+                    hasPermission: pipeline.permissions.canDelete,
+                    disablePermissionApi: true,
+                    permissionData: {
+                        projectId: pipeline.projectId,
+                        resourceType: RESOURCE_TYPE.PIPELINE,
+                        resourceCode: pipeline.pipelineId,
+                        action: RESOURCE_ACTION.DELETE
+                    }
                 }
             ]
         },
@@ -220,6 +350,7 @@ export default {
                     ...pipeline,
                     isCollect
                 })
+
                 pipeline.hasCollect = !pipeline.hasCollect
                 this.pipelineMap[pipeline.pipelineId].hasCollect = isCollect
                 this.addCollectViewPipelineCount(isCollect ? 1 : -1)
@@ -234,6 +365,12 @@ export default {
                     theme: 'error'
                 })
             }
+        },
+        lockPipelineHandler (pipeline) {
+            this.updatePipelineActionState({
+                isDisableDialogShow: true,
+                activePipeline: pipeline
+            })
         },
         addToHandler (pipeline) {
             this.updatePipelineActionState({
@@ -260,11 +397,23 @@ export default {
                 activePipelineList: [pipeline]
             })
         },
+        archiveHandler (pipeline) {
+            this.updatePipelineActionState({
+                isArchiveDialogShow: true,
+                activePipelineList: [pipeline]
+            })
+        },
         deleteHandler (pipeline) {
             this.updatePipelineActionState({
                 confirmType: 'delete',
                 isConfirmShow: true,
                 activePipelineList: [pipeline]
+            })
+        },
+        closeDisableDialog () {
+            this.updatePipelineActionState({
+                isDisableDialogShow: false,
+                activePipeline: null
             })
         },
         closeCopyDialog () {
@@ -292,48 +441,46 @@ export default {
                 activePipeline: null
             })
         },
+        closeArchiveDialog () {
+            this.updatePipelineActionState({
+                isArchiveDialogShow: false,
+                activePipelineList: []
+            })
+        },
 
-        jumpToTemplate ({ templateId }) {
+        openDeleteArchivedDialog (pipeline) {
+            this.updatePipelineActionState({
+                isShowDeleteArchivedDialog: true,
+                activePipelineList: [pipeline]
+            })
+        },
+
+        closeDeleteArchiveDialog () {
+            this.updatePipelineActionState({
+                isShowDeleteArchivedDialog: false,
+                activePipelineList: []
+            })
+        },
+
+        jumpToTemplate ({ projectId, templateId }) {
             this.$router.push({
-                name: 'templateEdit',
+                name: 'TemplateOverview',
                 params: {
+                    projectId,
                     templateId
-                }
+                },
             })
         },
-        execPipeline ({ pipelineId, disabled }) {
-            if (disabled) return
+        execPipeline ({ projectId, pipelineId, disabled, released, onlyBranchVersion, pipelineVersion }) {
+            if (disabled || !(released || onlyBranchVersion)) return
             this.$router.push({
-                name: 'pipelinesPreview',
+                name: 'executePreview',
                 params: {
-                    projectId: this.$route.params.projectId,
-                    pipelineId
-                }
-            })
-        },
-        /**
-         *  处理收藏和取消收藏
-         */
-        async togglePipelineCollect (pipelineId, isCollect = false) {
-            let message = isCollect ? this.$t('collectSuc') : this.$t('uncollectSuc')
-            let theme = 'success'
-            try {
-                const { projectId } = this.$route.params
-                await this.requestToggleCollect({
                     projectId,
                     pipelineId,
-                    isCollect
-                })
-                return true
-            } catch (err) {
-                message = err.message || err
-                theme = 'error'
-            } finally {
-                this.$showTips({
-                    message,
-                    theme
-                })
-            }
+                    version: pipelineVersion
+                }
+            })
         },
         /**
          *  删除流水线
@@ -350,15 +497,14 @@ export default {
                 })
                 return true
             } catch (err) {
-                this.handleError(err, [{
-                    actionId: this.$permissionActionMap.delete,
-                    resourceId: this.$permissionResourceMap.pipeline,
-                    instanceId: [{
-                        id: pipelineId,
-                        name: pipelineName
-                    }],
-                    projectId
-                }])
+                this.handleError(
+                    err,
+                    {
+                        projectId: projectId,
+                        resourceCode: pipelineId,
+                        action: this.$permissionResourceAction.DELETE
+                    }
+                )
             }
         },
         /**
@@ -385,49 +531,67 @@ export default {
                 })
                 return true
             } catch (err) {
-                this.handleError(err, [{
-                    actionId: this.$permissionActionMap.create,
-                    resourceId: this.$permissionResourceMap.pipeline,
-                    instanceId: [{
-                        id: pipelineId,
-                        name: pipelineName
-                    }]
-                }, {
-                    actionId: this.$permissionActionMap.edit,
-                    resourceId: this.$permissionResourceMap.pipeline,
-                    instanceId: [{
-                        id: pipelineId,
-                        name: pipelineName
-                    }],
-                    projectId
-                }])
+                this.handleError(
+                    err,
+                    {
+                        projectId: projectId,
+                        resourceCode: projectId,
+                        action: this.$permissionResourceAction.CREATE
+                    }
+                )
             }
         },
         /** *
          * 恢复流水线
          */
         async restore ({ projectId, pipelineId, pipelineName }) {
-            let message = this.$t('restore.restoreSuc')
-            let theme = 'success'
-            await navConfirm({
+            const res = await navConfirm({
                 content: this.$t('restorePipelineConfirm', [pipelineName])
             })
+            if (!res) return
             try {
                 await this.restorePipeline({
                     projectId,
                     pipelineId
                 })
+                this.$showTips({
+                    message: this.$t('restore.restoreSuc'),
+                    theme: 'success'
+                })
                 return true
             } catch (err) {
-                message = err.message || err
-                theme = 'error'
+                if (err.code === 403) {
+                    handleProjectNoPermission({
+                        projectId: projectId,
+                        resourceCode: projectId,
+                        action: PROJECT_RESOURCE_ACTION.MANAGE
+                    })
+                } else {
+                    this.$showTips({
+                        message: err.message || err,
+                        theme: 'error'
+                    })
+                }
                 return false
-            } finally {
-                this.$showTips({
-                    message,
-                    theme
-                })
             }
+        },
+        getStageTooltip (stage) {
+            switch (true) {
+                case !!stage.elapsed:
+                    return `${stage.name}: ${convertMStoString(stage.elapsed)}`
+                case stage.status === 'PAUSE':
+                    return this.$t('editPage.toCheck')
+                case stage.status === 'SKIP':
+                    return this.$t('skipStageDesc')
+            }
+        },
+        getLatestBuildStageStatus (item) {
+            return item.latestBuildStageStatus ? item.latestBuildStageStatus.slice(1).map((stage) => ({
+                ...stage,
+                tooltip: this.getStageTooltip(stage),
+                icon: this.statusIconMap[stage.status] || 'circle',
+                statusCls: stage.status
+            })) : null
         },
         updatePipelineStatus (data, isFirst = false) {
             Object.keys(data).forEach(pipelineId => {
@@ -439,21 +603,15 @@ export default {
                         latestBuildStartDate: this.getLatestBuildFromNow(item.latestBuildStartTime),
                         duration: this.calcDuration(item),
                         progress: this.calcProgress(item),
-                        trigger: triggerType[item.trigger]
+                        latestBuildStageStatus: this.getLatestBuildStageStatus(item)
                     })
                 }
             })
         },
-        applyPermission ({ pipelineName, pipelineId }) {
-            this.setPermissionConfig(
-                this.$permissionResourceMap.pipeline,
-                this.$permissionActionMap.view,
-                [{
-                    id: pipelineId,
-                    name: pipelineName
-                }],
-                this.$route.params.projectId
-            )
+        copyAsTemplateInstance (pipeline) {
+            const pipelineName = (pipeline.pipelineName + '_copy').substring(0, 128)
+            const { templateId, pipelineId, projectId, version } = pipeline
+            window.top.location.href = `${location.origin}/console/pipeline/${projectId}/template/${templateId}/${version}/instance/copy?pipelineName=${pipelineName}&pipelineId=${pipelineId}`
         }
     }
 }

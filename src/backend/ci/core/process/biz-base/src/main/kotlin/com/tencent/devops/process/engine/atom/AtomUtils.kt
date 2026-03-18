@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,6 +27,9 @@
 
 package com.tencent.devops.process.engine.atom
 
+import com.tencent.devops.common.api.constant.CommonMessageCode.BK_ELEMENT_CAN_PAUSE_BEFORE_RUN_NOT_SUPPORT
+import com.tencent.devops.common.api.constant.CommonMessageCode.ELEMENT_NOT_SUPPORT_TRANSFER
+import com.tencent.devops.common.api.constant.CommonMessageCode.TEMPLATE_PLUGIN_NOT_ALLOWED_USE
 import com.tencent.devops.common.api.constant.KEY_CODE_EDITOR
 import com.tencent.devops.common.api.constant.KEY_DEFAULT
 import com.tencent.devops.common.api.constant.KEY_INPUT
@@ -36,6 +39,7 @@ import com.tencent.devops.common.api.pojo.ErrorType
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.client.Client
 import com.tencent.devops.common.log.utils.BuildLogPrinter
+import com.tencent.devops.common.pipeline.Model
 import com.tencent.devops.common.pipeline.container.Container
 import com.tencent.devops.common.pipeline.container.NormalContainer
 import com.tencent.devops.common.pipeline.container.VMBuildContainer
@@ -47,11 +51,20 @@ import com.tencent.devops.process.constant.ProcessMessageCode
 import com.tencent.devops.process.engine.exception.BuildTaskException
 import com.tencent.devops.process.engine.pojo.PipelineBuildTask
 import com.tencent.devops.process.pojo.config.TaskCommonSettingConfig
+import com.tencent.devops.process.yaml.transfer.PipelineTransferException
+import com.tencent.devops.process.yaml.transfer.aspect.IPipelineTransferAspect
+import com.tencent.devops.process.yaml.transfer.aspect.IPipelineTransferAspectElement
+import com.tencent.devops.process.yaml.transfer.aspect.IPipelineTransferAspectModel
+import com.tencent.devops.process.yaml.transfer.aspect.PipelineTransferJoinPoint
+import com.tencent.devops.store.api.atom.ServiceAtomResource
 import com.tencent.devops.store.api.atom.ServiceMarketAtomEnvResource
+import com.tencent.devops.store.pojo.atom.AtomCodeVersionReqItem
 import com.tencent.devops.store.pojo.atom.AtomRunInfo
+import com.tencent.devops.store.pojo.atom.enums.AtomStatusEnum
 import com.tencent.devops.store.pojo.atom.enums.JobTypeEnum
 import com.tencent.devops.store.pojo.common.StoreParam
-import com.tencent.devops.store.pojo.common.StoreVersion
+import com.tencent.devops.store.pojo.common.version.StoreVersion
+import java.util.LinkedList
 
 object AtomUtils {
 
@@ -120,8 +133,10 @@ object AtomUtils {
                 buildId = task.buildId,
                 message = "Prepare ${element.name}(${atomRunInfo.atomName})",
                 tag = task.taskId,
-                jobId = task.containerHashId,
-                executeCount = task.executeCount ?: 1
+                containerHashId = task.containerHashId,
+                executeCount = task.executeCount ?: 1,
+                jobId = null,
+                stepId = task.stepId
             )
             atoms[atomCode] = atomRunInfo.initProjectCode
         }
@@ -167,12 +182,14 @@ object AtomUtils {
                 version = "1.*"
             }
             val atomCode = element.getAtomCode()
-            atomVersions.add(StoreVersion(
-                storeCode = atomCode,
-                storeName = element.name,
-                version = version,
-                historyFlag = false
-            ))
+            atomVersions.add(
+                StoreVersion(
+                    storeCode = atomCode,
+                    storeName = element.name,
+                    version = version,
+                    historyFlag = false
+                )
+            )
         }
         return atomVersions
     }
@@ -192,6 +209,30 @@ object AtomUtils {
             inputTypeConfigMap[it] = taskCommonSettingConfig.maxMultipleInputComponentSize
         }
         return inputTypeConfigMap
+    }
+
+    fun checkTemplateRealVersionAtoms(
+        codeVersions: Set<AtomCodeVersionReqItem>,
+        userId: String,
+        client: Client
+    ) {
+        val atomInfos = client.get(ServiceAtomResource::class)
+            .getAtomInfos(
+                codeVersions = codeVersions
+            ).data
+        atomInfos?.forEach {
+            val atomStatus = AtomStatusEnum.getAtomStatus(it.atomStatus!!.toInt())
+            if (atomStatus != AtomStatusEnum.RELEASED.name) {
+                throw ErrorCodeException(
+                    errorCode = TEMPLATE_PLUGIN_NOT_ALLOWED_USE,
+                    params = arrayOf(
+                        it.atomName,
+                        it.version,
+                        AtomStatusEnum.valueOf(atomStatus).getI18n(I18nUtil.getLanguage(userId))
+                    )
+                )
+            }
+        }
     }
 
     fun checkModelAtoms(
@@ -250,5 +291,90 @@ object AtomUtils {
                 }
             }
         }
+    }
+
+    fun getModelElementSensitiveParamInfos(
+        projectId: String,
+        model: Model,
+        client: Client
+    ): Map<String, String>? {
+        val atomVersions = mutableSetOf<StoreVersion>()
+        model.stages.forEach { stage ->
+            stage.containers.forEach {
+                atomVersions.addAll(getAtomVersions(it))
+            }
+        }
+        if (atomVersions.isEmpty()) return null
+        val result = client.get(ServiceMarketAtomEnvResource::class).batchGetAtomSensitiveParamInfos(
+            projectCode = projectId,
+            atomVersions = atomVersions
+        )
+        return if (result.isNotOk()) {
+            null
+        } else {
+            result.data
+        }
+    }
+
+    // YAML2MODEL 时使用
+    fun checkElementCanPauseBeforeRun(
+        client: Client,
+        projectId: String,
+        aspects: LinkedList<IPipelineTransferAspect> = LinkedList()
+    ): LinkedList<IPipelineTransferAspect> {
+        val elementUse = mutableSetOf<StoreVersion>()
+        aspects.add(
+            object : IPipelineTransferAspectElement {
+                override fun after(jp: PipelineTransferJoinPoint) {
+                    if (jp.modelElement() != null && jp.modelElement()?.additionalOptions?.pauseBeforeExec == true) {
+                        val element = jp.modelElement()!!
+                        var version = element.version
+                        if (version.isBlank()) {
+                            version = "1.*"
+                        }
+                        val atomCode = element.getAtomCode()
+                        elementUse.add(
+                            StoreVersion(
+                                storeCode = atomCode,
+                                storeName = element.name,
+                                version = version,
+                                historyFlag = isHisAtomElement(element)
+                            )
+                        )
+                    }
+                }
+            }
+        )
+
+        aspects.add(
+            object : IPipelineTransferAspectModel {
+                override fun after(jp: PipelineTransferJoinPoint) {
+                    if (jp.model() != null && elementUse.isNotEmpty()) {
+                        val atomRunInfoResult = kotlin.runCatching {
+                            client.get(ServiceMarketAtomEnvResource::class).batchGetAtomRunInfos(
+                                projectCode = projectId,
+                                atomVersions = elementUse
+                            ).data
+                        }.getOrNull() ?: return
+                        // 筛选出canPauseBeforeRun不为true的插件，然后抛错给用户，因为这些插件不让执行前暂停
+                        val check = atomRunInfoResult.filter {
+                            it.value.canPauseBeforeRun != true
+                        }
+                        if (check.isNotEmpty()) {
+                            throw PipelineTransferException(
+                                ELEMENT_NOT_SUPPORT_TRANSFER,
+                                arrayOf(check.values.joinToString("\n- ", "- ") {
+                                    I18nUtil.getCodeLanMessage(
+                                        BK_ELEMENT_CAN_PAUSE_BEFORE_RUN_NOT_SUPPORT,
+                                        params = arrayOf("${it.atomName}[${it.atomCode}]")
+                                    )
+                                })
+                            )
+                        }
+                    }
+                }
+            }
+        )
+        return aspects
     }
 }

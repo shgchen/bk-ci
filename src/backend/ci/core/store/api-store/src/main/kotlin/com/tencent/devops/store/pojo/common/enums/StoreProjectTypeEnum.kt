@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,9 +28,9 @@
 package com.tencent.devops.store.pojo.common.enums
 
 enum class StoreProjectTypeEnum(val type: Int) {
-    INIT(0), // 新增插件时关联的初始化项目
-    COMMON(1), // 安装插件时关联的项目
-    TEST(2); // 申请为插件协作者时关联的调试项目
+    INIT(0), // 新增组件时关联的初始化项目
+    COMMON(1), // 安装组件时关联的项目
+    TEST(2); // 申请为组件协作者时关联的调试项目
 
     companion object {
         fun getProjectType(type: Int): String {

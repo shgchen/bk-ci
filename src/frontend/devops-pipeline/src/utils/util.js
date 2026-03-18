@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -20,6 +20,11 @@
 import {
     ALL_PIPELINE_VIEW_ID
 } from '@/store/constants'
+import { isBooleanParam, isFileParam } from '@/store/modules/atom/paramsConfig'
+import {
+    ALL_TEMPLATE_VIEW_ID,
+    TEMPLATE_VIEW_ID_CACHE
+} from '@/store/modules/templates/constants'
 import { v4 as uuidv4 } from 'uuid'
 
 export function isVNode (node) {
@@ -31,6 +36,7 @@ export function urlJoin (...args) {
 }
 
 export function isShallowEqual (obj1, obj2) {
+    if (obj1 === obj2) return true
     if (!isObject(obj1) || !isObject(obj2)) {
         return false
     }
@@ -191,20 +197,6 @@ export function findIndexByKeyValue (arr, oldKey, oldValue) {
     })
 }
 
-export function deepClone (obj) {
-    const _obj = {}
-
-    for (const key in obj) {
-        if (obj[key].toString().toLowerCase() === '[object object]') {
-            _obj[key] = deepClone(obj[key])
-        } else {
-            _obj[key] = key === 'text' ? '' : obj[key]
-        }
-    }
-
-    return _obj
-}
-
 /**
  *  将字符串去掉指定内容之后转成数字
  *  @param {String} str - 需要转换的字符串
@@ -270,18 +262,23 @@ export function convertMStoString (time) {
     return time ? getDays(Math.floor(time / 1000)) : `0${window.pipelineVue.$i18n.t('timeMap.seconds')}`
 }
 
-export function convertMillSec (ms) {
+export function convertMillSec (ms, full = false) {
+    if (!Number.isInteger(ms)) return '--'
     const millseconds = ms % 1000 > 0 ? `.${`${ms % 1000}`.padStart(3, '0')}` : ''
-
+    const day = Math.floor(ms / (24 * 60 * 60 * 1000))
+    if (day > 0) {
+        // 先减去天数，再计算小时
+        ms -= day * (24 * 60 * 60 * 1000)
+    }
     const seconds = Math.floor(ms / 1000) % 60
     const minutes = Math.floor(ms / 1000 / 60) % 60
     const hours = Math.floor(ms / 1000 / 60 / 60) % 24
 
-    return `${[
-        ...(hours > 0 ? [hours] : []),
+    return `${day ? day + window.pipelineVue.$i18n.t('timeMap.days') : ''} ${[
+        ...(hours > 0 ? [hours] : [full ? '00' : '']),
         minutes,
         seconds
-    ].map(prezero).join(':')}${millseconds}`
+    ].map(prezero).join(':')}${full ? '' : millseconds}`
 }
 
 /**
@@ -471,16 +468,29 @@ export const deepCopy = obj => {
     return JSON.parse(JSON.stringify(obj))
 }
 
+export const deepClone = obj => {
+    if (typeof structuredClone === 'function') {
+        return structuredClone(obj)
+    }
+    return JSON.parse(JSON.stringify(obj))
+}
+
 export const hashID = () => {
     const uuid = uuidv4().replace(/-/g, '')
     return uuid
 }
+// 随机字符串
+export const randomString = (len, startWithAplha = false) => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
 
-export const randomString = (len) => {
-    const chars = 'ABCDEFGHJKLMNPQRSTWXYZabcdefhijklmnprstwxyz012345678'
     const tempLen = chars.length
     let tempStr = ''
     for (let i = 0; i < len; ++i) {
+        if (i === 0 && startWithAplha) {
+            const alphaChars = chars.replace(/\d/g, '')
+            tempStr += alphaChars.charAt(Math.floor(Math.random() * alphaChars.length))
+            continue
+        }
         tempStr += chars.charAt(Math.floor(Math.random() * tempLen))
     }
     return tempStr
@@ -589,17 +599,21 @@ export function throttle (func, interval = DEFAULT_TIME_INTERVAL) {
     }
 }
 
-export function navConfirm ({ content, title, ...restProps }) {
+export function navConfirm ({ content, title, cancelText, ...restProps }) {
     return new Promise((resolve, reject) => {
         if (typeof window.globalVue.$leaveConfirm !== 'function') {
             reject(new Error('')); return
         }
 
-        window.globalVue.$leaveConfirm({ content, title, ...restProps })
+        window.globalVue.$leaveConfirm({ content, title, cancelText, ...restProps })
 
-        window.globalVue.$once('order::leaveConfirm', resolve)
+        window.globalVue.$once('order::leaveConfirm', () => {
+            resolve(true)
+        })
 
-        window.globalVue.$once('order::leaveCancel', reject)
+        window.globalVue.$once('order::leaveCancel', () => {
+            resolve(false)
+        })
     })
 }
 
@@ -611,16 +625,41 @@ export function getQueryParamList (arr = [], key) {
             if (index < arrLen - 1) result += '&'
             return result
         }, '')
-    } else if (arr && typeof arr === 'string') {
+    } else if (typeof arr !== 'undefined') {
         return `${key}=${encodeURIComponent(arr)}`
     }
 }
 
-export function getParamsValuesMap (params = []) {
+// 将vue-router的query参数转换成字符串
+export function getQueryParamString (query) {
+    const params = []
+    for (const key in query) {
+        if (Object.prototype.hasOwnProperty.call(query, key)) {
+            const value = query[key].indexOf(',') > -1 ? query[key].split(',') : query[key]
+            params.push(getQueryParamList(value, key))
+        }
+    }
+    return params.join('&')
+}
+
+export function getParamsValuesMap (params = [], valueKey = 'defaultValue', initValues = {}) {
     if (!Array.isArray(params)) return {}
     return params.reduce((values, param) => {
-        if (param.id) {
-            values[param.id] = param.defaultValue
+        if (!param.id) return values
+
+        if (isFileParam(param.type) && param.enableVersionControl) {
+            values[param.id] = {
+                directory: initValues[param.id] ?? param[valueKey],
+                latestRandomStringInPath: (valueKey === 'defaultValue' ? param.randomStringInPath : param.latestRandomStringInPath) || ''
+            }
+        } else {
+            const val = initValues[param.id] ?? param[valueKey]
+            if (isBooleanParam(param.type)) {
+                values[param.id] = val === 'true' || val === true
+            } else {
+                values[param.id] = val
+            }
+            
         }
         return values
     }, {})
@@ -687,6 +726,10 @@ export function bkVarWrapper (name) {
     return '${{' + name + '}}'
 }
 
+export function bkVarRepoRefWrapper (name) {
+    return '${{variables.' + name + '.repo-name}}@${{variables.' + name + '.branch}}'
+}
+
 export const toolbars = {
     bold: false, // 粗体
     italic: false, // 斜体
@@ -734,6 +777,10 @@ export function getCacheViewId (projectId) {
     return localStorage.getItem(cacheViewIdKey(projectId)) ?? ALL_PIPELINE_VIEW_ID
 }
 
+export function getTemplateCacheViewId () {
+    return localStorage.getItem(TEMPLATE_VIEW_ID_CACHE) ?? ALL_TEMPLATE_VIEW_ID
+}
+
 export function getMaterialIconByType (type) {
     const materialIconMap = {
         CODE_SVN: 'CODE_SVN',
@@ -741,7 +788,9 @@ export function getMaterialIconByType (type) {
         CODE_GITLAB: 'CODE_GITLAB',
         GITHUB: 'codeGithubWebHookTrigger',
         CODE_TGIT: 'CODE_GIT',
-        CODE_P4: 'CODE_P4'
+        CODE_P4: 'CODE_P4',
+        CODE_REMOTE: 'remoteTrigger',
+        CODE_SERVICE: 'openApi'
     }
     return materialIconMap[type] ?? 'CODE_GIT'
 }
@@ -765,3 +814,139 @@ export const prettyDateTimeFormat = (target) => {
     const seconds = formatStr(d.getSeconds())
     return `${year}-${month}-${date} ${hours}:${minutes}:${seconds}`
 }
+
+export function areDeeplyEqual (obj1, obj2) {
+    const stack = [[obj1, obj2]]
+    let current, left, right
+
+    while (stack.length > 0) {
+        current = stack.pop()
+        left = current[0]
+        right = current[1]
+
+        if (left === right) {
+            continue
+        }
+
+        if (typeof left !== 'object' || left === null
+            || typeof right !== 'object' || right === null) {
+            return false
+        }
+        const ignoreKeys = ['isError', 'id', 'pipelineCreator', 'containerHashId', 'containerId', 'executeCount']
+        // 排除 isError 字段
+        const leftKeys = Object.keys(left).filter(key => !ignoreKeys.includes(key))
+        const rightKeys = Object.keys(right).filter(key => !ignoreKeys.includes(key))
+        if (leftKeys.length !== rightKeys.length) {
+            return false
+        }
+
+        for (let i = 0; i < leftKeys.length; i++) {
+            const key = leftKeys[i]
+            if (!Object.hasOwnProperty.call(right, key)) {
+                return false
+            }
+            if (left[key] === right[key]) {
+                continue
+            }
+            if (typeof left[key] === 'object' && typeof right[key] === 'object') {
+                stack.push([left[key], right[key]])
+            } else {
+                return false
+            }
+        }
+    }
+
+    return true
+}
+
+export function generateDisplayName (version, versionName) {
+    if (!version || !versionName) return '--'
+    return `V${version} (${versionName})`
+}
+
+export function weekAgo () {
+    // 获取当前日期
+    const now = new Date()
+
+    // 获取一周前的日期
+    const oneWeekAgo = new Date()
+    oneWeekAgo.setDate(now.getDate() - 7)
+
+    // 创建开始和结束日期对象
+    const start = new Date(oneWeekAgo.setHours(0, 0, 0))
+    const end = new Date(now.setHours(23, 59, 59))
+    return [start, end]
+}
+
+export function isEmptyObj (obj) {
+    try {
+        return Object.keys(obj).length === 0
+    } catch (error) {
+        console.error(error)
+        return false
+    }
+}
+
+export function flatSearchKey (searchKey) {
+    return searchKey.reduce((searchMap, item) => {
+        if (Array.isArray(item.values)) {
+            if (typeof searchMap[item.id] === 'undefined') {
+                searchMap[item.id] = Array.from(new Set(item.values.map(v => v.id)))
+            } else {
+                searchMap[item.id] = Array.from(new Set([
+                    ...searchMap[item.id],
+                    ...item.values.map(v => v.id)
+                ]))
+            }
+        }
+        return searchMap
+    }, {})
+}
+
+export function parseErrorMsg (msg) {
+    try {
+        return JSON.parse(msg)
+    } catch (e) {
+        return {
+            message: msg
+        }
+    }
+}
+
+export function showPipelineCheckMsg (showTooltips, message, h) {
+    const errorInfo = parseErrorMsg(message)
+    showTooltips({
+        theme: 'error',
+        delay: 0,
+        ellipsisLine: 0,
+        message: h('div', {
+            class: 'pipeline-save-error-list-box'
+        }, errorInfo.errors.map(item => h('div', {
+            class: 'pipeline-save-error-list-item'
+        }, [
+            h('p', {}, item.errorTitle),
+            h('ul', {
+                class: 'pipeline-save-error-list'
+            }, item.errorDetails.map(err => h('li', {
+                domProps: {
+                    innerHTML: err
+                }
+            })))
+        ])))
+    })
+}
+
+export async function copyToClipboard (text) {
+    if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text)
+    } else {
+        const textArea = document.createElement('textarea')
+        textArea.value = text
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand('Copy')
+        document.body.removeChild(textArea)
+    }
+}
+
+export const COMMON_PARAM_PREFIX = 'COMMON_PARAM_'

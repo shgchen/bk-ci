@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -35,12 +35,15 @@ import com.tencent.devops.common.api.util.HashUtil
 import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.api.util.OkhttpUtils
 import com.tencent.devops.common.pipeline.enums.ChannelCode
-import com.tencent.devops.repository.github.service.GithubUserService
+import com.tencent.devops.repository.pojo.enums.RedirectUrlTypeEnum
 import com.tencent.devops.repository.pojo.github.GithubAppUrl
 import com.tencent.devops.repository.pojo.github.GithubOauth
 import com.tencent.devops.repository.pojo.github.GithubOauthCallback
 import com.tencent.devops.repository.pojo.github.GithubToken
 import com.tencent.devops.repository.pojo.oauth.GithubTokenType
+import com.tencent.devops.repository.sdk.github.response.GetUserResponse
+import com.tencent.devops.repository.sdk.github.service.GithubUserService
+import com.tencent.devops.repository.service.ScmUrlProxyService
 import com.tencent.devops.scm.config.GitConfig
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Request
@@ -49,8 +52,9 @@ import org.apache.commons.lang3.RandomStringUtils
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
+import java.net.URLDecoder
 import java.net.URLEncoder
-import javax.ws.rs.core.Response
+import jakarta.ws.rs.core.Response
 
 @Service
 @Suppress("ALL")
@@ -58,14 +62,37 @@ class GithubOAuthService @Autowired constructor(
     private val objectMapper: ObjectMapper,
     private val gitConfig: GitConfig,
     private val githubTokenService: GithubTokenService,
-    private val githubUserService: GithubUserService
+    private val githubUserService: GithubUserService,
+    private val scmUrlProxyService: ScmUrlProxyService
 ) {
 
-    fun getGithubOauth(projectId: String, userId: String, repoHashId: String?): GithubOauth {
+    fun getGithubOauth(
+        projectId: String,
+        userId: String,
+        repoHashId: String?,
+        popupTag: String? = "#popupGithub",
+        resetType: String? = "",
+        specRedirectUrl: String? = "",
+        redirectUrlTypeEnum: RedirectUrlTypeEnum? = null,
+        operator: String? = ""
+    ): GithubOauth {
         val repoId = if (!repoHashId.isNullOrBlank()) HashUtil.decodeOtherIdToLong(repoHashId).toString() else ""
-        val state = "$userId,$projectId,$repoId,BK_DEVOPS__${RandomStringUtils.randomAlphanumeric(RANDOM_ALPHA_NUM)}"
+        // 格式：{{授权用户Id}},{{蓝盾项目Id}},{{蓝盾代码库Id}},{{回调标识}},{{弹框标识位}},
+        // {{重置类型}},{{跳转链接}},{{跳转类型}},{{操作人}}
+        val state = listOf(
+            userId,
+            projectId,
+            repoId,
+            "BK_DEVOPS__${RandomStringUtils.randomAlphanumeric(RANDOM_ALPHA_NUM)}",
+            popupTag,
+            resetType,
+            specRedirectUrl,
+            redirectUrlTypeEnum?.type,
+            operator
+        ).joinToString(separator = OAUTH_URL_STATE_SEPARATOR)
+        val encodeState = URLEncoder.encode(state, "UTF-8")
         val redirectUrl = "$GITHUB_URL/login/oauth/authorize" +
-            "?client_id=${gitConfig.githubClientId}&redirect_uri=${gitConfig.githubWebhookUrl}&state=$state"
+            "?client_id=${gitConfig.githubClientId}&redirect_uri=${gitConfig.githubCallbackUrl}&state=$encodeState"
         return GithubOauth(redirectUrl)
     }
 
@@ -114,23 +141,42 @@ class GithubOAuthService @Autowired constructor(
         if (state.isNullOrBlank() || !state.contains(",BK_DEVOPS__")) {
             throw OperationException("TGIT call back contain invalid parameter: $state")
         }
-
-        val arrays = state.split(",")
+        val sourceState = URLDecoder.decode(state, "UTF-8")
+        // 回调状态信息
+        // @see com.tencent.devops.repository.service.github.GithubOAuthService.getGithubOauth
+        // 格式：{{授权用户Id}},{{蓝盾项目Id}},{{蓝盾代码库Id}},{{回调标识}},{{弹框标识位}},
+        // {{重置类型}},{{跳转链接}},{{跳转类型}},{{操作人}}
+        val arrays = sourceState.split(OAUTH_URL_STATE_SEPARATOR)
         val userId = arrays[0]
         val projectId = arrays[1]
         val repoHashId = if (arrays[2].isNotBlank()) HashUtil.encodeOtherLongId(arrays[2].toLong()) else ""
         val githubToken = getAccessTokenImpl(code, githubTokenType)
-
+        // 弹框标志位
+        val popupTag = arrays.getOrNull(4) ?: ""
+        // 重置类型
+        val resetType = arrays.getOrNull(5) ?: ""
+        // 重定向地址
+        val specRedirectUrl = arrays.getOrNull(6) ?: ""
+        // 重定向类型
+        val redirectUrlTypeEnum = RedirectUrlTypeEnum.getRedirectUrlType(arrays.getOrNull(7) ?: "")
+        // 操作人, 获取授权server端用户信息（蓝盾平台用户名可能跟github用户名不一致）
+        val operator = (arrays.getOrNull(8) ?: "").ifBlank { userId }
         githubTokenService.createAccessToken(
             userId = userId,
             accessToken = githubToken.accessToken,
             tokenType = githubToken.tokenType,
             scope = githubToken.scope,
-            githubTokenType = githubTokenType
+            githubTokenType = githubTokenType,
+            operator = operator
         )
         return GithubOauthCallback(
             userId = userId,
-            redirectUrl = "${gitConfig.githubRedirectUrl}/$projectId#popupGithub$repoHashId"
+            redirectUrl = if (redirectUrlTypeEnum == RedirectUrlTypeEnum.SPEC && specRedirectUrl.isNotBlank()) {
+                specRedirectUrl
+            } else {
+                "${gitConfig.githubRedirectUrl}/$projectId$popupTag$repoHashId?" +
+                        "resetType=$resetType&userId=$userId"
+            }
         )
     }
 
@@ -148,7 +194,8 @@ class GithubOAuthService @Autowired constructor(
             accessToken = githubToken.accessToken,
             tokenType = githubToken.tokenType,
             scope = githubToken.scope,
-            githubTokenType = githubTokenType
+            githubTokenType = githubTokenType,
+            operator = stateMap["userId"]?.toString() ?: userResponse.login
         )
         return GithubOauthCallback(
             userId = userResponse.login,
@@ -192,9 +239,14 @@ class GithubOAuthService @Autowired constructor(
         }
     }
 
+    fun getUser(accessToken: String): GetUserResponse {
+        return githubUserService.getUser(accessToken)
+    }
+
     companion object {
         private val logger = LoggerFactory.getLogger(GithubOAuthService::class.java)
         private const val RANDOM_ALPHA_NUM = 8
         private const val GITHUB_URL = "https://github.com"
+        const val OAUTH_URL_STATE_SEPARATOR = ","
     }
 }

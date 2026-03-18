@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,10 +27,12 @@
 
 package com.tencent.devops.process.api.service
 
+import com.tencent.bk.audit.annotations.AuditEntry
 import com.tencent.devops.common.api.pojo.Result
+import com.tencent.devops.common.auth.api.ActionId
 import com.tencent.devops.common.pipeline.enums.ChannelCode
 import com.tencent.devops.common.web.RestResource
-import com.tencent.devops.process.pojo.setting.PipelineSetting
+import com.tencent.devops.common.pipeline.pojo.setting.PipelineSetting
 import com.tencent.devops.process.pojo.setting.UpdatePipelineModelRequest
 import com.tencent.devops.process.service.pipeline.PipelineSettingFacadeService
 import org.springframework.beans.factory.annotation.Autowired
@@ -40,6 +42,7 @@ class ServicePipelineSettingResourceImpl @Autowired constructor(
     private val pipelineSettingFacadeService: PipelineSettingFacadeService
 ) : ServicePipelineSettingResource {
 
+    @AuditEntry(actionId = ActionId.PIPELINE_EDIT)
     override fun updatePipelineModel(
         userId: String,
         updatePipelineModelRequest: UpdatePipelineModelRequest

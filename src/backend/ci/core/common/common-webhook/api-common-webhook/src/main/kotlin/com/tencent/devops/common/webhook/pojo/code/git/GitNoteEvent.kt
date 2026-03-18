@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,7 +29,7 @@ package com.tencent.devops.common.webhook.pojo.code.git
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonProperty
-import io.swagger.annotations.ApiParam
+import io.swagger.v3.oas.annotations.Parameter
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class GitNoteEvent(
@@ -39,14 +39,14 @@ data class GitNoteEvent(
     val objectAttributes: GitNoteAttributes,
     @JsonProperty("project_id")
     val projectId: Long,
-    @ApiParam("对提交进行评论时存在")
+    @Parameter(description = "对提交进行评论时存在")
     val commit: GitCommit?,
     @JsonProperty("merge_request")
-    @ApiParam("对合并请求评论时存在")
+    @Parameter(description = "对合并请求评论时存在")
     val mergeRequest: GitMRAttributes?,
-    @ApiParam("对缺陷进行评论时存在")
+    @Parameter(description = "对缺陷进行评论时存在")
     val issue: GitIssueAttributes?,
-    @ApiParam("对评审进行评论时存在")
+    @Parameter(description = "对评审进行评论时存在")
     val review: GitReviewAttributes?
 ) : GitEvent() {
     companion object {

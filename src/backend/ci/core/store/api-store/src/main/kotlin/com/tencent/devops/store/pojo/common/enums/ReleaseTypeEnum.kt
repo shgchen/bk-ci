@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -33,7 +33,8 @@ enum class ReleaseTypeEnum(val releaseType: Int) {
     COMPATIBILITY_UPGRADE(2), // 兼容性功能更新
     COMPATIBILITY_FIX(3), // 兼容性问题修正
     CANCEL_RE_RELEASE(4), // 取消发布后重新发布
-    HIS_VERSION_UPGRADE(5); // 历史大版本下的小版本更新
+    HIS_VERSION_UPGRADE(5), // 历史大版本下的小版本更新
+    BRANCH_TEST(6); // 分支测试
 
     fun isDefaultShow(): Boolean = this == COMPATIBILITY_UPGRADE || this == COMPATIBILITY_FIX
 

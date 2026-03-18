@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -47,7 +47,9 @@ object LuceneIndexUtils {
         doc.add(StringField("timestamp", logMessage.timestamp.toString(), Field.Store.YES))
         doc.add(StringField("tag", logMessage.tag, Field.Store.YES))
         doc.add(StringField("subTag", logMessage.subTag ?: "", Field.Store.YES))
+        doc.add(StringField("containerHashId", logMessage.containerHashId, Field.Store.YES))
         doc.add(StringField("jobId", logMessage.jobId, Field.Store.YES))
+        doc.add(StringField("stepId", logMessage.stepId, Field.Store.YES))
         doc.add(StringField("logType", logMessage.logType.name, Field.Store.YES))
         doc.add(IntPoint("executeCount", logMessage.executeCount ?: 1))
         doc.add(StoredField("executeCount", logMessage.executeCount ?: 1))

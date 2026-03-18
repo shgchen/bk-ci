@@ -6,20 +6,44 @@
             class="log-tools"
         >
             <template v-slot:tool>
-                <li class="more-button" @click="toggleShowDebugLog">
+                <li
+                    class="more-button"
+                    @click="toggleShowDebugLog"
+                >
                     {{ showDebug ? $t("hideDebugLog") : $t("showDebugLog") }}
                 </li>
-                <li class="more-button" @click="downloadLog">{{ $t("downloadLog") }}</li>
+                <li
+                    class="more-button"
+                    @click="downloadLog"
+                >
+                    {{ $t("downloadLog") }}
+                </li>
             </template>
         </bk-log-search>
-        <bk-log class="bk-log" ref="scroll" @tag-change="tagChange"></bk-log>
+        <bk-log
+            class="bk-log"
+            ref="scroll"
+            :enable-a-i="enableAI"
+            :ai-tips="aiTips"
+            @tag-change="tagChange"
+            @praise-ai="handlePraiseAi"
+            @down-praise-ai="handleDownPraiseAi"
+            @load-ai-message="handleLoadAiMessage"
+            @reload-ai-message="handleReloadAiMessage"
+            @cancel-praise-ai="handleCancelPraiseAI"
+            @cancel-down-praise-ai="handleCancelDownPraiseAI"
+        />
     </section>
 </template>
 
 <script>
-    import { mapActions, mapState } from 'vuex'
+    import {
+        RESOURCE_ACTION,
+        handlePipelineNoPermission
+    } from '@/utils/permission'
     import { hashID } from '@/utils/util.js'
-    import { bkLogSearch, bkLog } from '@blueking/log'
+    import { bkLog, bkLogSearch } from '@blueking/log'
+    import { mapActions, mapState } from 'vuex'
 
     export default {
         components: {
@@ -63,7 +87,9 @@
                 },
                 timeId: '',
                 clearIds: [],
-                showDebug: false
+                showDebug: false,
+                enableAI: false,
+                aiTips: ''
             }
         },
 
@@ -129,6 +155,7 @@
 
         mounted () {
             this.getLog()
+            this.checkAIStatus()
         },
 
         beforeDestroy () {
@@ -140,8 +167,103 @@
                 'getInitLog',
                 'getAfterLog',
                 'getLogStatus',
-                'getDownloadLogFromArtifactory'
+                'getDownloadLogFromArtifactory',
+                'praiseAi',
+                'cancelPraiseAi',
+                'getPraiseAiInfo',
+                'getLogAIMessage',
+                'getAIStatus'
             ]),
+
+            checkAIStatus () {
+                this.getAIStatus().then(res => {
+                    this.enableAI = res.data
+                    this.aiTips = this.$t('details.aiAnalysis', [this.$pipelineDocs.AIAnalysis])
+                })
+            },
+
+            handlePraiseAi (item) {
+                this.praiseAi({
+                    ...this.postData,
+                    score: true
+                }).then(() => {
+                    this.handleGetPraiseAiInfo(item)
+                    this.$bkMessage({ theme: 'success', message: this.$t('successPraise') })
+                })
+            },
+
+            handleDownPraiseAi (item) {
+                this.praiseAi({
+                    ...this.postData,
+                    score: false
+                }).then(() => {
+                    this.handleGetPraiseAiInfo(item)
+                    this.$bkMessage({ theme: 'success', message: this.$t('successDownPraise') })
+                })
+            },
+
+            handleCancelPraiseAI (item) {
+                this.cancelPraiseAi({
+                    ...this.postData,
+                    score: true
+                }).then(() => {
+                    this.handleGetPraiseAiInfo(item)
+                    this.$bkMessage({ theme: 'success', message: this.$t('successCancelPraise') })
+                })
+            },
+
+            handleCancelDownPraiseAI (item) {
+                this.cancelPraiseAi({
+                    ...this.postData,
+                    score: false
+                }).then(() => {
+                    this.handleGetPraiseAiInfo(item)
+                    this.$bkMessage({ theme: 'success', message: this.$t('successCancelDownPraise') })
+                })
+            },
+
+            handleGetPraiseAiInfo (item) {
+                const scrollRef = this.$refs.scroll
+                this.getPraiseAiInfo({
+                    ...this.postData
+                })
+                    .then((res) => {
+                        item.goodUsers = res.data.goodUsers
+                        item.badUsers = res.data.badUsers
+                        scrollRef.setSingleLogData(item)
+                    })
+            },
+
+            handleLoadAiMessage (item) {
+                item.aiMessage = ''
+                const scrollRef = this.$refs.scroll
+                this.handleGetPraiseAiInfo(item)
+                this.getLogAIMessage({
+                    ...this.postData,
+                    refresh: false,
+                    callBack (val) {
+                        item.aiMessage += val
+                        scrollRef.setSingleLogData(item)
+                        scrollRef.scrollAILogToBottom()
+                    }
+                })
+            },
+
+            handleReloadAiMessage (item) {
+                item.aiMessage = ''
+                const scrollRef = this.$refs.scroll
+                this.getLogAIMessage({
+                    ...this.postData,
+                    refresh: true,
+                    callBack (val) {
+                        item.aiMessage += val
+                        scrollRef.setSingleLogData(item)
+                        scrollRef.scrollAILogToBottom()
+                    }
+                }).then(() => {
+                    this.handleGetPraiseAiInfo(item)
+                })
+            },
 
             getLog () {
                 const id = hashID()
@@ -187,8 +309,15 @@
                         }
                     })
                     .catch((err) => {
+                        if (err.status === 403) {
+                            handlePipelineNoPermission({
+                                projectId: this.$route.params.projectId,
+                                resourceCode: this.$route.params.pipelineId,
+                                action: RESOURCE_ACTION.EXECUTE
+                            })
+                        }
                         this.$bkMessage({ theme: 'error', message: err.message || err })
-                        if (scroll) scroll.handleApiErr(err.message)
+                        this.handleApiErr(err.message)
                     })
             },
 
@@ -245,7 +374,7 @@
                             ? await this.getDownloadLogFromArtifactory(pluginData)
                             : this.downloadLink
                     if (logMode === 'LOCAL') {
-                        this.$bkMessage({ theme: 'primary', message: this.$t('history.uploadLog') })
+                        this.$bkMessage({ theme: 'primary', message: this.$t('history.uploadLog'), limit: 1 })
                         return
                     }
                 }
@@ -259,7 +388,8 @@
 .plugin-log {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 1 1 auto;
+  overflow-y: auto;
   .log-tools {
     position: absolute;
     right: 20px;

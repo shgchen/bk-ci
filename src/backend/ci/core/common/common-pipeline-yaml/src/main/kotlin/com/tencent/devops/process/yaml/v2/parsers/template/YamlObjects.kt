@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -55,6 +55,7 @@ import com.tencent.devops.process.yaml.v2.parameter.Parameters
 import com.tencent.devops.process.yaml.v2.parsers.template.models.TemplateDeepTreeNode
 import com.tencent.devops.process.yaml.v2.utils.StreamEnvUtils
 
+@Suppress("ComplexMethod")
 object YamlObjects {
 
     fun getVariable(fromPath: String, key: String, variable: Map<String, Any>): Variable {
@@ -258,7 +259,14 @@ object YamlObjects {
                         null
                     } else {
                         transValue<List<String>>(fromPath, "mounts", optionsMap["mounts"])
-                    }
+                    },
+                    privileged = getNullValue("privileged", optionsMap)?.toBoolean(),
+                    network = if (optionsMap["network"] == null) {
+                        null
+                    } else {
+                        transValue<List<String>>(fromPath, "network", optionsMap["network"])
+                    },
+                    user = getNullValue("user", optionsMap)
                 )
             },
             imagePullPolicy = getNullValue(key = "image-pull-policy", map = containerMap)
@@ -267,9 +275,16 @@ object YamlObjects {
 
     fun getStrategy(fromPath: String, strategy: Any?): Strategy? {
         val strategyMap = transValue<Map<String, Any?>>(fromPath, "strategy", strategy)
-        val matrix = strategyMap["matrix"] ?: return null
+        val matrix = strategyMap["matrix"]
+        val include = strategyMap["include"]
+        val exclude = strategyMap["exclude"]
+        if (matrix == null && include == null && exclude == null) {
+            return null
+        }
         return Strategy(
             matrix = matrix,
+            include = include,
+            exclude = exclude,
             fastKill = getNullValue("fast-kill", strategyMap)?.toBoolean(),
             maxParallel = getNullValue("max-parallel", strategyMap)?.toInt()
         )

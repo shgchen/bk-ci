@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -36,6 +36,7 @@ import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_VM_SEQ_ID
 import com.tencent.devops.common.api.constant.HTTP_404
 import com.tencent.devops.common.api.exception.ClientException
 import com.tencent.devops.common.api.exception.RemoteServiceException
+import com.tencent.devops.common.api.util.JsonSchemaUtil
 import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.api.util.MessageUtil
 import com.tencent.devops.worker.common.CommonEnv
@@ -200,7 +201,18 @@ abstract class AbstractBuildResourceApi : WorkerRestApiSDK {
                     "Fail to request($request) with code ${response.code} ," +
                             " message ${response.message} and response ($responseContent)"
                 )
-                throw RemoteServiceException(errorMessage, response.code, responseContent)
+                val errorCode = if (responseContent != null && JsonSchemaUtil.isJsonObject(responseContent)) {
+                    val responseMap = JsonUtil.toMap(responseContent)
+                    responseMap[RemoteServiceException::errorCode.name]?.toString()?.toInt()
+                } else {
+                    null
+                }
+                throw RemoteServiceException(
+                    errorMessage = errorMessage,
+                    httpStatus = response.code,
+                    responseContent = responseContent,
+                    errorCode = errorCode
+                )
             }
             return response.body!!.string()
         }
@@ -221,12 +233,13 @@ abstract class AbstractBuildResourceApi : WorkerRestApiSDK {
             readTimeoutInSec = readTimeoutInSec,
             writeTimeoutInSec = writeTimeoutInSec
         ).use { response ->
-            if (response.code == HTTP_404) {
-                throw RemoteServiceException("file does not exist")
+            val httpStatus = response.code
+            if (httpStatus == HTTP_404) {
+                throw RemoteServiceException(errorMessage = "file does not exist", httpStatus = httpStatus)
             }
             if (!response.isSuccessful) {
                 LoggerService.addNormalLine(response.body!!.string())
-                throw RemoteServiceException("Failed to get file")
+                throw RemoteServiceException(errorMessage = "Failed to get file", httpStatus = httpStatus)
             }
             val dest = destPath.toPath()
             if (Files.notExists(dest.parent)) Files.createDirectories(dest.parent)

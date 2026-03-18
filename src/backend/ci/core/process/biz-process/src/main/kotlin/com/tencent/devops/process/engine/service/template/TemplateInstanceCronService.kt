@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -34,16 +34,20 @@ import com.tencent.devops.common.api.util.PageUtil
 import com.tencent.devops.common.client.Client
 import com.tencent.devops.common.pipeline.pojo.BuildFormProperty
 import com.tencent.devops.common.pipeline.pojo.BuildNo
+import com.tencent.devops.common.pipeline.pojo.element.atom.PipelineCheckFailedErrors
+import com.tencent.devops.common.pipeline.pojo.element.atom.PipelineCheckFailedMsg
 import com.tencent.devops.common.redis.RedisLock
 import com.tencent.devops.common.redis.RedisOperation
 import com.tencent.devops.common.service.Profile
 import com.tencent.devops.common.service.utils.SpringContextUtil
+import com.tencent.devops.common.web.utils.I18nUtil
 import com.tencent.devops.model.process.tables.records.TTemplateRecord
 import com.tencent.devops.process.constant.ProcessMessageCode
+import com.tencent.devops.process.constant.ProcessMessageCode.ERROR_PIPELINE_ELEMENT_CHECK_FAILED
 import com.tencent.devops.process.engine.dao.template.TemplateDao
 import com.tencent.devops.process.engine.dao.template.TemplateInstanceBaseDao
 import com.tencent.devops.process.engine.dao.template.TemplateInstanceItemDao
-import com.tencent.devops.process.pojo.template.TemplateInstanceBaseStatus
+import com.tencent.devops.process.pojo.template.TemplateInstanceStatus
 import com.tencent.devops.process.pojo.template.TemplateInstanceUpdate
 import com.tencent.devops.process.service.template.TemplateFacadeService
 import com.tencent.devops.process.util.TempNotifyTemplateUtils
@@ -82,8 +86,16 @@ class TemplateInstanceCronService @Autowired constructor(
     @Value("\${template.maxErrorReasonLength:200}")
     private val maxErrorReasonLength: Int = 200
 
+    @Value("\${template.enableTemplateInstanceCron:false}")
+    private val enableTemplateInstanceCron: Boolean = false
+
+    // todo 新版本上线后，停止该定时
     @Scheduled(cron = "0 0/1 * * * ?")
     fun templateInstance() {
+        if (!enableTemplateInstanceCron) {
+            logger.info("template instance cron is disabled")
+            return
+        }
         val profile = SpringContextUtil.getBean(Profile::class.java)
         val activeProfiles = profile.getActiveProfiles()
         val key = if (activeProfiles.size > 1) {
@@ -101,7 +113,7 @@ class TemplateInstanceCronService @Autowired constructor(
                 logger.info("get lock[$key] failed, skip")
                 return
             }
-            val statusList = listOf(TemplateInstanceBaseStatus.INIT.name, TemplateInstanceBaseStatus.INSTANCING.name)
+            val statusList = listOf(TemplateInstanceStatus.INIT.name, TemplateInstanceStatus.INSTANCING.name)
             val templateInstanceBaseList = templateInstanceBaseDao.getTemplateInstanceBaseList(
                 dslContext = dslContext,
                 statusList = statusList,
@@ -125,7 +137,7 @@ class TemplateInstanceCronService @Autowired constructor(
                     dslContext = dslContext,
                     projectId = projectId,
                     baseId = baseId,
-                    status = TemplateInstanceBaseStatus.INSTANCING.name,
+                    status = TemplateInstanceStatus.INSTANCING.name,
                     userId = "system"
                 )
                 val successPipelines = ArrayList<String>()
@@ -143,6 +155,9 @@ class TemplateInstanceCronService @Autowired constructor(
                 val template: TTemplateRecord?
                 try {
                     template = templateDao.getTemplate(dslContext = dslContext, version = templateVersion)
+                        ?: throw ErrorCodeException(
+                            errorCode = ProcessMessageCode.ERROR_TEMPLATE_NOT_EXISTS
+                        )
                 } catch (e: ErrorCodeException) {
                     if (e.errorCode == ProcessMessageCode.ERROR_TEMPLATE_NOT_EXISTS) {
                         // 模板版本记录如果已经被删，则无需执行更新任务并把任务记录删除
@@ -190,12 +205,42 @@ class TemplateInstanceCronService @Autowired constructor(
                                 )
                             )
                             successPipelines.add(pipelineName)
+                        } catch (exception: ErrorCodeException) {
+                            logger.info(
+                                "Fail to update the pipeline|$projectId|${templateInstanceItem.pipelineId}|" +
+                                    "$userId|${exception.message}"
+                            )
+                            val message = I18nUtil.generateResponseDataObject(
+                                messageCode = exception.errorCode,
+                                params = exception.params,
+                                data = null,
+                                defaultMessage = exception.defaultMessage
+                            ).message ?: exception.defaultMessage ?: "unknown!"
+                            // ERROR_PIPELINE_ELEMENT_CHECK_FAILED输出的是一个json,需要格式化输出
+                            val reason = if (exception.errorCode == ERROR_PIPELINE_ELEMENT_CHECK_FAILED) {
+                                JsonUtil.to(message, PipelineCheckFailedErrors::class.java)
+                            } else {
+                                PipelineCheckFailedMsg(message)
+                            }
+                            templateService.updateInstanceErrorInfo(
+                                projectId = projectId,
+                                pipelineId = templateInstanceItem.pipelineId,
+                                errorInfo = JsonUtil.toJson(reason, false)
+                            )
+                            failurePipelines.add("【$pipelineName】reason：${reason.message}")
                         } catch (ignored: Throwable) {
                             logger.warn("Fail to update the pipeline|$pipelineName|$projectId|$userId|$ignored")
                             val message =
                                 if (!ignored.message.isNullOrBlank() && ignored.message!!.length > maxErrorReasonLength)
                                     ignored.message!!.substring(0, maxErrorReasonLength) + "......"
                                 else ignored.message
+                            message?.let {
+                                templateService.updateInstanceErrorInfo(
+                                    projectId = projectId,
+                                    pipelineId = templateInstanceItem.pipelineId,
+                                    errorInfo = JsonUtil.toJson(PipelineCheckFailedMsg(it), false)
+                                )
+                            }
                             failurePipelines.add("【$pipelineName】reason: $message")
                         }
                     }

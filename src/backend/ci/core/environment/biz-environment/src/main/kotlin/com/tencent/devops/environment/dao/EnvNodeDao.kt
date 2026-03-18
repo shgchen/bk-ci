@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -46,6 +46,15 @@ class EnvNodeDao {
         }
     }
 
+    fun listNodeIds(dslContext: DSLContext, projectId: String, nodeIds: List<Long>): List<TEnvNodeRecord> {
+        with(TEnvNode.T_ENV_NODE) {
+            return dslContext.selectFrom(this)
+                .where(PROJECT_ID.eq(projectId))
+                .and(NODE_ID.`in`(nodeIds))
+                .fetch()
+        }
+    }
+
     fun count(dslContext: DSLContext, projectId: String, envId: Long): Int {
         with(TEnvNode.T_ENV_NODE) {
             return dslContext.selectCount()
@@ -70,20 +79,22 @@ class EnvNodeDao {
         if (nodeIds.isEmpty()) {
             return
         }
-        dslContext.batch(nodeIds.map {
-            with(TEnvNode.T_ENV_NODE) {
-                dslContext.insertInto(
-                    this,
-                    ENV_ID,
-                    NODE_ID,
-                    PROJECT_ID
-                ).values(
-                    envId,
-                    it,
-                    projectId
-                )
+        dslContext.batch(
+            nodeIds.map {
+                with(TEnvNode.T_ENV_NODE) {
+                    dslContext.insertInto(
+                        this,
+                        ENV_ID,
+                        NODE_ID,
+                        PROJECT_ID
+                    ).values(
+                        envId,
+                        it,
+                        projectId
+                    )
+                }
             }
-        }).execute()
+        ).execute()
     }
 
     fun batchDeleteEnvNode(dslContext: DSLContext, projectId: String, envId: Long, nodeIds: List<Long>) {
@@ -100,14 +111,14 @@ class EnvNodeDao {
         }
     }
 
-    fun deleteByNodeIds(dslContext: DSLContext, nodeIds: List<Long>) {
+    fun deleteByNodeIds(dslContext: DSLContext, projectId: String, nodeIds: List<Long>) {
         if (nodeIds.isEmpty()) {
             return
         }
-
         with(TEnvNode.T_ENV_NODE) {
             dslContext.deleteFrom(this)
                 .where(NODE_ID.`in`(nodeIds))
+                .and(PROJECT_ID.eq(projectId))
                 .execute()
         }
     }
@@ -117,6 +128,32 @@ class EnvNodeDao {
             dslContext.deleteFrom(this)
                 .where(ENV_ID.eq(envId))
                 .execute()
+        }
+    }
+
+    fun disableOrEnableNode(dslContext: DSLContext, projectId: String, envId: Long, nodeId: Long, enable: Boolean) =
+        with(TEnvNode.T_ENV_NODE) {
+            dslContext.update(this)
+                .set(ENABLE_NODE, enable)
+                .where(PROJECT_ID.eq(projectId))
+                .and(ENV_ID.eq(envId))
+                .and(NODE_ID.eq(nodeId))
+                .execute() == 1
+        }
+
+    fun exists(dslContext: DSLContext, projectId: String, envId: Long, nodeId: Long): Boolean {
+        // 参数校验，避免无效查询
+        if (projectId.isBlank() || envId <= 0 || nodeId <= 0) {
+            return false
+        }
+
+        return with(TEnvNode.T_ENV_NODE) {
+            dslContext.fetchExists(
+                /* table = */ this,
+                /* condition = */ PROJECT_ID.eq(projectId)
+                    .and(ENV_ID.eq(envId))
+                    .and(NODE_ID.eq(nodeId))
+            )
         }
     }
 }

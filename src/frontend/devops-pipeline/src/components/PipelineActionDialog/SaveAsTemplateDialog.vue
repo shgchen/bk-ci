@@ -14,9 +14,10 @@
         @cancel="cancel"
     >
         <bk-form
+            ref="formRef"
             v-if="isSaveAsTemplateShow"
             v-bkloading="{ isLoading: isSubmiting }"
-            :model="formModel"
+            :model="model"
             label-width="120"
         >
             <bk-form-item
@@ -24,15 +25,20 @@
                 :key="item.name"
                 :desc="item.desc"
                 :property="item.name"
+                :required="item.required"
                 :rules="item.rules"
                 :label="$t(`template.${item.label}`)"
+                error-display-type="normal"
             >
                 <bk-input
                     v-if="item.name === 'templateName'"
                     v-model="model.templateName"
                     :placeholder="$t(`template.${item.placeholder}`)"
                 />
-                <bk-radio-group v-else v-model="model.isCopySetting">
+                <bk-radio-group
+                    v-else
+                    v-model="model.isCopySetting"
+                >
                     <bk-radio
                         v-for="(entry, key) in optionGroups"
                         :key="key"
@@ -80,19 +86,22 @@
                         name: 'templateName',
                         label: 'name',
                         placeholder: 'nameInputTips',
+                        required: true,
                         rules: [
                             {
                                 required: true,
-                                message: this.$t('template.nameInputTips')
+                                message: this.$t('template.nameInputTips'),
+                                trigger: 'change'
                             },
                             {
-                                max: 30,
-                                message: this.$t('pipelineNameInputTips')
+                                max: 128,
+                                message: this.$t('pipelineNameInputTips'),
+                                trigger: 'change'
                             }
                         ]
                     },
                     {
-                        name: 'applySetting',
+                        name: 'isCopySetting',
                         label: 'applySetting',
                         desc: this.$t('template.tipsSetting')
                     }
@@ -104,11 +113,15 @@
             reset () {
                 this.model = {
                     templateName: '',
-                    applySetting: false
+                    isCopySetting: false
                 }
             },
             async submit () {
                 if (this.isSubmiting) return
+                
+                const valid = await this.$refs.formRef.validate()
+                if (!valid) return
+
                 let message = this.$t('newlist.saveAsTempSuc')
                 let theme = 'success'
                 try {

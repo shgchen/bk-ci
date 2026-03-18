@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -35,11 +35,13 @@ import com.tencent.devops.common.event.dispatcher.pipeline.PipelineEventDispatch
 import com.tencent.devops.common.event.enums.ActionType
 import com.tencent.devops.common.pipeline.enums.ChannelCode
 import com.tencent.devops.common.web.utils.I18nUtil
+import com.tencent.devops.model.process.tables.records.TPipelineTimerBranchRecord
 import com.tencent.devops.model.process.tables.records.TPipelineTimerRecord
 import com.tencent.devops.process.constant.ProcessMessageCode.ADD_PIPELINE_TIMER_TRIGGER_SAVE_FAIL
 import com.tencent.devops.process.constant.ProcessMessageCode.ERROR_DEL_PIPELINE_TIMER
 import com.tencent.devops.process.constant.ProcessMessageCode.ERROR_SAVE_PIPELINE_TIMER
 import com.tencent.devops.process.engine.pojo.PipelineTimer
+import com.tencent.devops.process.plugin.trigger.dao.PipelineTimerBranchDao
 import com.tencent.devops.process.plugin.trigger.dao.PipelineTimerDao
 import com.tencent.devops.process.plugin.trigger.pojo.event.PipelineTimerChangeEvent
 import org.jooq.DSLContext
@@ -55,6 +57,7 @@ import org.springframework.stereotype.Service
 open class PipelineTimerService @Autowired constructor(
     private val dslContext: DSLContext,
     private val pipelineTimerDao: PipelineTimerDao,
+    private val pipelineTimerBranchDao: PipelineTimerBranchDao,
     private val pipelineEventDispatcher: PipelineEventDispatcher
 ) {
 
@@ -67,15 +70,34 @@ open class PipelineTimerService @Autowired constructor(
         pipelineId: String,
         userId: String,
         crontabExpressions: Set<String>,
-        channelCode: ChannelCode
+        channelCode: ChannelCode,
+        repoHashId: String?,
+        branchs: Set<String>?,
+        taskId: String,
+        noScm: Boolean?,
+        startParam: Map<String, String>?
     ): Result<Boolean> {
         val crontabJson = JsonUtil.toJson(crontabExpressions, formatted = false)
-        return if (0 < pipelineTimerDao.save(dslContext, projectId, pipelineId, userId, crontabJson, channelCode)) {
+        return if (0 < pipelineTimerDao.save(
+                dslContext,
+                projectId,
+                pipelineId,
+                userId,
+                crontabJson,
+                channelCode,
+                repoHashId,
+                branchs?.let { JsonUtil.toJson(it) },
+                noScm,
+                startParam?.let { JsonUtil.toJson(it) },
+                taskId
+            )
+        ) {
             pipelineEventDispatcher.dispatch(
                 PipelineTimerChangeEvent(
                     source = "saveTimer",
                     projectId = projectId,
                     pipelineId = pipelineId,
+                    taskId = taskId,
                     userId = userId,
                     crontabExpressionJson = crontabJson
                 )
@@ -87,6 +109,7 @@ open class PipelineTimerService @Autowired constructor(
                     source = "saveTimer_fail",
                     projectId = projectId,
                     pipelineId = pipelineId,
+                    taskId = taskId,
                     userId = userId,
                     crontabExpressionJson = crontabJson,
                     actionType = ActionType.TERMINATE
@@ -96,22 +119,28 @@ open class PipelineTimerService @Autowired constructor(
                 ERROR_SAVE_PIPELINE_TIMER.toInt(),
                 MessageUtil.getMessageByLocale(
                     ADD_PIPELINE_TIMER_TRIGGER_SAVE_FAIL,
-                    I18nUtil.getLanguage(userId))
+                    I18nUtil.getLanguage(userId)
+                )
             )
         }
     }
 
-    open fun deleteTimer(projectId: String, pipelineId: String, userId: String): Result<Boolean> {
+    open fun deleteTimer(projectId: String, pipelineId: String, userId: String, taskId: String?): Result<Boolean> {
         var count = 0
-        val timerRecord = pipelineTimerDao.get(dslContext, projectId, pipelineId)
+        val timerRecord = pipelineTimerDao.get(dslContext, projectId, pipelineId, taskId ?: "")
         if (timerRecord != null) {
-            count = pipelineTimerDao.delete(dslContext, projectId, pipelineId)
+            count = pipelineTimerDao.delete(dslContext, projectId, pipelineId, timerRecord.taskId)
+            if (taskId.isNullOrBlank()) {
+                // 删除旧的定时任务信息
+                logger.info("clean the old timer record|$projectId|$pipelineId|$taskId|changeCount[$count]")
+            }
             // 终止定时器
             pipelineEventDispatcher.dispatch(
                 PipelineTimerChangeEvent(
                     source = "deleteTimer",
                     projectId = timerRecord.projectId,
                     pipelineId = pipelineId,
+                    taskId = taskId,
                     userId = userId,
                     crontabExpressionJson = timerRecord.crontab,
                     actionType = ActionType.TERMINATE
@@ -129,29 +158,70 @@ open class PipelineTimerService @Autowired constructor(
         )
     }
 
-    open fun get(projectId: String, pipelineId: String): PipelineTimer? {
-        val timerRecord = pipelineTimerDao.get(dslContext, projectId, pipelineId) ?: return null
+    open fun get(projectId: String, pipelineId: String, taskId: String?): PipelineTimer? {
+        val timerRecord = if (taskId.isNullOrBlank()) {
+            // 如果taskId为空或空白，则尝试获取指定项目和流水线的定时器记录
+            pipelineTimerDao.get(
+                dslContext = dslContext,
+                projectId = projectId,
+                pipelineId = pipelineId,
+                taskId = ""
+            ) ?: pipelineTimerDao.get(
+                dslContext = dslContext,
+                projectId = projectId,
+                pipelineId = pipelineId
+            ).let {
+                if (it.size <= 1) {
+                    it.firstOrNull()
+                } else {
+                    // 存在多条匹配的数据，无法判读取哪条，跳过
+                    logger.warn("skipping|multiple records exist|$projectId|$pipelineId")
+                    null
+                }
+            }
+        } else {
+            // 如果taskId不为空，则尝试获取指定taskId的定时器记录
+            pipelineTimerDao.get(
+                dslContext = dslContext,
+                projectId = projectId,
+                pipelineId = pipelineId,
+                taskId = taskId
+            ) ?: pipelineTimerDao.get(
+                dslContext = dslContext,
+                projectId = projectId,
+                pipelineId = pipelineId,
+                taskId = ""
+            )
+        } ?: return null
         return convert(timerRecord)
     }
 
     private fun convert(timerRecord: TPipelineTimerRecord): PipelineTimer? {
-        return PipelineTimer(
-            projectId = timerRecord.projectId,
-            pipelineId = timerRecord.pipelineId,
-            startUser = timerRecord.creator,
-            crontabExpressions = try {
-                JsonUtil.to(timerRecord.crontab, object : TypeReference<List<String>>() {})
-            } catch (ignored: Throwable) {
-                listOf(timerRecord.crontab)
-            },
-            channelCode = try {
-                ChannelCode.valueOf(timerRecord.channel)
-            } catch (e: IllegalArgumentException) {
-                logger.warn("Unkown channel code", e)
-                return null
-            }
-
-        )
+        with(timerRecord) {
+            return PipelineTimer(
+                projectId = projectId,
+                pipelineId = pipelineId,
+                startUser = creator,
+                crontabExpressions = try {
+                    JsonUtil.to(crontab, object : TypeReference<List<String>>() {})
+                } catch (ignored: Throwable) {
+                    listOf(crontab)
+                },
+                channelCode = try {
+                    ChannelCode.valueOf(channel)
+                } catch (e: IllegalArgumentException) {
+                    logger.warn("Unkown channel code", e)
+                    return null
+                },
+                repoHashId = repoHashId,
+                branchs = branchs?.let {
+                    JsonUtil.to(it, object : TypeReference<List<String>>() {})
+                },
+                noScm = noScm,
+                taskId = taskId,
+                startParam = startParam?.let { JsonUtil.to(it, object : TypeReference<Map<String, String>>() {}) }
+            )
+        }
     }
 
     open fun list(start: Int, limit: Int): Result<Collection<PipelineTimer>> {
@@ -164,5 +234,174 @@ open class PipelineTimerService @Autowired constructor(
             timerList.add(convert(record) ?: return@forEach)
         }
         return Result(timerList)
+    }
+
+    fun saveTimerBranch(
+        projectId: String,
+        pipelineId: String,
+        taskId: String,
+        repoHashId: String,
+        branch: String,
+        revision: String
+    ) {
+        pipelineTimerBranchDao.save(
+            dslContext = dslContext,
+            projectId = projectId,
+            pipelineId = pipelineId,
+            taskId = taskId,
+            repoHashId = repoHashId,
+            branch = branch,
+            revision = revision
+        )
+    }
+
+    fun getTimerBranch(
+        projectId: String,
+        pipelineId: String,
+        taskId: String,
+        repoHashId: String,
+        branch: String
+    ): TPipelineTimerBranchRecord? {
+        return pipelineTimerBranchDao.get(
+            dslContext = dslContext,
+            projectId = projectId,
+            pipelineId = pipelineId,
+            taskId = taskId,
+            repoHashId = repoHashId,
+            branch = branch
+        ) ?: pipelineTimerBranchDao.get(
+            dslContext = dslContext,
+            projectId = projectId,
+            pipelineId = pipelineId,
+            taskId = "",
+            repoHashId = repoHashId,
+            branch = branch
+        )
+    }
+
+    fun getTimerBranch(
+        projectId: String?,
+        pipelineId: String?,
+        limit: Int?,
+        offset: Int?
+    ): List<Pair<String, String>> {
+        return pipelineTimerBranchDao.get(
+            dslContext = dslContext,
+            projectId = projectId,
+            pipelineId = pipelineId,
+            limit = limit,
+            offset = offset
+        )
+    }
+
+    fun getTimerBranch(
+        projectId: String,
+        pipelineId: String
+    ): org.jooq.Result<TPipelineTimerBranchRecord> {
+        return pipelineTimerBranchDao.get(
+            dslContext = dslContext,
+            projectId = projectId,
+            pipelineId = pipelineId
+        )
+    }
+
+    fun deleteTimerBranch(
+        projectId: String,
+        pipelineId: String,
+        repoHashId: String?,
+        branch: String?,
+        taskId: String?
+    ): Int {
+        return pipelineTimerBranchDao.delete(
+            dslContext = dslContext,
+            projectId = projectId,
+            pipelineId = pipelineId,
+            repoHashId = repoHashId,
+            branch = branch,
+            taskId = taskId
+        )
+    }
+
+    fun updateTimerBranch(
+        projectId: String,
+        pipelineId: String,
+        sourceRepoHashId: String?,
+        sourceBranch: String?,
+        sourceTaskId: String?,
+        targetTaskId: String
+    ): Int {
+        return pipelineTimerBranchDao.updateTimerBranch(
+            dslContext = dslContext,
+            projectId = projectId,
+            pipelineId = pipelineId,
+            sourceRepoHashId = sourceRepoHashId,
+            sourceBranch = sourceBranch,
+            sourceTaskId = sourceTaskId,
+            targetTaskId = targetTaskId
+        )
+    }
+
+    fun listTimer(projectId: String, pipelineId: String): List<TPipelineTimerRecord> {
+        return pipelineTimerDao.list(
+            dslContext = dslContext,
+            projectId = projectId,
+            pipelineId = pipelineId
+        )
+    }
+
+    fun listPipeline(projectId: String?, pipelineId: String?, limit: Int, offset: Int): List<Pair<String, String>> {
+        return pipelineTimerDao.listPipeline(
+            dslContext = dslContext,
+            projectId = projectId,
+            pipelineId = pipelineId,
+            limit = limit,
+            offset = offset
+        )
+    }
+
+    /**
+     * 修改定时任务record，并更新quartz定时任务
+     */
+    fun updateTimer(
+        projectId: String,
+        pipelineId: String,
+        taskId: String,
+        userId: String,
+        startParam: Map<String, String>?,
+        crontabExpressionJson: String
+    ): Result<Boolean> {
+        return if (pipelineTimerDao.update(
+                dslContext = dslContext,
+                projectId = projectId,
+                pipelineId = pipelineId,
+                taskId = taskId,
+                startParam = startParam?.let {
+                    JsonUtil.toJson(it, false)
+                }
+            ) > 0
+        ) {
+            pipelineEventDispatcher.dispatch(
+                PipelineTimerChangeEvent(
+                    source = "saveTimer",
+                    projectId = projectId,
+                    pipelineId = pipelineId,
+                    taskId = taskId,
+                    userId = userId,
+                    crontabExpressionJson = crontabExpressionJson
+                )
+            )
+            return Result(true)
+        } else Result(false)
+    }
+
+    fun cleanTimer(
+        projectId: String,
+        pipelineId: String
+    ): Int {
+        return pipelineTimerDao.delete(
+            dslContext = dslContext,
+            pipelineId = pipelineId,
+            projectId = projectId
+        )
     }
 }

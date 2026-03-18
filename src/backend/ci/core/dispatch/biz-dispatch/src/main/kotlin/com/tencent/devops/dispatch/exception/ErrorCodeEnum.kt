@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -79,7 +79,7 @@ enum class ErrorCodeEnum(
         ErrorType.SYSTEM,
         2103011,
         "第三方构建机Agent正在升级中或排队重试超时，请检查agent（{0}）并发任务数设置并稍后重试."
-        ),
+    ),
     THIRD_PARTY_BUILD_MACHINE_STATUS_ERROR(
         ErrorType.USER,
         2103012,
@@ -113,6 +113,21 @@ enum class ErrorCodeEnum(
         ErrorType.USER,
         2103020,
         "获取登录调试容器链接失败 ({0})"
+    ),
+    BK_ENV_WORKER_ERROR_IGNORE_ALL_ERROR(
+        ErrorType.USER,
+        2103021,
+        "构建机环境中所有可用节点{0}启动构建进程失败，暂无可用节点"
+    ),
+    AGENT_REUSE_MUTEX_AGENT_NOT_FOUND(
+        ErrorType.USER,
+        2103022,
+        "构建机复用互斥，未找到Job: {0}对应的构建节点"
+    ),
+    GET_BUILD_RESOURCE_ERROR(
+        ErrorType.USER,
+        2103023,
+        "获取构建资源超时"
     );
 
     fun getErrorMessage(params: Array<String>? = null, language: String? = null): String {

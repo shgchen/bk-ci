@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -35,6 +35,8 @@ import com.tencent.devops.common.pipeline.option.JobControlOption
 import com.tencent.devops.common.redis.RedisOperation
 import com.tencent.devops.process.engine.pojo.PipelineBuildContainer
 import com.tencent.devops.process.engine.pojo.PipelineBuildContainerControlOption
+import com.tencent.devops.process.engine.service.EngineConfigService
+import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Disabled
@@ -43,8 +45,13 @@ import org.junit.jupiter.api.Test
 @Suppress("ALL", "UNUSED")
 class MutexControlTest {
 
-    private val buildLogPrinter: BuildLogPrinter = BuildLogPrinter(mockk())
-    private val redisOperation: RedisOperation = RedisOperation(mockk())
+    private val buildLogPrinter: BuildLogPrinter = BuildLogPrinter(mockk(), mockk())
+    private val redisOperation: RedisOperation = RedisOperation(
+        masterRedisTemplate = mockk(),
+        slaveRedisTemplate = mockk(),
+        lockRedisTemplate = mockk(),
+        splitMode = mockk()
+    )
     private val variables: Map<String, String> = mapOf(Pair("var1", "Test"))
     private val buildId: String = "b-12345678901234567890123456789012"
     private val containerId: String = "1"
@@ -65,25 +72,30 @@ class MutexControlTest {
         buildId = buildId,
         stageId = stageId,
         containerId = containerId,
+        jobId = "job-123",
         containerHashId = containerHashId,
         containerType = "vmBuild",
         seq = containerId.toInt(),
         status = BuildStatus.RUNNING,
         controlOption = PipelineBuildContainerControlOption(jobControlOption = JobControlOption()),
+        containPostTaskFlag = null,
         matrixGroupId = null,
         matrixGroupFlag = false
     )
+    private val engineConfigMock = mockk<EngineConfigService>()
     private val mutexControl: MutexControl = MutexControl(
         buildLogPrinter = buildLogPrinter,
         redisOperation = redisOperation,
         containerBuildRecordService = mockk(),
         pipelineUrlBean = mockk(),
-        pipelineContainerService = mockk()
+        pipelineContainerService = mockk(),
+        engineConfigService = engineConfigMock
     )
 
     @Test
     // 测试MutexControl的初始化功能
     fun initMutexGroup() {
+        every { engineConfigMock.getMutexMaxQueue() } returns 10
         val initMutexGroup = mutexControl.decorateMutexGroup(
             mutexGroup = mutexGroup,
             variables = variables

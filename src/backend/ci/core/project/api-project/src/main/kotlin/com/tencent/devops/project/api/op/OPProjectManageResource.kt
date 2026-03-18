@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,44 +30,51 @@ package com.tencent.devops.project.api.op
 import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_USER_ID
 import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_USER_ID_DEFAULT_VALUE
 import com.tencent.devops.common.api.pojo.Result
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.PUT
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.PUT
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["OP_PROJECT_MANAGE"], description = "OP-项目-管理")
+@Tag(name = "OP_PROJECT_MANAGE", description = "OP-项目-管理")
 @Path("/op/projects")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface OPProjectManageResource {
 
-    @ApiOperation("锁定项目流水线构建权限")
+    @Operation(summary = "锁定项目下流水线构建权限")
     @PUT
     @Path("/{projectId}/pipeline/build/lock")
     fun lockProjectPipelineBuildPermission(
-        @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_DEVOPS_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_DEVOPS_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
         userId: String,
-        @ApiParam(value = "项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @PathParam("projectId")
-        projectId: String
+        projectId: String,
+        @Parameter(description = "流水线ID", required = false)
+        @QueryParam("pipelineId")
+        pipelineId: String? = null
     ): Result<Boolean>
 
-    @ApiOperation("解锁项目流水线构建权限")
+    @Operation(summary = "解锁项目下流水线构建权限")
     @PUT
     @Path("/{projectId}/pipeline/build/unlock")
     fun unlockProjectPipelineBuildPermission(
-        @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_DEVOPS_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_DEVOPS_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
         userId: String,
-        @ApiParam(value = "项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @PathParam("projectId")
-        projectId: String
+        projectId: String,
+        @Parameter(description = "流水线ID", required = false)
+        @QueryParam("pipelineId")
+        pipelineId: String? = null
     ): Result<Boolean>
 }

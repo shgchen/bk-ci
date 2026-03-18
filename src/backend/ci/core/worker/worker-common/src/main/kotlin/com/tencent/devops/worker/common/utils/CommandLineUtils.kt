@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -34,20 +34,27 @@ import com.tencent.devops.common.api.pojo.ErrorType
 import com.tencent.devops.common.pipeline.enums.CharsetType
 import com.tencent.devops.process.utils.PIPELINE_TASK_MESSAGE_STRING_LENGTH_MAX
 import com.tencent.devops.worker.common.env.AgentEnv.getOS
+import com.tencent.devops.worker.common.heartbeat.Heartbeat
 import com.tencent.devops.worker.common.logger.LoggerService
 import com.tencent.devops.worker.common.task.script.ScriptEnvUtils
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.nio.charset.Charset
+import java.util.regex.Matcher
+import java.util.regex.Pattern
 import org.apache.commons.exec.CommandLine
 import org.apache.commons.exec.LogOutputStream
 import org.apache.commons.exec.PumpStreamHandler
 import org.slf4j.LoggerFactory
-import java.io.File
-import java.nio.charset.Charset
-import java.util.regex.Pattern
 
 @Suppress("LongParameterList")
 object CommandLineUtils {
 
+    /*OUTPUT_ERROR_CODE 正则匹配规则*/
+    private val OUTPUT_ERROR_CODE = Pattern.compile("error_code=([^,:=\\s]*)")
+
+    /*OUTPUT_ERROR_MESSAGE 正则匹配规则*/
+    private val OUTPUT_ERROR_MESSAGE = Pattern.compile("error_message=(.*)")
     private val logger = LoggerFactory.getLogger(CommandLineUtils::class.java)
 
     private val lineParser = listOf(OauthCredentialLineParser())
@@ -61,7 +68,8 @@ object CommandLineUtils {
         buildId: String? = null,
         jobId: String? = null,
         stepId: String? = null,
-        charsetType: String? = null
+        charsetType: String? = null,
+        taskId: String? = null
     ): String {
 
         val result = StringBuilder()
@@ -73,6 +81,7 @@ object CommandLineUtils {
             executor.workingDirectory = workspace
         }
         val contextLogFile = buildId?.let { ScriptEnvUtils.getContextFile(buildId) }
+        val setErrorFile = buildId?.let { ScriptEnvUtils.getSetErrorFile(buildId) }
 
         val charset = when (charsetType?.let { CharsetType.valueOf(it) }) {
             CharsetType.UTF_8 -> "UTF-8"
@@ -100,8 +109,13 @@ object CommandLineUtils {
                 lineParser.forEach {
                     tmpLine = it.onParseLine(tmpLine)
                 }
+                reportProgressRate(
+                    taskId = taskId,
+                    tmpLine = tmpLine
+                )
                 if (print2Logger) {
                     appendResultToFile(executor.workingDirectory, contextLogFile, tmpLine, jobId, stepId)
+                    appendSetErrorToFile(tmpLine, executor.workingDirectory, setErrorFile)
                     appendGateToFile(tmpLine, executor.workingDirectory, ScriptEnvUtils.getQualityGatewayEnvFile())
                     LoggerService.addNormalLine(tmpLine)
                 } else {
@@ -132,6 +146,7 @@ object CommandLineUtils {
                 }
                 if (print2Logger) {
                     appendResultToFile(executor.workingDirectory, contextLogFile, tmpLine, jobId, stepId)
+                    appendSetErrorToFile(tmpLine, executor.workingDirectory, setErrorFile)
                     LoggerService.addErrorLine(tmpLine)
                 } else {
                     result.append(tmpLine).append("\n")
@@ -166,6 +181,26 @@ object CommandLineUtils {
         return result.toString()
     }
 
+    fun reportProgressRate(
+        taskId: String?,
+        tmpLine: String
+    ): Double? {
+        val pattern = Pattern.compile("^[\"]?::set-progress-rate\\s*(.*)$")
+        val matcher = pattern.matcher(tmpLine.trim())
+        if (matcher.find()) {
+            val progressRate = matcher.group(1).removeSuffix("\"").toDoubleOrNull()
+            if (taskId != null && progressRate != null) {
+                Heartbeat.recordTaskProgressRate(
+                    taskId = taskId,
+                    progressRate = progressRate
+                )
+            }
+            logger.info("report progress rate:$tmpLine|$taskId|$progressRate")
+            return progressRate
+        }
+        return null
+    }
+
     private fun appendResultToFile(
         workspace: File?,
         resultLogFile: String?,
@@ -178,6 +213,7 @@ object CommandLineUtils {
             return
         }
         appendVariableToFile(tmpLine, workspace, resultLogFile)
+        appendRemarkToFile(tmpLine, workspace, resultLogFile)
         // 上下文返回给全局时追加jobs前缀
         if (jobId.isNullOrBlank() || stepId.isNullOrBlank()) {
             return
@@ -185,31 +221,48 @@ object CommandLineUtils {
         appendOutputToFile(tmpLine, workspace, resultLogFile, jobId, stepId)
     }
 
-    private fun appendVariableToFile(
+    fun appendVariableToFile(
         tmpLine: String,
         workspace: File?,
         resultLogFile: String
-    ) {
+    ): String? {
         val pattenVar = "[\"]?::set-variable\\sname=.*"
         val prefixVar = "::set-variable name="
         if (Pattern.matches(pattenVar, tmpLine)) {
             val value = tmpLine.removeSurrounding("\"").removePrefix(prefixVar)
             val keyValue = value.split("::")
             if (keyValue.size >= 2) {
-                File(workspace, resultLogFile).appendText(
-                    "variables.${keyValue[0]}=${value.removePrefix("${keyValue[0]}::")}\n"
-                )
+                val res = "variables.${keyValue[0]}=${value.removePrefix("${keyValue[0]}::")}\n"
+                File(workspace, resultLogFile).appendText(res)
+                return res
             }
         }
+        return null
     }
 
-    private fun appendOutputToFile(
+    fun appendRemarkToFile(
+        tmpLine: String,
+        workspace: File?,
+        resultLogFile: String
+    ): String? {
+        val pattenVar = "[\"]?::set-remark\\s.*"
+        val prefixVar = "::set-remark "
+        if (Pattern.matches(pattenVar, tmpLine)) {
+            val value = tmpLine.removeSurrounding("\"").removePrefix(prefixVar)
+            val res = "BK_CI_BUILD_REMARK=$value\n"
+            File(workspace, resultLogFile).appendText(res)
+            return res
+        }
+        return null
+    }
+
+    fun appendOutputToFile(
         tmpLine: String,
         workspace: File?,
         resultLogFile: String,
         jobId: String,
         stepId: String
-    ) {
+    ): String? {
         val pattenOutput = "[\"]?::set-output\\sname=.*"
         val prefixOutput = "::set-output name="
         if (Pattern.matches(pattenOutput, tmpLine)) {
@@ -217,29 +270,52 @@ object CommandLineUtils {
             val keyValue = value.split("::")
             val keyPrefix = "jobs.$jobId.steps.$stepId.outputs."
             if (keyValue.size >= 2) {
-                File(workspace, resultLogFile).appendText(
-                    "$keyPrefix${keyValue[0]}=${value.removePrefix("${keyValue[0]}::")}\n"
-                )
+                val res = "$keyPrefix${keyValue[0]}=${value.removePrefix("${keyValue[0]}::")}\n"
+                File(workspace, resultLogFile).appendText(res)
+                return res
             }
         }
+        return null
     }
 
-    private fun appendGateToFile(
+    fun appendSetErrorToFile(
+        tmpLine: String,
+        workspace: File?,
+        resultLogFile: String?
+    ): String? {
+        if (resultLogFile == null) {
+            return null
+        }
+        val pattenError = "[\"]?::set-error\\s(.*)"
+        val prefixError = "::set-error "
+        if (Pattern.matches(pattenError, tmpLine)) {
+            val value = tmpLine.removeSurrounding("\"").removePrefix(prefixError)
+            val code = getOutputMarcher(OUTPUT_ERROR_CODE.matcher(value)) ?: ""
+            val message = getOutputMarcher(OUTPUT_ERROR_MESSAGE.matcher(value)) ?: ""
+            val res = "$code=$message\n"
+            File(workspace, resultLogFile).appendText(res)
+            return res
+        }
+        return null
+    }
+
+    fun appendGateToFile(
         tmpLine: String,
         workspace: File?,
         resultLogFile: String
-    ) {
+    ): String? {
         val pattenOutput = "[\"]?::set-gate-value\\sname=.*"
         val prefixOutput = "::set-gate-value name="
         if (Pattern.matches(pattenOutput, tmpLine)) {
             val value = tmpLine.removeSurrounding("\"").removePrefix(prefixOutput)
             val keyValue = value.split("::")
             if (keyValue.size >= 2) {
-                File(workspace, resultLogFile).appendText(
-                    "${keyValue[0]}=${value.removePrefix("${keyValue[0]}::")}\n"
-                )
+                val res = "${keyValue[0]}=${value.removePrefix("${keyValue[0]}::")}\n"
+                File(workspace, resultLogFile).appendText(res)
+                return res
             }
         }
+        return null
     }
 
     fun execute(file: File, workspace: File?, print2Logger: Boolean, prefix: String = ""): String {
@@ -259,5 +335,14 @@ object CommandLineUtils {
         }
         logger.info("Executing command($command) in workspace($workspace)")
         return execute(command, workspace, print2Logger, prefix)
+    }
+
+    private fun getOutputMarcher(matcher: Matcher): String? {
+        return with(matcher) {
+            /*只返回匹配到的第一个，否则返回null*/
+            if (this.find()) {
+                this.group(1)
+            } else null
+        }
     }
 }

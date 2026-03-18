@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -32,8 +32,8 @@ import com.tencent.devops.process.pojo.BuildVariables
 import com.tencent.devops.store.pojo.atom.AtomDevLanguageEnvVar
 import com.tencent.devops.store.pojo.atom.AtomEnv
 import com.tencent.devops.store.pojo.atom.AtomEnvRequest
-import com.tencent.devops.store.pojo.common.SensitiveConfResp
-import com.tencent.devops.store.pojo.common.StorePkgRunEnvInfo
+import com.tencent.devops.store.pojo.common.sensitive.SensitiveConfResp
+import com.tencent.devops.store.pojo.common.env.StorePkgRunEnvInfo
 import com.tencent.devops.worker.common.api.WorkerRestApiSDK
 import java.io.File
 
@@ -95,7 +95,9 @@ interface AtomArchiveSDKApi : WorkerRestApiSDK {
         projectId: String,
         atomFilePath: String,
         file: File,
-        authFlag: Boolean
+        authFlag: Boolean,
+        queryCacheFlag: Boolean,
+        containerType: String? = null
     )
 
     fun getAtomDevLanguageEnvVars(

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -37,10 +37,11 @@ enum class JobQuotaVmType(val displayName: String) {
     MACOS_DEVCLOUD("MacOS on DevCloud"),
     WINDOWS_DEVCLOUD("Windows on DevCloud"),
     OTHER("私有构建机或集群"),
-    AGENTLESS("无编译环境"),
+    BUILD_LESS("无编译环境"),
     DOCKER_GITCI("工蜂CI构建机"),
     DOCKER_STREAM("STREAM构建机"),
     DOCKER_BCS("Docker on Bcs"),
+    DOCKER_PCG("PCG公共构建资源"),
     ALL("所有类型");
 
     companion object {

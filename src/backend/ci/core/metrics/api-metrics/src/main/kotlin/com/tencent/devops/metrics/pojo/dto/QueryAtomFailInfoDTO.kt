@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,30 +29,29 @@ package com.tencent.devops.metrics.pojo.dto
 
 import com.tencent.devops.common.web.annotation.BkField
 import com.tencent.devops.common.web.constant.BkStyleEnum
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("插件失败信息查询传输对象")
+@Schema(title = "插件失败信息查询传输对象")
 class QueryAtomFailInfoDTO(
-    @ApiModelProperty("项目ID")
+    @get:Schema(title = "项目ID")
     val projectId: String,
-    @ApiModelProperty("流水线ID")
+    @get:Schema(title = "流水线ID")
     val pipelineIds: List<String>? = null,
-    @ApiModelProperty("流水线标签")
+    @get:Schema(title = "流水线标签")
     val pipelineLabelIds: List<Long>? = null,
-    @ApiModelProperty("开始时间")
+    @get:Schema(title = "开始时间")
     val startTime: String,
-    @ApiModelProperty("结束时间")
+    @get:Schema(title = "结束时间")
     val endTime: String,
-    @ApiModelProperty("错误类型", required = false)
+    @get:Schema(title = "错误类型", required = false)
     val errorTypes: List<Int>?,
-    @ApiModelProperty("错误码", required = false)
+    @get:Schema(title = "错误码", required = false)
     val errorCodes: List<Int>?,
-    @ApiModelProperty("插件code", required = false)
+    @get:Schema(title = "插件code", required = false)
     val atomCodes: List<String>?,
-    @ApiModelProperty("页码")
+    @get:Schema(title = "页码")
     val page: Int = 1,
-    @ApiModelProperty("页数")
+    @get:Schema(title = "页数")
     @BkField(patternStyle = BkStyleEnum.PAGE_SIZE_STYLE, required = true)
     val pageSize: Int = 10
 )

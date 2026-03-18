@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,11 +29,8 @@ package com.tencent.devops.common.dispatch.sdk.utils
 
 import com.tencent.devops.common.pipeline.enums.ChannelCode
 import com.tencent.devops.common.service.BkTag
-import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.stereotype.Component
 
-@Component
 @Suppress("ALL")
 class ChannelUtils @Autowired constructor(
     private val bkTag: BkTag
@@ -47,9 +44,5 @@ class ChannelUtils @Autowired constructor(
         } else {
             ChannelCode.BS
         }
-    }
-
-    companion object {
-        private val logger = LoggerFactory.getLogger(ChannelUtils::class.java)
     }
 }

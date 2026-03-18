@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,17 +27,16 @@
 
 package com.tencent.devops.repository.pojo.oauth
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("工蜂oauth回调后信息")
+@Schema(title = "工蜂oauth回调后信息")
 data class GitOauthCallback(
-    @ApiModelProperty("工蜂项目Id")
+    @get:Schema(title = "工蜂项目Id")
     val gitProjectId: Long?,
-    @ApiModelProperty("发起oauth认证的用户")
+    @get:Schema(title = "发起oauth认证的用户")
     val userId: String,
-    @ApiModelProperty("工蜂返回token真实userId，可能是公共账号")
+    @get:Schema(title = "工蜂返回token真实userId，可能是公共账号")
     val oauthUserId: String,
-    @ApiModelProperty("回调后跳转的界面")
+    @get:Schema(title = "回调后跳转的界面")
     val redirectUrl: String
 )

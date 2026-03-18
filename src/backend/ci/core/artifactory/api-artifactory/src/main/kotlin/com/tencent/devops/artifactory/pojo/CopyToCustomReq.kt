@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,14 +28,13 @@
 package com.tencent.devops.artifactory.pojo
 
 import com.tencent.devops.common.api.exception.OperationException
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("复制流水线构建归档到自定义仓库请求")
+@Schema(title = "复制流水线构建归档到自定义仓库请求")
 data class CopyToCustomReq(
-    @ApiModelProperty("文件列表", required = true)
+    @get:Schema(title = "文件列表", required = true)
     val files: List<String>,
-    @ApiModelProperty("是否拷贝所有文件", required = true)
+    @get:Schema(title = "是否拷贝所有文件", required = true)
     val copyAll: Boolean
 ) {
     fun check() {

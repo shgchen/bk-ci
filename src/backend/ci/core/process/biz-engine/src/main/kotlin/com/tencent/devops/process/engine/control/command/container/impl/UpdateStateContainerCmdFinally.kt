@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,10 +27,17 @@
 
 package com.tencent.devops.process.engine.control.command.container.impl
 
+import com.fasterxml.jackson.core.type.TypeReference
+import com.tencent.devops.common.api.util.JsonUtil
+import com.tencent.devops.common.api.util.timestamp
 import com.tencent.devops.common.event.dispatcher.pipeline.PipelineEventDispatcher
 import com.tencent.devops.common.event.enums.ActionType
+import com.tencent.devops.common.event.enums.PipelineBuildStatusBroadCastEventType
+import com.tencent.devops.common.event.pojo.pipeline.PipelineBuildStatusBroadCastEvent
 import com.tencent.devops.common.log.utils.BuildLogPrinter
+import com.tencent.devops.common.pipeline.container.Container
 import com.tencent.devops.common.pipeline.enums.BuildStatus
+import com.tencent.devops.common.pipeline.pojo.time.BuildRecordTimeCost
 import com.tencent.devops.common.redis.RedisOperation
 import com.tencent.devops.process.engine.common.VMUtils
 import com.tencent.devops.process.engine.control.DispatchQueueControl
@@ -44,9 +51,9 @@ import com.tencent.devops.process.engine.service.PipelineTaskService
 import com.tencent.devops.process.engine.service.record.ContainerBuildRecordService
 import com.tencent.devops.process.engine.utils.BuildUtils
 import com.tencent.devops.process.util.TaskUtils
+import java.time.LocalDateTime
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import java.time.LocalDateTime
 
 @Service
 class UpdateStateContainerCmdFinally(
@@ -91,16 +98,60 @@ class UpdateStateContainerCmdFinally(
             if (matrixGroupId.isNullOrBlank()) {
                 sendBackStage(commandContext = commandContext)
             } else {
-                pipelineEventDispatcher.dispatch(
-                    commandContext.event.copy(
-                        actionType = ActionType.REFRESH,
-                        containerId = matrixGroupId,
-                        containerHashId = null,
-                        source = commandContext.latestSummary,
-                        reason = "Matrix(${commandContext.container.containerId}) inner container finished"
+                with(commandContext.event) {
+                    pipelineEventDispatcher.dispatch(
+                        commandContext.event.copy(
+                            actionType = ActionType.REFRESH,
+                            containerId = matrixGroupId,
+                            containerHashId = null,
+                            source = commandContext.latestSummary,
+                            reason = "Matrix(${commandContext.container.containerId}) inner container finished"
+                        ),
+                        // matrix job 结束
+                        PipelineBuildStatusBroadCastEvent(
+                            source = "StartActionTaskContainerCmd",
+                            projectId = projectId,
+                            pipelineId = pipelineId,
+                            userId = userId,
+                            buildId = buildId,
+                            actionType = ActionType.END,
+                            stageId = stageId,
+                            containerHashId = containerHashId,
+                            jobId = commandContext.container.jobId,
+                            stepId = null,
+                            executeCount = executeCount,
+                            buildStatus = commandContext.buildStatus.name,
+                            type = PipelineBuildStatusBroadCastEventType.BUILD_JOB_END,
+                            labels = loadLabels(commandContext)
+                        )
                     )
-                )
+                }
             }
+        }
+    }
+
+    private fun loadLabels(commandContext: ContainerContext): Map<String, Any?>? {
+        with(commandContext) {
+            val record = containerBuildRecordService.getRecord(
+                transactionContext = null, projectId = container.projectId, pipelineId = container.pipelineId,
+                buildId = container.buildId, containerId = container.containerId, executeCount = container.executeCount
+            ) ?: return null
+            val timeCost = JsonUtil.anyToOrNull(
+                record.containerVar[Container::timeCost.name],
+                object : TypeReference<BuildRecordTimeCost>() {})
+            val map = mutableMapOf<String, Any?>()
+            map[PipelineBuildStatusBroadCastEvent.Labels::startTime.name] = record.startTime?.timestamp()
+            map[PipelineBuildStatusBroadCastEvent.Labels::duration.name] = timeCost?.totalCost
+            map[PipelineBuildStatusBroadCastEvent.Labels::executeDuration.name] = timeCost?.executeCost
+            map[PipelineBuildStatusBroadCastEvent.Labels::systemDuration.name] = timeCost?.systemCost
+            map[PipelineBuildStatusBroadCastEvent.Labels::queueDuration.name] = timeCost?.queueCost
+            map[PipelineBuildStatusBroadCastEvent.Labels::reviewDuration.name] = timeCost?.waitCost
+            if (container.status.isFailure()) {
+                map[PipelineBuildStatusBroadCastEvent.Labels::errorCode.name] = event.errorCode
+                map[PipelineBuildStatusBroadCastEvent.Labels::errorType.name] = event.errorTypeName
+                map[PipelineBuildStatusBroadCastEvent.Labels::errorMessage.name] = event.reason
+            }
+            return map
         }
     }
 
@@ -211,6 +262,23 @@ class UpdateStateContainerCmdFinally(
                     buildId = buildId,
                     stageId = stageId,
                     actionType = ActionType.REFRESH
+                ),
+                // job 结束
+                PipelineBuildStatusBroadCastEvent(
+                    source = "StartActionTaskContainerCmd",
+                    projectId = projectId,
+                    pipelineId = pipelineId,
+                    userId = userId,
+                    buildId = buildId,
+                    actionType = ActionType.END,
+                    stageId = stageId,
+                    containerHashId = containerHashId,
+                    jobId = commandContext.container.jobId,
+                    stepId = null,
+                    executeCount = executeCount,
+                    buildStatus = commandContext.buildStatus.name,
+                    type = PipelineBuildStatusBroadCastEventType.BUILD_JOB_END,
+                    labels = loadLabels(commandContext)
                 )
             )
 
@@ -218,8 +286,10 @@ class UpdateStateContainerCmdFinally(
                 buildId = buildId,
                 message = "[$executeCount]| Finish Job#${this.containerId}| ${commandContext.latestSummary}",
                 tag = VMUtils.genStartVMTaskId(containerId),
-                jobId = containerHashId ?: "",
-                executeCount = executeCount
+                containerHashId = containerHashId ?: "",
+                executeCount = executeCount,
+                jobId = null,
+                stepId = VMUtils.genStartVMTaskId(containerId)
             )
         }
     }

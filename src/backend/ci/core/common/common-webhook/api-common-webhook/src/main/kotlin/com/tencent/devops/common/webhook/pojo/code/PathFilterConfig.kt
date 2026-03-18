@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -35,5 +35,9 @@ data class PathFilterConfig(
     val triggerOnPath: List<String>,
     val includedPaths: List<String>,
     val excludedPaths: List<String>,
+    // 包含过滤失败原因
+    val includedFailedReason: String,
+    // 排除过滤失败原因
+    val excludedFailedReason: String,
     val caseSensitive: Boolean = true
 )

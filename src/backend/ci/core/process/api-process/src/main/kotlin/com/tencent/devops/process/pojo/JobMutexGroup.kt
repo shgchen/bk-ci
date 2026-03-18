@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,11 +27,10 @@
 
 package com.tencent.devops.process.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("Job互斥组模型-列表信息")
+@Schema(title = "Job互斥组模型-列表信息")
 data class JobMutexGroup(
-    @ApiModelProperty("Job互斥组名字", required = true)
+    @get:Schema(title = "Job互斥组名字", required = true)
     val jobMutexGroupName: String
 )

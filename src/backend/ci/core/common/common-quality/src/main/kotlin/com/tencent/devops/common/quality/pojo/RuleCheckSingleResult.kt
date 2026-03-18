@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,13 +27,12 @@
 
 package com.tencent.devops.common.quality.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("质量红线-单条规则拦截结果")
+@Schema(title = "质量红线-单条规则拦截结果")
 data class RuleCheckSingleResult(
-    @ApiModelProperty("规则名称", required = true)
+    @get:Schema(title = "规则名称", required = true)
     val ruleName: String,
-    @ApiModelProperty("失败信息", required = true)
+    @get:Schema(title = "失败信息", required = true)
     val messagePairs: List<Triple<String, String/*detail*/, Boolean>>
 )

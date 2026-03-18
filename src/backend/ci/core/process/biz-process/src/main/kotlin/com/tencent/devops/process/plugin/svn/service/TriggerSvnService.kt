@@ -24,7 +24,7 @@ import com.tencent.devops.ticket.api.ServiceCredentialResource
 import org.jooq.DSLContext
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.springframework.amqp.rabbit.core.RabbitTemplate
+import org.springframework.cloud.stream.function.StreamBridge
 import java.time.LocalDateTime
 import java.util.Base64
 import java.util.concurrent.Executors
@@ -37,7 +37,7 @@ class TriggerSvnService(
     private val pipelineWebhookDao: PipelineWebhookDao,
     private val dslContext: DSLContext,
     private val redisOperation: RedisOperation,
-    private val rabbitTemplate: RabbitTemplate
+    private val streamBridge: StreamBridge
 ) {
     /**
      *  触发流水线用
@@ -302,7 +302,7 @@ class TriggerSvnService(
                     val event = buildSvnCommitEvent(projectName, url, it)
                     logger.info("SvnCommitEvent: {}", event)
                     CodeWebhookEventDispatcher.dispatchEvent(
-                        rabbitTemplate,
+                        streamBridge,
                         SvnWebhookEvent(requestContent = JsonUtil.toJson(event))
                     )
                 } catch (e: Exception) {
@@ -347,7 +347,9 @@ class TriggerSvnService(
             svnRevisionInfo.revision.toInt(),
             paths,
             files,
-            svnRevisionInfo.commitTime
+            svnRevisionInfo.commitTime,
+            files.size,
+            null
         )
     }
 
@@ -416,8 +418,10 @@ class TriggerSvnService(
         val encoder = Base64.getEncoder()
         val decoder = Base64.getDecoder()
         val credentialResult = client.get(ServiceCredentialResource::class).get(
-            projectId, credentialId,
-            encoder.encodeToString(pair.publicKey)
+            projectId = projectId,
+            credentialId = credentialId,
+            publicKey = encoder.encodeToString(pair.publicKey),
+            padding = true
         )
         if (credentialResult.isNotOk() || credentialResult.data == null) {
             logger.error(

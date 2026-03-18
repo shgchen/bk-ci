@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,24 +28,23 @@
 package com.tencent.devops.common.archive.element
 
 import com.tencent.devops.common.pipeline.pojo.element.Element
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("构建并推送Docker镜像", description = BuildPushDockerImageElement.classType)
+@Schema(title = "构建并推送Docker镜像", description = BuildPushDockerImageElement.classType)
 data class BuildPushDockerImageElement(
-    @ApiModelProperty("任务名称", required = true)
+    @get:Schema(title = "任务名称", required = true)
     override val name: String = "执行脚本",
-    @ApiModelProperty("id", required = false)
+    @get:Schema(title = "id", required = false)
     override var id: String? = null,
-    @ApiModelProperty("状态", required = false)
+    @get:Schema(title = "状态", required = false)
     override var status: String? = null,
-    @ApiModelProperty("镜像名称", required = true)
+    @get:Schema(title = "镜像名称", required = true)
     val imageName: String = "",
-    @ApiModelProperty("镜像TAG", required = false)
+    @get:Schema(title = "镜像TAG", required = false)
     val imageTag: String? = "latest",
-    @ApiModelProperty("build目录", required = false)
+    @get:Schema(title = "build目录", required = false)
     val buildDir: String? = ".",
-    @ApiModelProperty("Dockerfile位置", required = false)
+    @get:Schema(title = "Dockerfile位置", required = false)
     val dockerFile: String? = "Dockerfile"
 ) : Element(name, id, status) {
 

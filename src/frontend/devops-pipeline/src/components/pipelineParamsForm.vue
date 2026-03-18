@@ -1,65 +1,100 @@
 <template>
-    <div style="text-align: left">
-        <form class="bk-form" action="http://localhost" target="previewHiddenIframe" ref="previewParamsForm" onsubmit="return false;">
-            <form-field v-for="param in paramList"
-                :key="param.id" :required="param.required"
-                :is-error="errors.has('devops' + param.name)"
-                :error-msg="errors.first('devops' + param.name)"
-                :label="param.label || param.id"
-                :style="{ width: param.width }"
-            >
-                <section class="component-row">
-                    <component :is="param.component" v-validate="{ required: param.required }" :click-unfold="true" :show-select-all="true" :handle-change="handleParamUpdate" v-bind="Object.assign({}, param, { id: undefined, name: 'devops' + param.name })" :disabled="disabled" style="width: 100%;" :placeholder="param.placeholder"></component>
-                    <div class="file-upload" v-if="showFileUploader(param.type)">
-                        <file-param-input :file-path="param.value"></file-param-input>
-                    </div>
-                </section>
-                <span v-if="!errors.has('devops' + param.name)" :class="['preview-params-desc', param.type === 'TEXTAREA' ? 'params-desc-styles' : '']" :title="param.desc">{{ param.desc }}</span>
-            </form-field>
-        </form>
-        <iframe v-show="false" name="previewHiddenIframe"></iframe>
-    </div>
+    <section>
+        <slot name="versionParams"></slot>
+        <bk-form form-type="vertical">
+            <template v-if="sortCategory">
+                <renderSortCategoryParams
+                    v-for="key in sortedCategories"
+                    :key="key"
+                    :name="key"
+                    :vertical="sortCategoryVertical"
+                >
+                    <template slot="content">
+                        <div
+                            v-for="param in paramsListMap[key]"
+                            v-if="param.show"
+                            :key="param.id"
+                        >
+                            <render-param
+                                
+                                v-bind="param"
+                                :param="param"
+                                ref="categoryRenderParam"
+                                :is-in-param-set="isInParamSet"
+                                :is-exec-preview="isExecPreview"
+                                :disabled="disabled || (param.isFollowTemplate && !batchEditFlag)"
+                                :show-operate-btn="showOperateBtn"
+                                :handle-set-parma-required="handleSetParmaRequired"
+                                :handle-use-default-value="handleUseDefaultValue"
+                                :highlight-changed-param="highlightChangedParam"
+                                :handle-param-update="handleParamUpdate"
+                                :handle-follow-template="(id) => handleFollowTemplate(followTemplateKey, id)"
+                                @remove-param="handleRemoveParamItem"
+                            />
+                        </div>
+                    </template>
+                </renderSortCategoryParams>
+            </template>
+            <template v-else>
+                <div
+                    v-for="param in paramList"
+                    v-if="param.show"
+                    :key="param.id"
+                >
+                    <render-param
+                        
+                        v-bind="param"
+                        :param="param"
+                        ref="renderParam"
+                        :is-exec-preview="isExecPreview"
+                        :disabled="disabled || (param.isFollowTemplate && !batchEditFlag)"
+                        :show-operate-btn="showOperateBtn"
+                        :handle-set-parma-required="handleSetParmaRequired"
+                        :handle-use-default-value="handleUseDefaultValue"
+                        :highlight-changed-param="highlightChangedParam"
+                        :handle-param-update="handleParamUpdate"
+                        :handle-follow-template="handleFollowTemplate"
+                    />
+                </div>
+            </template>
+        </bk-form>
+    </section>
 </template>
 
 <script>
-    import VuexInput from '@/components/atomFormField/VuexInput'
-    import VuexTextarea from '@/components/atomFormField/VuexTextarea'
-    import EnumInput from '@/components/atomFormField/EnumInput'
-    import Selector from '@/components/atomFormField/Selector'
-    import FormField from '@/components/AtomPropertyPanel/FormField'
-    import metadataList from '@/components/common/metadata-list'
-    import FileParamInput from '@/components/FileParamInput'
+    import renderParam from '@/components/renderParam'
+    import renderSortCategoryParams from '@/components/renderSortCategoryParams'
     import {
-        BOOLEAN_LIST,
-        isMultipleParam,
-        isEnumParam,
-        isSvnParam,
-        isGitParam,
-        isCodelibParam,
-        isFileParam,
-        ParamComponentMap,
-        STRING,
         BOOLEAN,
-        MULTIPLE,
-        ENUM,
-        SVN_TAG,
-        GIT_REF,
+        BOOLEAN_LIST,
         CODE_LIB,
         CONTAINER_TYPE,
+        ENUM,
+        getBranchOption,
+        getParamsGroupByLabel,
+        GIT_REF,
+        isCodelibParam,
+        isEnumParam,
+        isFileParam,
+        isGitParam,
+        isMultipleParam,
+        isRemoteType,
+        isRepoParam,
+        isSvnParam,
+        MULTIPLE,
+        ParamComponentMap,
+        REPO_REF,
+        STRING,
         SUB_PIPELINE,
+        SVN_TAG,
         TEXTAREA
     } from '@/store/modules/atom/paramsConfig'
+    import { COMMON_PARAM_PREFIX, isObject, isShallowEqual } from '@/utils/util'
 
     export default {
-
         components: {
-            Selector,
-            EnumInput,
-            VuexInput,
-            VuexTextarea,
-            FormField,
-            metadataList,
-            FileParamInput
+            renderSortCategoryParams,
+            renderParam
         },
         props: {
             disabled: {
@@ -77,18 +112,92 @@
             handleParamChange: {
                 type: Function,
                 default: () => () => {}
+            },
+            highlightChangedParam: Boolean,
+            sortCategory: {
+                type: Boolean,
+                default: false
+            },
+            sortCategoryVertical: {
+                type: Boolean,
+                default: false
+            },
+            isInParamSet: {
+                type: Boolean,
+                default: false
+            },
+            showOperateBtn: {
+                type: Boolean,
+                default: false
+            },
+            hideDeleted: {
+                type: Boolean,
+                default: false
+            },
+            handleUseDefaultValue: {
+                type: Function,
+                default: () => () => {}
+            },
+            handleSetParmaRequired: {
+                type: Function,
+                default: () => () => {}
+            },
+            followTemplateKey: {
+                type: String,
+                default: ''
+            },
+            handleFollowTemplate: {
+                type: Function,
+                default: () => () => {}
+            },
+            isExecPreview: {
+                // 是否为执行预览页面
+                type: Boolean,
+                default: true
+            },
+            batchEditFlag: {
+                type: Boolean,
+                default: false
+            }
+        },
+        data () {
+            return {
+                prevAffectedValues: {}
             }
         },
         computed: {
+            paramPrefix () {
+                return COMMON_PARAM_PREFIX
+            },
             paramList () {
                 return this.params.map(param => {
                     let restParam = {}
-                    if (param.type !== STRING || param.type !== TEXTAREA) {
-                        restParam = {
-                            ...restParam,
-                            displayKey: 'value',
-                            settingKey: 'key',
-                            list: this.getParamOpt(param)
+                    if (param.type !== STRING && param.type !== TEXTAREA) {
+                        if (isRemoteType(param)) {
+                            const isMultiple = param.type === 'MULTIPLE'
+                            const val = (isMultiple && typeof this.paramValues?.[param.id] === 'string') ? this.paramValues[param.id].split(',').filter(i => i !== '') : this.paramValues?.[param.id]
+                            const affected = this.getAffectedBy(param.payload.url)
+                            const affectedChanged = this.detectChanged(this.prevAffectedValues?.[param.id], affected)
+                            this.prevAffectedValues[param.id] = affected
+
+                            restParam = {
+                                ...restParam,
+                                ...param.payload,
+                                multiSelect: isMultiple,
+                                value: isMultiple && !Array.isArray(val) ? [] : val,
+                                allIdString: true,
+                                paramValues: this.paramValues,
+                                affected,
+                                affectedChanged,
+                                affectTips: affectedChanged && Object.keys(affected).length > 0 ? this.$t('relyChanged', [Object.keys(affected).join('/')]) : ''
+                            }
+                        } else {
+                            restParam = {
+                                ...restParam,
+                                displayKey: 'value',
+                                settingKey: 'key',
+                                list: this.getParamOpt(param)
+                            }
                         }
 
                         // codeLib 接口返回的数据没有匹配的默认值,导致回显失效，兼容加上默认值
@@ -104,7 +213,7 @@
                         }
                     }
 
-                    if (!param.searchUrl) {
+                    if (!param.searchUrl && !isRemoteType(param)) {
                         if (isMultipleParam(param.type)) { // 去除不在选项里面的值
                             const mdv = this.getMultiSelectorValue(this.paramValues[param.id], param.options.map(v => v.key))
                             const mdvStr = mdv.join(',')
@@ -126,18 +235,66 @@
                             }
                         }
                     }
+
+                    if (isFileParam(param.type)) {
+                        // 预览时，重新上传文件，会把文件类型的value变成对象而非字符串，这时要更新随机串回显到页面上
+                        const paramValue = this.paramValues[param.id]
+                        const newRandomString = paramValue?.latestRandomStringInPath
+                        const defaultRandomString = param.latestRandomStringInPath ?? param.randomStringInPath
+                        restParam.latestRandomStringInPath = newRandomString ?? defaultRandomString
+                        restParam.value = typeof paramValue === 'object' ? paramValue?.directory : paramValue
+                    }
                     return {
                         ...param,
-                        component: ParamComponentMap[param.type],
+                        component: this.getParamComponentType(param),
                         name: param.id,
-                        required: param.type === SVN_TAG || param.type === GIT_REF,
+                        fieldName: this.paramPrefix + param.id,
+                        required: param.valueNotEmpty,
                         value: this.paramValues[param.id],
-                        ...restParam
+                        ...restParam,
+                        ...(
+                            isRepoParam(param.type)
+                                ? {
+                                    childrenOptions: this.getBranchOption(this.paramValues?.[param.id]?.['repo-name'])
+                                }
+                                : {}
+                        ),
+                        // eslint-disable-next-line
+                        show: Object.keys(param.displayCondition ?? {}).every((key) => this.isEqual(this.paramValues[key], param.displayCondition[key])),
+                        
                     }
                 })
+            },
+            paramsListMap () {
+                const list = this.hideDeleted ? this.paramList.filter(i => !i.isDelete) : this.paramList
+                return getParamsGroupByLabel(list)?.listMap ?? {}
+            },
+            sortedCategories () {
+                return getParamsGroupByLabel(this.paramList)?.sortedCategories ?? []
             }
+            
         },
         methods: {
+            isObject,
+            getBranchOption,
+            isEqual (a, b) {
+                try {
+                    // hack: 处理 undefined 和 '' 的情况
+                    if (typeof a === 'undefined' && b === '') {
+                        return true
+                    }
+                    return String(a) === String(b)
+                } catch (error) {
+                    return false
+                }
+            },
+            getParamComponentType (param) {
+                if (isRemoteType(param)) {
+                    return 'request-selector'
+                } else {
+                    return ParamComponentMap[param.type]
+                }
+            },
             getParamOpt (param) {
                 switch (true) {
                     case param.type === BOOLEAN:
@@ -149,14 +306,19 @@
                     case param.type === CODE_LIB:
                     case param.type === CONTAINER_TYPE:
                     case param.type === SUB_PIPELINE:
+                    case param.type === REPO_REF:
                         return param.options
                     default:
                         return []
                 }
             },
-            submitForm () {
-                // 触发表单默认提交事件，保存用户输入
-                this.$refs.previewParamsForm && this.$refs.previewParamsForm.submit()
+            getCodeRepoOpt (param) {
+                switch (true) {
+                    case param.type === REPO_REF:
+                        return param.options
+                    default:
+                        return []
+                }
             },
             getMultiSelectorValue (value = '', options) {
                 if (typeof value === 'string' && value) { // remove invalid option
@@ -166,9 +328,8 @@
             },
 
             getParamByName (name) {
-                return this.paramList.find(param => `devops${param.name}` === name)
+                return this.paramList.find(param => param.fieldName === name)
             },
-
             handleParamUpdate (name, value) {
                 const param = this.getParamByName(name)
                 if (isMultipleParam(param.type)) { // 复选框，需要将数组转化为逗号隔开的字符串
@@ -178,71 +339,42 @@
             },
             showFileUploader (type) {
                 return isFileParam(type) && this.$route.path.indexOf('preview') > -1
+            },
+            handleRemoveParamItem (id)  {
+                this.$emit('remove-param', id)
+            },
+            getAffectedBy (originUrl) {
+                try {
+                    const PLUGIN_URL_PARAM_REG = /\{(.*?)(\?){0,1}\}/g
+                    return originUrl.match(PLUGIN_URL_PARAM_REG).map(item => item.replace(/\{(\S+)\}/, '$1')).reduce((acc, key) => {
+                        if (Object.hasOwnProperty.call(this.paramValues, key)) {
+                            acc[key] = this.paramValues[key]
+                        }
+                        return acc
+                    }, {})
+                } catch (error) {
+                    return {}
+                }
+            },
+            detectChanged (prev, current) {
+                if (prev && current) {
+                    return !isShallowEqual(prev, current)
+                }
+                return false
+            },
+            async validateAll () {
+                const refsList = this.sortCategory ? (this.$refs.categoryRenderParam ?? []) : (this.$refs.renderParam ?? [])
+                for (let i = 0; i < refsList.length; i++) {
+                    const ref = refsList[i]
+                    const res = await ref.$validator?.validateAll?.()
+                    console.log(res, 'validate res')
+                    if (!res) {
+                        return false
+                    }
+                    
+                }
+                return true
             }
         }
     }
 </script>
-
-<style lang="scss" scoped>
-    @import '@/scss/conf';
-    @import '@/scss/mixins/ellipsis';
-
-    .component-row {
-        display: flex;
-        .metadata-box {
-            position: relative;
-            display: none;
-        }
-        .meta-data {
-            align-self: center;
-            margin-left: 10px;
-            font-size: 12px;
-            color: $primaryColor;
-            white-space: nowrap;
-            cursor: pointer;
-        }
-        .meta-data:hover {
-            .metadata-box {
-                display: block;
-            }
-        }
-        .file-upload {
-            display: flex;
-            margin-left: 10px;
-            ::v-deep .bk-upload.button {
-                position: static;
-                display: flex;
-                .file-wrapper {
-                    margin-bottom: 0;
-                    height: 32px;
-                }
-                p.tip {
-                    white-space: nowrap;
-                    position: static;
-                    margin-left: 8px;
-                }
-                .all-file {
-                    width: 100%;
-                    position: absolute;
-                    right: 0;
-                    top: 0;
-                    .file-item {
-                        margin-bottom: 0;
-                    }
-                    .error-msg {
-                        margin: 0
-                    }
-                }
-            }
-        }
-    }
-    .preview-params-desc {
-        color: #999;
-        width: 100%;
-        font-size: 12px;
-        @include ellipsis();
-    }
-    .params-desc-styles {
-        margin-top: 32px;
-    }
-</style>

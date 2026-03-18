@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,30 +30,30 @@ package com.tencent.devops.store.api.common
 import com.tencent.devops.common.api.auth.AUTH_HEADER_USER_ID
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.store.pojo.common.UpdateStorePipelineModelRequest
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.PUT
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.PUT
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["OP_STORE_PIPELINE"], description = "OP-STORE-流水线")
+@Tag(name = "OP_STORE_PIPELINE", description = "OP-STORE-流水线")
 @Path("/op/store/pipeline")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface OpStorePipelineResource {
 
-    @ApiOperation("更新研发商店组件流水线模型")
+    @Operation(summary = "更新研发商店组件流水线模型")
     @PUT
     @Path("/model/update")
     fun updateStorePipelineModel(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("更新研发商店流水线模型请求报文")
+        @Parameter(description = "更新研发商店流水线模型请求报文")
         updateStorePipelineModelRequest: UpdateStorePipelineModelRequest
     ): Result<Boolean>
 }

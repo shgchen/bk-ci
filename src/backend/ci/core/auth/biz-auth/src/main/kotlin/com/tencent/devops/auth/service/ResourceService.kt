@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -39,6 +39,7 @@ import com.tencent.devops.auth.constant.AuthMessageCode
 import com.tencent.devops.common.api.exception.ParamBlankException
 import com.tencent.devops.common.auth.api.AuthResourceType
 import com.tencent.devops.common.auth.callback.AuthConstants.KEYWORD_MIN_SIZE
+import com.tencent.devops.common.auth.callback.ListResourcesAuthorizationDTO
 import com.tencent.devops.common.auth.callback.SearchInstanceInfo
 import com.tencent.devops.common.web.utils.I18nUtil
 import org.slf4j.LoggerFactory
@@ -120,18 +121,13 @@ class ResourceService @Autowired constructor(
         return true
     }
 
+    @Suppress("MaxLineLength")
     private fun buildResult(method: CallbackMethodEnum, response: String): CallbackBaseResponseDTO1 {
         return when (method) {
-            CallbackMethodEnum.SEARCH_INSTANCE -> {
-                val searchResult = objectMapper.readValue<SearchInstanceInfo>(response)
-                if (searchResult.data?.count!! > 100L) {
-                    searchResult.buildSearchInstanceResultFailResult()
-                } else {
-                    searchResult
-                }
-            }
+            CallbackMethodEnum.SEARCH_INSTANCE -> objectMapper.readValue<SearchInstanceInfo>(response)
             CallbackMethodEnum.FETCH_INSTANCE_INFO -> objectMapper.readValue<FetchInstanceInfoResponseDTO>(response)
             CallbackMethodEnum.LIST_INSTANCE -> objectMapper.readValue<ListInstanceResponseDTO>(response)
+            CallbackMethodEnum.LIST_RESOURCE_AUTHORIZATION -> objectMapper.readValue<ListResourcesAuthorizationDTO>(response)
             else -> objectMapper.readValue(response)
         }
     }

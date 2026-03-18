@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,7 +30,7 @@ package com.tencent.devops.worker
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.tencent.devops.common.api.exception.RemoteServiceException
 import com.tencent.devops.common.api.util.JsonUtil
-import com.tencent.devops.dispatch.pojo.thirdPartyAgent.ThirdPartyBuildInfo
+import com.tencent.devops.dispatch.pojo.thirdpartyagent.ThirdPartyBuildInfo
 import com.tencent.devops.worker.common.ErrorMsgLogUtil
 import com.tencent.devops.worker.common.Runner
 import com.tencent.devops.worker.common.SLAVE_AGENT_PREPARE_START_FILE
@@ -62,7 +62,7 @@ object WorkRunner {
             ThirdPartyAgentBuildInfoUtils.setBuildInfo(buildInfo)
 
             Runner.run(object : WorkspaceInterface {
-                val workspace = buildInfo.workspace
+                val workspace = buildInfo.workspace.trim()
                 override fun getWorkspaceAndLogDir(
                     variables: Map<String, String>,
                     pipelineId: String

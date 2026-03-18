@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,13 +28,12 @@
 package com.tencent.devops.artifactory.pojo
 
 import com.tencent.devops.store.pojo.atom.AtomEnvRequest
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("插件市场-归档插件包响应报文体")
+@Schema(title = "插件市场-归档插件包响应报文体")
 data class ArchiveAtomResponse(
-    @ApiModelProperty("插件环境信息", required = true)
+    @get:Schema(title = "插件环境信息", required = true)
     val atomEnvRequests: List<AtomEnvRequest>,
-    @ApiModelProperty("task.json参数", required = true)
+    @get:Schema(title = "task.json参数", required = true)
     val taskDataMap: Map<String, Any>
 )

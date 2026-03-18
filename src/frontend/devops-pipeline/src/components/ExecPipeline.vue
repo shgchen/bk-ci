@@ -1,6 +1,9 @@
 <template>
     <div class="exec-pipeline-wrapper">
-        <div ref="scrollViewPort" class="pipeline-model-scroll-viewport">
+        <div
+            ref="scrollViewPort"
+            class="pipeline-model-scroll-viewport"
+        >
             <p></p>
         </div>
         <div class="pipeline-exec-summary">
@@ -9,7 +12,7 @@
                 <bk-select
                     ext-cls="pipeline-exec-count-select"
                     :value="executeCount"
-                    :popover-width="200"
+                    :popover-width="360"
                     :clearable="false"
                     @selected="handleExecuteCountChange"
                 >
@@ -21,6 +24,10 @@
                     >
                         <p class="exec-count-select-option">
                             <span>{{ item.name }}</span>
+                            <span
+                                v-if="item.timeCost"
+                                class="exec-count-time-cost"
+                            >{{ item.timeCost }}</span>
                             <span class="exec-count-select-option-user">{{ item.user }}</span>
                         </p>
                     </bk-option>
@@ -34,6 +41,7 @@
                     >
                     </span>
                 </span>
+                <span v-if="!isRunning"> {{ $t("details.totalCost") }}：{{ sumCost }} </span>
             </div>
             <ul class="pipeline-exec-timeline">
                 <li
@@ -41,10 +49,16 @@
                     v-for="step in timeSteps"
                     :key="step.title"
                 >
-                    <span>
-                        {{ step.title }}
+                    <span class="title-item">
+                        <p>{{ step.title }}</p>
+                        <span
+                            v-bk-tooltips="step.popup"
+                            class="time-step-divider"
+                        >
+                            <p></p>
+                        </span>
                     </span>
-                    <p v-bk-tooltips="step.popup" class="time-step-divider"></p>
+                    <!-- <p v-bk-tooltips="step.popup" class="time-step-divider"></p> -->
                     <p class="constant-width-num">
                         {{ step.description }}
                     </p>
@@ -53,11 +67,7 @@
         </div>
         <section class="pipeline-exec-content">
             <header class="pipeline-style-setting-header">
-                <!-- <div class="bk-button-group">
-                    <bk-button v-for="item in pipelineModes" :key="item.id" :class="item.cls">
-                        {{ item.label }}
-                    </bk-button>
-                </div> -->
+                <!-- <mode-switch /> -->
                 <bk-checkbox
                     :true-value="true"
                     :false-value="false"
@@ -67,7 +77,20 @@
                 >
                     {{ $t("details.hideSkipStep") }}
                 </bk-checkbox>
-                <bk-button text theme="primary" @click="showCompleteLog">
+                <bk-checkbox
+                    :true-value="true"
+                    :false-value="false"
+                    v-model="isExpandAllMatrix"
+                    @change="expandAllMatrix"
+                    style="margin-right: 16px;"
+                >
+                    {{ $t("details.isExpandJob") }}
+                </bk-checkbox>
+                <bk-button
+                    text
+                    theme="primary"
+                    @click="showCompleteLog"
+                >
                     <i class="devops-icon icon-txt"></i>
                     {{ $t("history.viewLog") }}
                 </bk-button>
@@ -90,7 +113,7 @@
                         :user-name="userName"
                         :pipeline="curPipeline"
                         v-bind="$attrs"
-                        @click="handlePiplineClick"
+                        @click="handlePipelineClick"
                         @stage-check="handleStageCheck"
                         @stage-retry="handleRetry"
                         @atom-quality-check="qualityCheck"
@@ -116,8 +139,7 @@
                     @click="toggleErrorPopup"
                 >
                     <i class="bk-icon icon-angle-up toggle-error-popup-icon" />
-                </bk-button
-                >
+                </bk-button>
                 <bk-tab
                     class="pipeline-exec-error-tab"
                     :active="activeTab"
@@ -132,12 +154,21 @@
                             :href="pipelineErrorGuideLink"
                         >
                             <span class="fix-error-jump">
-                                <logo class="fix-error-jump-icon" size="20" name="tiaozhuan" />
+                                <logo
+                                    class="fix-error-jump-icon"
+                                    size="20"
+                                    name="tiaozhuan"
+                                />
                                 {{ $t("details.pipelineErrorGuide") }}
                             </span>
                         </bk-link>
                     </template>
-                    <bk-tab-panel v-for="(panel, index) in panels" v-bind="panel" :key="index" :render-label="renderLabel">
+                    <bk-tab-panel
+                        v-for="(panel, index) in panels"
+                        v-bind="panel"
+                        :key="index"
+                        :render-label="renderLabel"
+                    >
                         <bk-table
                             ext-cls="error-popup-table"
                             :data="errorList"
@@ -146,7 +177,10 @@
                             highlight-current-row
                         >
                             <bk-table-column width="80">
-                                <div slot-scope="props" class="exec-error-type-cell">
+                                <div
+                                    slot-scope="props"
+                                    class="exec-error-type-cell"
+                                >
                                     <span class="exec-error-locate-icon">
                                         <Logo
                                             v-if="isActiveErrorAtom(props.row)"
@@ -166,13 +200,10 @@
                                 v-bind="column"
                                 :key="i"
                             />
-                            <bk-table-column
-                                :label="$t('details.pipelineErrorInfo')"
-                            >
+                            <bk-table-column :label="$t('details.pipelineErrorInfo')">
                                 <template v-slot="props">
                                     <div class="build-error-cell">
-                                        <span
-                                            class="build-error-info">
+                                        <span class="build-error-info">
                                             {{ props.row.errorMsg }}
                                         </span>
                                         <bk-button
@@ -182,13 +213,12 @@
                                             @click.stop="setAtomLocate(props.row, true)"
                                             text
                                         >
-                                            {{$t('history.viewLog')}}
+                                            {{ $t("history.viewLog") }}
                                         </bk-button>
                                     </div>
                                 </template>
                             </bk-table-column>
                         </bk-table>
-
                     </bk-tab-panel>
                 </bk-tab>
             </footer>
@@ -228,10 +258,15 @@
         <div class="time-detail-popup">
             <div class="pipeline-time-detail-sum">
                 <span>{{ $t("details.totalCost") }}</span>
-                <span class="constant-width-num">{{ isRunning ? `${$t("details.running")}...` : totalCost }}</span>
+                <span class="constant-width-num">{{
+                    isRunning ? `${$t("details.running")}...` : totalCost
+                }}</span>
             </div>
             <ul class="pipeline-time-detail-sum-list">
-                <li v-for="cost in timeDetailRows" :key="cost.field">
+                <li
+                    v-for="cost in timeDetailRows"
+                    :key="cost.field"
+                >
                     <span>{{ cost.label }}</span>
                     <span class="constant-width-num">{{ cost.value }}</span>
                 </li>
@@ -241,9 +276,9 @@
             <complete-log
                 @close="hideCompleteLog"
                 :execute-count="executeCount"
+                :exec-detail="execDetail"
             ></complete-log>
         </template>
-        
     </div>
 </template>
 
@@ -254,22 +289,25 @@
     import MiniMap from '@/components/MiniMap'
     import { errorTypeMap } from '@/utils/pipelineConst'
     import { convertMillSec, convertTime } from '@/utils/util'
+    import BkPipeline, { loadI18nMessages } from 'bkui-pipeline'
     import simplebar from 'simplebar-vue'
     import 'simplebar-vue/dist/simplebar.min.css'
-    import { mapActions, mapState } from 'vuex'
+    import { mapActions, mapGetters, mapState } from 'vuex'
     export default {
         components: {
             simplebar,
             CheckAtomDialog,
             CompleteLog,
             Logo,
-            MiniMap
+            MiniMap,
+            BkPipeline
         },
         props: {
             execDetail: {
                 type: Object,
                 required: true
-            }
+            },
+            isRunning: Boolean
         },
         data () {
             return {
@@ -277,10 +315,10 @@
                 showLog: false,
                 retryTaskId: '',
                 skipTask: false,
+                isExpandAllMatrix: this.$route.hash.indexOf('collapsedAllJob') === -1,
                 failedContainer: false,
                 activeTab: 'errors',
                 currentAtom: {},
-                pipelineMode: 'uiMode',
                 showErrors: false,
                 activeErrorAtom: null,
                 afterAsideVisibleDone: null,
@@ -288,17 +326,24 @@
                 isErrorOverflow: [],
                 curPipeline: this.execDetail?.model,
                 pipelineErrorGuideLink: this.$pipelineDocs.PIPELINE_ERROR_GUIDE_DOC,
-                scrollElement: '.pipeline-detail-wrapper.biz-content'
+                scrollElement: '.pipeline-detail-wrapper.biz-content',
+                isShowCheckDialog: false,
+                hasHandledRouteParams: false
             }
         },
         computed: {
+            ...mapState([
+                'pipelineMode'
+            ]),
             ...mapState('common', ['ruleList', 'templateRuleList']),
             ...mapState('atom', [
                 'hideSkipExecTask',
                 'showPanelType',
                 'isPropertyPanelVisible'
             ]),
-            
+            ...mapGetters('atom', [
+                'getAllElements'
+            ]),
             panels () {
                 return [
                     {
@@ -306,9 +351,6 @@
                         label: this.$t('Errors')
                     }
                 ]
-            },
-            isRunning () {
-                return this.execDetail?.status === 'RUNNING'
             },
             timeDetailConf () {
                 return {
@@ -319,10 +361,10 @@
             },
             errorList () {
                 return this.execDetail?.errorInfoList?.map((error, index) => ({
-                    ...error,
-                    errorTypeAlias: this.$t(errorTypeMap[error.errorType].title),
-                    errorTypeConf: errorTypeMap[error.errorType]
-                }))
+                ...error,
+                errorTypeAlias: this.$t(errorTypeMap[error.errorType]?.title ?? errorTypeMap[0]?.title),
+                errorTypeConf: errorTypeMap[error.errorType] ?? errorTypeMap[0]
+            }))
             },
             showErrorPopup () {
                 return Array.isArray(this.errorList) && this.errorList.length > 0
@@ -331,20 +373,18 @@
                 return ['executeCost', 'systemCost', 'waitCost'].map((key) => ({
                     field: key,
                     label: this.$t(`details.${key}`),
-                    value: this.execDetail?.model?.timeCost?.[key]
-                        ? convertMillSec(this.execDetail.model.timeCost[key])
-                        : '--'
+                    value: convertMillSec(this.execDetail?.model?.timeCost?.[key])
                 }))
             },
             queueCost () {
-                return this.execDetail?.queueTimeCost
-                ? convertMillSec(this.execDetail?.queueTimeCost)
-                : '--'
+                return convertMillSec(this.execDetail?.model?.timeCost?.queueCost)
             },
             totalCost () {
-                return this.execDetail?.model?.timeCost?.totalCost
-                ? convertMillSec(this.execDetail.model.timeCost.totalCost)
-                : '--'
+                return convertMillSec(this.execDetail?.model?.timeCost?.totalCost)
+            },
+            sumCost () {
+                const timeCost = this.execDetail?.model?.timeCost
+                return convertMillSec(timeCost?.totalCost, true)
             },
             errorsTableColumns () {
                 return [
@@ -363,7 +403,6 @@
                         prop: 'errorCode',
                         width: 150
                     }
-
                 ]
             },
             userName () {
@@ -389,21 +428,6 @@
             },
             executeCount () {
                 return this.execDetail?.executeCount ?? 1
-            },
-            pipelineModes () {
-                return [
-                    {
-                        label: this.$t('details.codeMode'),
-                        disabled: true,
-                        id: 'codeMode',
-                        cls: this.pipelineMode === 'codeMode' ? 'is-selected' : ''
-                    },
-                    {
-                        label: this.$t('details.uiMode'),
-                        id: 'uiMode',
-                        cls: this.pipelineMode === 'uiMode' ? 'is-selected' : ''
-                    }
-                ]
             },
             timeSteps () {
                 return [
@@ -433,27 +457,43 @@
                 ]
             },
             executeCounts () {
-                const len = this.execDetail?.startUserList?.length ?? 0
+                const len = this.execDetail?.recordList?.length ?? 0
                 return (
-                    this.execDetail?.startUserList?.map((user, index) => ({
+                this.execDetail?.recordList?.map((record, index) => ({
                     id: len - index,
                     name: `${len - index} / ${len}`,
-                    user
-                    })) ?? []
+                    user: record.startUser,
+                    timeCost: convertMillSec(record.timeCost?.totalCost + record.timeCost?.queueCost, true)
+                })) ?? []
                 )
             },
             routerParams () {
                 return this.$route.params
             },
             errorPopupHeight () {
+                if (!this.showErrorPopup) {
+                    return '0px'
+                }
+                if (!this.showErrors) {
+                    return '42px'
+                }
                 return getComputedStyle(this.$refs.errorPopup)?.height ?? '42px'
+            },
+            templateId () {
+                return this.execDetail?.templateInfo?.templateId
+            },
+            ruleIds () {
+                return this.curMatchRules?.flatMap(item => item.ruleList.map(rule => rule.ruleHashId)) || []
+            },
+            curPipelineAllElements () {
+                return this.getAllElements(this.execDetail?.model?.stages)
             }
         },
         watch: {
             isPropertyPanelVisible (val) {
                 if (!val && this.showPanelType !== '') {
-                    this.afterAsideVisibleDone?.()
-                    this.afterAsideVisibleDone = null
+                this.afterAsideVisibleDone?.()
+                this.afterAsideVisibleDone = null
                 }
             },
             'execDetail.model': function (val) {
@@ -472,15 +512,30 @@
                         this.setShowErrorPopup()
                     }
                 })
+            },
+            curPipelineAllElements: {
+                handler (val) {
+                    if (val && !this.hasHandledRouteParams) {
+                        this.hasHandledRouteParams = true
+                        this.$nextTick(() => {
+                            this.handleRouteParams()
+                        })
+                    }
+                },
+                immediate: true
             }
-
         },
         updated () {
-            if (this.showErrorPopup) {
-                this.setScrollBarPostion()
-            }
+            this.setScrollBarPostion()
+        },
+        created () {
+            loadI18nMessages(this.$i18n)
         },
         mounted () {
+            this.requestMatchTemplateRuleList({
+                projectId: this.routerParams.projectId,
+                templateId: this.templateId
+            })
             this.requestInterceptAtom(this.routerParams)
             if (this.errorList?.length > 0) {
                 this.setScrollBarPostion()
@@ -490,11 +545,12 @@
                 const viewportContent = this.$refs.scrollViewPort.querySelector('p')
                 this.$refs.scrollViewPort.style.width = `${this.$refs.scrollBox?.scrollElement?.offsetWidth}px`
                 this.$refs.scrollViewPort.style.height = `${parent.offsetHeight}px`
-                
+
                 viewportContent.style.width = `${this.$refs.scrollBox?.scrollElement?.scrollWidth}px`
                 viewportContent.style.height = `${parent?.scrollHeight}px`
                 this.scrollElement = '.pipeline-model-scroll-viewport'
                 this.initMiniMapScroll()
+                this.expandAllMatrix()
             })
         },
         beforeDestroy () {
@@ -517,37 +573,47 @@
                 'requestPipelineExecDetail',
                 'pausePlugin'
             ]),
-            ...mapActions('common', ['requestInterceptAtom']),
+            ...mapActions('common', ['requestInterceptAtom', 'requestMatchTemplateRuleList']),
             ...mapActions('pipelines', ['requestRetryPipeline']),
+            handleRouteParams () {
+                const { reviewTaskId, reviewStageSeq } = this.$route.query
+    
+                if (reviewTaskId) {
+                    const targetElement = this.curPipelineAllElements.find(element => element.id === reviewTaskId)
+                    if (targetElement && targetElement.status === 'REVIEWING') {
+                        this.reviewAtom({ id: reviewTaskId })
+                    }
+                } else if (reviewStageSeq) {
+                    this.handleStageCheck({
+                        type: 'checkIn',
+                        stageIndex: Number(reviewStageSeq) - 1
+                    })
+                }
+            },
             renderLabel (h, name) {
-                const panel = this.panels.find(panel => panel.name === name)
-                return h(
-                    'p',
-                    {},
-                    [
-                        h(
-                            'span',
-                            {
-                                class: 'panel-name pointer',
-                                on: {
-                                    click: this.setShowErrorPopup
-                                }
-                            },
-                            panel?.label ?? name
-                        ),
-                        h(
-                            'bk-tag',
-                            {
-                                props: {
-                                    theme: 'info',
-                                    radius: '4px'
-                                }
-                            },
-                            this.errorList.length
-                        )
-                    ]
-
-                )
+                const panel = this.panels.find((panel) => panel.name === name)
+                return h('p', {}, [
+                    h(
+                        'span',
+                        {
+                            class: 'panel-name pointer',
+                            on: {
+                                click: this.setShowErrorPopup
+                            }
+                        },
+                    panel?.label ?? name
+                    ),
+                    h(
+                        'bk-tag',
+                        {
+                            props: {
+                                theme: 'info',
+                                radius: '4px'
+                            }
+                        },
+                        this.errorList.length
+                    )
+                ])
             },
             initMiniMapScroll () {
                 const parent = document.querySelector('.pipeline-detail-wrapper.biz-content')
@@ -565,7 +631,7 @@
                 const scrollViewPort = this.$refs.scrollViewPort
                 if (scrollEle && scrollViewPort) {
                     scrollEle.removeEventListener('scroll', this.handelHerizontalScroll)
-                    parent.removeEventListener('scroll', this.handelVerticalScroll)
+                    parent?.removeEventListener('scroll', this.handelVerticalScroll)
                     scrollViewPort.removeEventListener('scroll', this.handleMiniMapDrag)
                 }
             },
@@ -586,7 +652,7 @@
             },
             setScrollBarPostion () {
                 const rootCssVar = document.querySelector(':root')
-                rootCssVar.style.setProperty('--track-bottom', this.showErrors ? this.errorPopupHeight : '42px')
+                rootCssVar.style.setProperty('--track-bottom', this.errorPopupHeight)
             },
             isActiveErrorAtom (atom) {
                 return this.activeErrorAtom?.taskId === atom.taskId && this.activeErrorAtom?.containerId === atom.containerId
@@ -619,7 +685,7 @@
                 this.showErrors = true
             },
 
-            handlePiplineClick (args) {
+            handlePipelineClick (args) {
                 this.toggleAsidePropertyPanel({
                     isShow: true,
                     editingElementPos: args
@@ -642,7 +708,8 @@
                         ...this.routerParams,
                         buildId: this.routerParams.buildNo,
                         elementId,
-                        action
+                        action,
+                        ruleIds: this.ruleIds
                     }
                     const res = await this.reviewExcuteAtom(data)
                     if (res) {
@@ -665,10 +732,8 @@
             },
             async reviewAtom (atom) {
                 // 人工审核
-                if (atom?.computedReviewers?.includes?.(this.userName)) {
-                    this.currentAtom = atom
-                    this.toggleCheckDialog(true)
-                }
+                this.currentAtom = atom
+                this.toggleCheckDialog(true)
             },
             toggleCheckDialog (isShow = false) {
                 this.isShowCheckDialog = isShow
@@ -697,27 +762,35 @@
                 done
             ) {
                 if (!isContinue) {
-                    const postData = {
-                        projectId: this.routerParams.projectId,
-                        pipelineId: this.routerParams.pipelineId,
-                        buildId: this.routerParams.buildNo,
-                        stageId,
-                        containerId,
-                        taskId,
-                        isContinue,
-                        element: atom
-                    }
+                    this.$bkInfo({
+                        title: this.$t('isTaskTermination'),
+                        confirmFn: async () => {
+                            const postData = {
+                                projectId: this.routerParams.projectId,
+                                pipelineId: this.routerParams.pipelineId,
+                                buildId: this.routerParams.buildNo,
+                                stageId,
+                                containerId,
+                                taskId,
+                                isContinue,
+                                element: atom
+                            }
 
-                    try {
-                        await this.pausePlugin(postData)
-                        await this.requestPipelineExecDetail(this.routerParams)
-                    } catch (err) {
-                        this.$showTips({
-                            message: err.message || err,
-                            theme: 'error'
-                        })
-                        done()
-                    }
+                            try {
+                                await this.pausePlugin(postData)
+                                await this.requestPipelineExecDetail(this.routerParams)
+                            } catch (err) {
+                                this.$showTips({
+                                    message: err.message || err,
+                                    theme: 'error'
+                                })
+                                done()
+                            }
+                        },
+                        cancelFn: () => {
+                            done()
+                        }
+                    })
                 } else {
                     this.toggleAsidePropertyPanel({
                         isShow: true,
@@ -748,25 +821,18 @@
                     if (res.id) {
                         message = this.$t(this.skipTask ? 'skipSuc' : 'subpage.retrySuc')
                         theme = 'success'
-                        res?.executeCount && this.handleExecuteCountChange(res.executeCount)
+                    res?.executeCount && this.handleExecuteCountChange(res.executeCount)
                     } else {
-                        message = res?.message ?? this.$t(this.skipTask ? 'skipFail' : 'subpage.retryFail')
+                        message
+                            = res?.message ?? this.$t(this.skipTask ? 'skipFail' : 'subpage.retryFail')
                         theme = 'error'
                     }
                 } catch (err) {
-                    this.handleError(err, [
-                        {
-                            actionId: this.$permissionActionMap.execute,
-                            resourceId: this.$permissionResourceMap.pipeline,
-                            instanceId: [
-                                {
-                                    id: this.routerParams.pipelineId,
-                                    name: this.routerParams.pipelineId
-                                }
-                            ],
-                            projectId: this.routerParams.projectId
-                        }
-                    ])
+                    this.handleError(err, {
+                        projectId: this.routerParams.projectId,
+                        resourceCode: this.routerParams.pipelineId,
+                        action: this.$permissionResourceAction.EXECUTE
+                    })
                 } finally {
                     message
                         && this.$showTips({
@@ -781,15 +847,20 @@
                 try {
                     const { stageId, containerId, taskId, matrixFlag } = row
                     let containerGroupIndex, containerIndex, matrixId
-                    const stageIndex = this.curPipeline.stages.findIndex(stage => stage.id === stageId)
+                    const stageIndex = this.curPipeline.stages.findIndex(
+                        (stage) => stage.id === stageId
+                    )
                     const stage = this.curPipeline.stages[stageIndex]
                     let container
                     if (matrixFlag) {
                         const numContainerId = parseInt(containerId, 10)
                         matrixId = Math.floor(numContainerId / 1000).toString()
-                        containerIndex = stage.containers.findIndex(item => item.id === matrixId)
-                        containerGroupIndex = stage.containers[containerIndex]?.groupContainers?.findIndex?.(item => item.id === containerId)
-                        container = stage.containers[containerIndex].groupContainers[containerGroupIndex]
+                        containerIndex = stage.containers.findIndex((item) => item.id === matrixId)
+                        containerGroupIndex = stage.containers[
+                        containerIndex
+                    ]?.groupContainers?.findIndex?.((item) => item.id === containerId)
+                        container
+                            = stage.containers[containerIndex].groupContainers[containerGroupIndex]
                     } else {
                         container = stage.containers.find((item, index) => {
                             if (item.id === containerId) {
@@ -800,7 +871,9 @@
                         })
                     }
 
-                    const elementIndex = container.elements.findIndex(element => element.id === taskId)
+                    const elementIndex = container.elements.findIndex(
+                        (element) => element.id === taskId
+                    )
                     return {
                         matrixId,
                         stageIndex: stageIndex > -1 ? stageIndex : undefined,
@@ -832,14 +905,14 @@
                     }
                     const element = container.elements[elementIndex]
                     if (element) {
-                        if (element.additionalOptions?.elementPostInfo) { // isPostActionAtom
+                        if (element.additionalOptions?.elementPostInfo) {
+                            // isPostActionAtom
                             await this.$refs.bkPipeline.expandPostAction(stageId, matrixId, containerId)
                         }
                         this.$set(element, 'locateActive', isLocate)
                     } else {
                         this.$set(container, 'locateActive', isLocate)
                     }
-                    console.log(element, elementIndex, container)
                     if (this.isPropertyPanelVisible || (showLog && isLocate)) {
                         this.toggleAsidePropertyPanel({
                             isShow: true,
@@ -889,6 +962,26 @@
                 const tab = window.open('about:blank')
                 const url = `${WEB_URL_PREFIX}/pipeline/${projectId}/dockerConsole/?pipelineId=${pipelineId}&dispatchType=${buildResourceType}&vmSeqId=${vmSeqId}${buildIdStr}`
                 tab.location = url
+            },
+            expandAllMatrix () {
+                try {
+                    for (let i = 0; i < this.execDetail.model.stages.length; i++) {
+                        const stage = this.execDetail.model.stages[i]
+                        for (let j = 0; j < stage.containers.length; j++) {
+                            const matrix = stage.containers[j]
+                            if (matrix.matrixGroupFlag) {
+                                for (let k = 0; k < matrix.groupContainers.length; k++) {
+                                    const container = matrix.groupContainers[k]
+                                    this.$refs.bkPipeline.expandMatrix(stage.id, matrix.id, container.id, this.isExpandAllMatrix)
+                                }
+                            } else {
+                                this.$refs.bkPipeline.expandJob(stage.id, matrix.id, this.isExpandAllMatrix)
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.log('expaned error', error)
+                }
             }
         }
     }
@@ -907,12 +1000,13 @@
   overflow: hidden;
 }
 .constant-width-num {
-    font-family: "Microsoft Yahei";
+  font-family: "Microsoft Yahei";
 }
 .pipeline-exec-summary {
   display: flex;
   align-items: center;
   padding: 16px 24px;
+  font-size: 12px;
   .pipeline-exec-count {
     display: flex;
     align-items: center;
@@ -929,6 +1023,7 @@
       align-items: center;
       grid-auto-flow: column;
       grid-gap: 6px;
+      margin-right: 8px;
     }
   }
   .pipeline-exec-timeline {
@@ -962,25 +1057,27 @@
         background: white;
         border: 2px solid #d8d8d8;
       }
-
-      &:not(:last-child) .time-step-divider {
-        display: block;
-        position: absolute;
-        width: calc(100% - 24px);
-        height: 24px;
-        top: 0;
-        &:hover {
-          &:before {
-            background: $primaryColor;
+      &:not(:last-child) {
+        .title-item {
+          display: flex;
+          .time-step-divider {
+            flex: 1;
+            height: 16px;
+            cursor: pointer;
+            &:hover {
+              p {
+                background: $primaryColor;
+              }
+            }
+            p {
+              position: relative;
+              top: 8px;
+              left: 4px;
+              width: 96%;
+              height: 1px;
+              background: #d8d8d8;
+            }
           }
-        }
-        &:before {
-          content: "";
-          position: absolute;
-          height: 1px;
-          width: 100%;
-          top: 8px;
-          background: #d8d8d8;
         }
       }
     }
@@ -1000,7 +1097,7 @@
     padding: 16px 24px;
     flex-shrink: 0;
     .hide-skip-pipeline-task {
-      padding: 0 16px 0 24px;
+      padding: 0 16px 0 0;
       position: relative;
       &:after {
         content: "";
@@ -1013,17 +1110,17 @@
       }
     }
   }
-    .exec-pipeline-scroll-box {
-        flex: 1;
-        .simplebar-wrapper,
-        .simplebar-content-wrapper {
-            height: 100%;
-        }
-        .exec-pipeline-ui-wrapper {
-            padding: 0 24px 42px 24px;
-            height: 100%;
-        }
+  .exec-pipeline-scroll-box {
+    flex: 1;
+    .simplebar-wrapper,
+    .simplebar-content-wrapper {
+      height: 100%;
     }
+    .exec-pipeline-ui-wrapper {
+      padding: 0 24px 42px 24px;
+      height: 100%;
+    }
+  }
   .exec-errors-popup {
     position: fixed;
     bottom: 0;
@@ -1047,30 +1144,30 @@
       }
     }
     .error-popup-table {
-        max-height: calc(30vh - 42px);
-        display: flex;
-        flex-direction: column;
-        .bk-table-header-wrapper {
-            flex-shrink: 0;
-        }
-        .bk-table-body-wrapper {
-            overflow-y: auto;
-        }
+      max-height: calc(30vh - 42px);
+      display: flex;
+      flex-direction: column;
+      .bk-table-header-wrapper {
+        flex-shrink: 0;
+      }
+      .bk-table-body-wrapper {
+        overflow-y: auto;
+      }
     }
     .toggle-error-popup-icon {
-        display: flex;
-        align-items: center;
-        transform-origin: center;
-        font-size: 30px;
-        width: 30px;
+      display: flex;
+      align-items: center;
+      transform-origin: center;
+      font-size: 30px;
+      width: 30px;
     }
 
     &.visible {
-        transform: translateY(0);
-        .toggle-error-popup-icon {
-            transition: transform 0.6s ease;
-            transform: rotate(180deg);
-        }
+      transform: translateY(0);
+      .toggle-error-popup-icon {
+        transition: transform 0.6s ease;
+        transform: rotate(180deg);
+      }
     }
     .drag-dot {
       position: absolute;
@@ -1079,17 +1176,17 @@
       z-index: 2;
     }
     .pipeline-error-guide-link {
-        margin-right: 24px;
-        .fix-error-jump {
+      margin-right: 24px;
+      .fix-error-jump {
         display: flex;
         align-items: center;
         color: $primaryColor;
         font-size: 12px;
 
         .fix-error-jump-icon {
-            padding: 0 4px;
+          padding: 0 4px;
         }
-        }
+      }
     }
 
     .exec-error-type-cell {
@@ -1103,17 +1200,17 @@
       }
     }
     .build-error-cell {
-        display: flex;
-        align-items: center;
-        width: 100%;
-        .build-error-see-more {
-            flex-shrink: 0;
-            margin-left: 10px;
-        }
-        .build-error-info {
-            @include ellipsis();
-            flex: 1;
-        }
+      display: flex;
+      align-items: center;
+      width: 100%;
+      .build-error-see-more {
+        flex-shrink: 0;
+        margin-left: 10px;
+      }
+      .build-error-info {
+        @include ellipsis();
+        flex: 1;
+      }
     }
   }
 }
@@ -1169,29 +1266,29 @@
   }
 }
 .pipeline-scrollbar-track {
-    left: 24px;
-    right: 34px;
-    position: fixed;
-    bottom: var(--track-bottom);
-    height: 10px;
-    transition: all 0.3s;
-    .simplebar-scrollbar {
-        height: 12px;
-        &:before {
-            background: #a5a5a5;
-        }
+  left: 24px;
+  right: 34px;
+  position: fixed;
+  bottom: var(--track-bottom);
+  height: 10px;
+  transition: all 0.3s;
+  .simplebar-scrollbar {
+    height: 12px;
+    &:before {
+      background: #a5a5a5;
     }
+  }
 }
 .exec-pipeline-mini-map {
-    bottom: 56px;
+  bottom: 56px;
 }
 .pipeline-model-scroll-viewport {
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    position: absolute;
-    z-index: -2;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: absolute;
+  z-index: -2;
 }
 </style>

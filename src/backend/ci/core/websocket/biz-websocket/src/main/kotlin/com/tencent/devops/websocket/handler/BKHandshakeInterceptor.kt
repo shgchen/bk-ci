@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,6 +29,7 @@ package com.tencent.devops.websocket.handler
 
 import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_USER_ID
 import com.tencent.devops.common.redis.RedisOperation
+import com.tencent.devops.common.service.utils.SpringContextUtil
 import com.tencent.devops.common.websocket.utils.WsRedisUtils
 import com.tencent.devops.websocket.servcie.WebsocketService
 import org.slf4j.LoggerFactory
@@ -42,9 +43,9 @@ import org.springframework.web.socket.server.HandshakeInterceptor
 
 @Component
 class BKHandshakeInterceptor @Autowired constructor(
-    val redisOperation: RedisOperation,
-    val websocketService: WebsocketService
+    val redisOperation: RedisOperation
 ) : HandshakeInterceptor {
+
     companion object {
         private val logger = LoggerFactory.getLogger(BKHandshakeInterceptor::class.java)
     }
@@ -58,10 +59,12 @@ class BKHandshakeInterceptor @Autowired constructor(
         if (request is ServletServerHttpRequest) {
             val sessionId = request.servletRequest.getParameter("sessionId")
             val userId = request.servletRequest.getHeader(AUTH_HEADER_DEVOPS_USER_ID)
-            if (userId != null && sessionId != null) {
+
+            if (!userId.isNullOrBlank() && !sessionId.isNullOrBlank()) {
                 WsRedisUtils.writeSessionIdByRedis(redisOperation, userId, sessionId)
                 logger.info("[WebSocket]-[$userId]-[$sessionId]-connection was successful")
-                websocketService.createTimeoutSession(sessionId, userId)
+                SpringContextUtil.getBean(WebsocketService::class.java)
+                    .createTimeoutSession(sessionId, userId)
             }
         }
     }
@@ -72,6 +75,16 @@ class BKHandshakeInterceptor @Autowired constructor(
         wsHandler: WebSocketHandler,
         attributes: MutableMap<String, Any>
     ): Boolean {
+        if (request is ServletServerHttpRequest) {
+            val sessionId = request.servletRequest.getParameter("sessionId")
+            val userId = request.servletRequest.getHeader(AUTH_HEADER_DEVOPS_USER_ID)
+
+            if (userId.isNullOrBlank() || sessionId.isNullOrBlank()) {
+                logger.warn("[WebSocket]-[userId=$userId]-[sessionId=$sessionId]-" +
+                    "connection rejected: missing required parameters")
+                return false
+            }
+        }
         return true
     }
 }

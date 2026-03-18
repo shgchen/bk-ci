@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,23 +28,22 @@
 
 package com.tencent.devops.auth.pojo.vo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("itsm回调信息")
+@Schema(title = "itsm回调信息")
 data class AuthItsmCallbackInfo(
-    @ApiModelProperty("权限中心申请单ID")
+    @get:Schema(title = "权限中心申请单ID")
     val applyId: Int,
-    @ApiModelProperty("itsm 审批单号")
+    @get:Schema(title = "itsm 审批单号")
     val sn: String,
-    @ApiModelProperty("项目id")
+    @get:Schema(title = "项目id")
     val projectId: String,
-    @ApiModelProperty("权限中心回调id")
+    @get:Schema(title = "权限中心回调id")
     val callbackId: String,
-    @ApiModelProperty("申请人")
+    @get:Schema(title = "申请人")
     val applicant: String,
-    @ApiModelProperty("审批人")
+    @get:Schema(title = "审批人")
     val approver: String?,
-    @ApiModelProperty("审批结果")
+    @get:Schema(title = "审批结果")
     val approveResult: Boolean?
 )

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,13 +28,13 @@
 package com.tencent.devops.dispatch.controller
 
 import com.tencent.devops.common.api.pojo.Page
+import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.dispatch.api.ServiceAgentResource
-import com.tencent.devops.dispatch.pojo.thirdPartyAgent.AgentBuildInfo
+import com.tencent.devops.dispatch.pojo.thirdpartyagent.AgentBuildInfo
+import com.tencent.devops.dispatch.service.ThirdPartyAgentDockerService
 import com.tencent.devops.dispatch.service.ThirdPartyAgentService
 import org.springframework.beans.factory.annotation.Autowired
-import com.tencent.devops.common.api.pojo.Result
-import com.tencent.devops.dispatch.service.ThirdPartyAgentDockerService
 
 @RestResource
 @Suppress("ALL")
@@ -44,12 +44,25 @@ class ServiceAgentResourceImpl @Autowired constructor(
 ) : ServiceAgentResource {
     override fun listAgentBuild(
         agentId: String,
+        status: String?,
+        pipelineId: String?,
         page: Int?,
         pageSize: Int?
     ): Page<AgentBuildInfo> {
-        return thirdPartyAgentService.listAgentBuilds(agentId, page, pageSize)
+        return thirdPartyAgentService.listAgentBuilds(
+            agentId = agentId,
+            status = status,
+            pipelineId = pipelineId,
+            page = page,
+            pageSize = pageSize
+        )
     }
 
+    override fun listLatestBuildPipelines(agentIds: List<String>): List<AgentBuildInfo> {
+        return thirdPartyAgentService.listLatestBuildPipelines(
+            agentIds = agentIds
+        )
+    }
     override fun getDockerDebugUrl(
         userId: String,
         projectId: String,

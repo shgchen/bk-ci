@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -138,6 +138,7 @@ object WorkerMessageCode {
     const val AGENT_NETWORK_CONNECT_FAILED = "2130074" // 构建机网络连接问题(Agent Network Connect Failed)
     const val AGENT_NETWORK_TIMEOUT = "2130075" // 构建机网络超时问题(Agent Network Timeout)
     const val AGENT_NETWORK_UNKNOWN = "2130076" // 构建机网络未知异常(Agent Network Unknown)
+    const val CHECK_DOCKER_IMAGE_INFO_FAILED = "2130077" // 校验镜像信息失败
 
     const val BK_CERTIFICATE_ID_EMPTY = "bkCertificateIdEmpty" // 证书ID为空
     const val BK_BUILD_IMAGE_SUCCEED = "bkBuildImageSucceed" // 构建镜像成功！
@@ -169,4 +170,8 @@ object WorkerMessageCode {
     // [警告]该插件处于下架过渡期，后续可能无法正常工作！
     const val BK_ATOM_IS_IN_THE_TRANSITION_PERIOD_OF_DELISTING = "bkAtomIsInTheTransitionPeriodOfDelisting"
     const val BK_GET_OUTPUT_ARTIFACTVALUE_ERROR = "bkGetOutputArtifactvalueError" // 获取输出构件[artifact]值错误
+    // 错误，对变量 [{0}] 赋值失败，超过 {1} 个字符（当前长度为 {2}）
+    const val BK_VARIABLE_PARAM_MAX_LENGTH = "bkVariableParamMaxLength"
+    // [set-error error_code={0}]格式错误，将被忽略。要求：错误码以 8 开头、6位数字。
+    const val BK_USER_SET_ERROR_FAILED = "bkUserSetErrorFailed"
 }

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -45,10 +45,8 @@ import com.tencent.devops.process.dao.record.BuildRecordTaskDao
 import com.tencent.devops.process.engine.common.BuildTimeCostUtils.generateContainerTimeCost
 import com.tencent.devops.process.engine.common.BuildTimeCostUtils.generateMatrixTimeCost
 import com.tencent.devops.process.engine.dao.PipelineBuildDao
-import com.tencent.devops.process.engine.dao.PipelineResDao
-import com.tencent.devops.process.engine.dao.PipelineResVersionDao
-import com.tencent.devops.process.engine.service.PipelineElementService
-import com.tencent.devops.process.engine.service.detail.ContainerBuildDetailService
+import com.tencent.devops.process.engine.dao.PipelineResourceDao
+import com.tencent.devops.process.engine.dao.PipelineResourceVersionDao
 import com.tencent.devops.process.engine.utils.ContainerUtils
 import com.tencent.devops.process.pojo.VmInfo
 import com.tencent.devops.process.pojo.pipeline.record.BuildRecordContainer
@@ -67,12 +65,10 @@ class ContainerBuildRecordService(
     private val dslContext: DSLContext,
     private val recordContainerDao: BuildRecordContainerDao,
     private val recordTaskDao: BuildRecordTaskDao,
-    private val containerBuildDetailService: ContainerBuildDetailService,
     recordModelService: PipelineRecordModelService,
-    pipelineResDao: PipelineResDao,
+    pipelineResourceDao: PipelineResourceDao,
     pipelineBuildDao: PipelineBuildDao,
-    pipelineResVersionDao: PipelineResVersionDao,
-    pipelineElementService: PipelineElementService,
+    pipelineResourceVersionDao: PipelineResourceVersionDao,
     stageTagService: StageTagService,
     buildRecordModelDao: BuildRecordModelDao,
     pipelineEventDispatcher: PipelineEventDispatcher,
@@ -84,27 +80,56 @@ class ContainerBuildRecordService(
     pipelineEventDispatcher = pipelineEventDispatcher,
     redisOperation = redisOperation,
     recordModelService = recordModelService,
-    pipelineResDao = pipelineResDao,
+    pipelineResourceDao = pipelineResourceDao,
     pipelineBuildDao = pipelineBuildDao,
-    pipelineResVersionDao = pipelineResVersionDao,
-    pipelineElementService = pipelineElementService
+    pipelineResourceVersionDao = pipelineResourceVersionDao
 ) {
 
     fun getRecord(
-        transactionContext: DSLContext?,
+        transactionContext: DSLContext? = null,
         projectId: String,
         pipelineId: String,
         buildId: String,
         containerId: String,
-        executeCount: Int
+        executeCount: Int? = null
     ): BuildRecordContainer? {
+        val finalExecuteCount = fixedExecuteCount(
+            projectId = projectId,
+            buildId = buildId,
+            executeCount = executeCount,
+            queryDslContext = transactionContext
+        )
         return recordContainerDao.getRecord(
             transactionContext ?: dslContext,
             projectId = projectId,
             pipelineId = pipelineId,
             buildId = buildId,
             containerId = containerId,
-            executeCount = executeCount
+            executeCount = finalExecuteCount
+        )
+    }
+
+    fun getLatestRecord(
+        transactionContext: DSLContext? = null,
+        projectId: String,
+        pipelineId: String,
+        buildId: String,
+        containerId: String,
+        executeCount: Int? = null
+    ): BuildRecordContainer? {
+        val finalExecuteCount = fixedExecuteCount(
+            projectId = projectId,
+            buildId = buildId,
+            executeCount = executeCount,
+            queryDslContext = transactionContext
+        )
+        return recordContainerDao.getLatestRecord(
+            dslContext = transactionContext ?: dslContext,
+            projectId = projectId,
+            pipelineId = pipelineId,
+            buildId = buildId,
+            containerId = containerId,
+            executeCount = finalExecuteCount
         )
     }
 
@@ -128,7 +153,6 @@ class ContainerBuildRecordService(
         containerId: String,
         executeCount: Int
     ) {
-        containerBuildDetailService.containerPreparing(projectId, buildId, containerId)
         update(
             projectId, pipelineId, buildId, executeCount, BuildStatus.RUNNING,
             cancelUser = null, operation = "containerPreparing#$containerId"
@@ -156,12 +180,6 @@ class ContainerBuildRecordService(
         executeCount: Int,
         containerBuildStatus: BuildStatus
     ) {
-        containerBuildDetailService.containerStarted(
-            projectId = projectId,
-            buildId = buildId,
-            containerId = containerId,
-            containerBuildStatus = containerBuildStatus
-        )
         update(
             projectId, pipelineId, buildId, executeCount, BuildStatus.RUNNING,
             cancelUser = null, operation = "containerStarted#$containerId"
@@ -195,13 +213,6 @@ class ContainerBuildRecordService(
         buildStatus: BuildStatus,
         operation: String
     ) {
-        containerBuildDetailService.updateContainerStatus(
-            projectId = projectId,
-            buildId = buildId,
-            containerId = containerId,
-            buildStatus = buildStatus,
-            executeCount = executeCount
-        )
         update(
             projectId, pipelineId, buildId, executeCount, BuildStatus.RUNNING,
             cancelUser = null, operation = "$operation#$containerId"
@@ -221,11 +232,17 @@ class ContainerBuildRecordService(
                 val containerName = recordContainer.containerVar[Container::name.name]?.toString() ?: ""
                 var startTime: LocalDateTime? = null
                 var endTime: LocalDateTime? = null
+                val now = LocalDateTime.now()
                 // 存在互斥组的先将名字修改
                 if (buildStatus.isReadyToRun()) {
                     if (recordContainer.startTime == null) {
-                        startTime = LocalDateTime.now()
+                        startTime = now
                     }
+                    // #10751 增加对运行中重试的兼容，因为不新增执行次数，需要刷新上一次失败的结束时间
+                    if (recordContainer.endTime != null) recordContainerDao.flushEndTimeWhenRetry(
+                        dslContext = context, projectId = projectId, pipelineId = pipelineId,
+                        buildId = buildId, containerId = containerId, executeCount = executeCount
+                    )
                     val mutexGroup = when (recordContainer.containerType) {
                         VMBuildContainer.classType -> containerVar[VMBuildContainer::mutexGroup.name]?.let {
                             it as MutexGroup
@@ -247,13 +264,10 @@ class ContainerBuildRecordService(
 
                 if (buildStatus.isFinish()) {
                     if (recordContainer.endTime == null) {
-                        endTime = LocalDateTime.now()
-                    }
-                    if (!BuildStatus.parse(containerVar[Container::startVMStatus.name]?.toString()).isFinish()) {
-                        containerVar[Container::startVMStatus.name] = buildStatus.name
+                        endTime = now
                     }
                     newTimestamps[BuildTimestampType.JOB_CONTAINER_SHUTDOWN] = BuildRecordTimeStamp(
-                        null, LocalDateTime.now().timestampmilli()
+                        null, now.timestampmilli()
                     )
                     // 矩阵直接以类似stage的方式计算耗时
                     if (recordContainer.matrixGroupFlag == true) {
@@ -297,15 +311,6 @@ class ContainerBuildRecordService(
         matrixOption: MatrixControlOption,
         modelContainer: Container?
     ) {
-        containerBuildDetailService.updateMatrixGroupContainer(
-            projectId = projectId,
-            buildId = buildId,
-            stageId = stageId,
-            matrixGroupId = matrixGroupId,
-            buildStatus = buildStatus,
-            matrixOption = matrixOption,
-            modelContainer = modelContainer
-        )
         update(
             projectId, pipelineId, buildId, executeCount, BuildStatus.RUNNING,
             cancelUser = null, operation = "updateMatrixGroupContainer#$matrixGroupId"
@@ -332,7 +337,6 @@ class ContainerBuildRecordService(
         executeCount: Int,
         containerId: String
     ) {
-        containerBuildDetailService.containerSkip(projectId, buildId, containerId)
         update(
             projectId, pipelineId, buildId, executeCount, BuildStatus.RUNNING,
             cancelUser = null, operation = "containerSkip#$containerId"
@@ -360,13 +364,6 @@ class ContainerBuildRecordService(
         vmInfo: VmInfo,
         executeCount: Int?
     ) {
-        containerBuildDetailService.saveBuildVmInfo(
-            projectId = projectId,
-            pipelineId = pipelineId,
-            buildId = buildId,
-            containerId = containerId,
-            vmInfo = vmInfo
-        )
         logger.info("ENGINE|$buildId|saveBuildVmInfo|containerId=$containerId|$vmInfo")
         if (executeCount == null) return
         update(
@@ -431,8 +428,13 @@ class ContainerBuildRecordService(
             var startTime: LocalDateTime? = null
             var endTime: LocalDateTime? = null
             val now = LocalDateTime.now()
-            if (buildStatus?.isRunning() == true && recordContainer.startTime == null) {
-                startTime = now
+            if (buildStatus?.isRunning() == true) {
+                if (recordContainer.startTime == null) startTime = now
+                // #10751 增加对运行中重试的兼容，因为不新增执行次数，需要刷新上一次失败的结束时间
+                if (recordContainer.endTime != null) recordContainerDao.flushEndTimeWhenRetry(
+                    dslContext = context, projectId = projectId, pipelineId = pipelineId,
+                    buildId = buildId, containerId = containerId, executeCount = executeCount
+                )
             }
             if (buildStatus?.isFinish() == true && recordContainer.endTime == null) {
                 endTime = now
@@ -445,6 +447,28 @@ class ContainerBuildRecordService(
                 timestamps = timestamps?.let { mergeTimestamps(timestamps, recordContainer.timestamps) }
             )
         }
+    }
+
+    /**
+     * 获取job在stage中的执行順序
+     * */
+    fun getContainerOrderInStage(
+        projectId: String,
+        pipelineId: String,
+        buildId: String,
+        executeCount: Int,
+        stageId: String,
+        containerId: String
+    ): Int {
+        val containerIdList = recordContainerDao.getLatestNormalRecords(
+            dslContext = dslContext,
+            projectId = projectId,
+            pipelineId = pipelineId,
+            buildId = buildId,
+            stageId = stageId,
+            executeCount = executeCount
+        ).map { it.containerId }
+        return containerIdList.indexOf(containerId)
     }
 
     companion object {

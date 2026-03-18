@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,34 +29,34 @@ package com.tencent.devops.metrics.api
 
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.metrics.pojo.vo.AtomMonitorInfoVO
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["SERVICE_METRICS_ATOM"], description = "插件监控")
+@Tag(name = "SERVICE_METRICS_ATOM", description = "插件监控")
 @Path("/service/monitor/atoms/")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface ServiceAtomMonitorDataResource {
 
-    @ApiOperation("查询插件监控统计数据")
+    @Operation(summary = "查询插件监控统计数据")
     @GET
     @Path("/{atomCode}/statistic")
     fun queryAtomMonitorStatisticData(
-        @ApiParam(value = "插件标识", required = true)
+        @Parameter(description = "插件标识", required = true)
         @PathParam("atomCode")
         atomCode: String,
-        @ApiParam(value = "开始时间", required = true)
+        @Parameter(description = "开始时间", required = true)
         @QueryParam("startTime")
         startTime: String,
-        @ApiParam(value = "结束时间", required = true)
+        @Parameter(description = "结束时间", required = true)
         @QueryParam("endTime")
         endTime: String
     ): Result<AtomMonitorInfoVO>

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -31,15 +31,17 @@ import com.tencent.devops.common.api.exception.ErrorCodeException
 import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.client.Client
 import com.tencent.devops.common.pipeline.Model
-import com.tencent.devops.process.engine.dao.PipelineResVersionDao
+import com.tencent.devops.common.pipeline.utils.ModelUtils
+import com.tencent.devops.common.redis.RedisLock
+import com.tencent.devops.common.redis.RedisOperation
+import com.tencent.devops.process.engine.dao.PipelineResourceVersionDao
 import com.tencent.devops.store.api.common.ServiceStoreStatisticResource
-import com.tencent.devops.store.pojo.common.StoreStatisticPipelineNumUpdate
 import com.tencent.devops.store.pojo.common.enums.StoreTypeEnum
+import com.tencent.devops.store.pojo.common.statistic.StoreStatisticPipelineNumUpdate
 import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
-import java.util.concurrent.Executors
 
 /**
  * 流水线插件统计相关的服务
@@ -47,13 +49,13 @@ import java.util.concurrent.Executors
  */
 @Service
 class PipelineAtomStatisticsService @Autowired constructor(
-    private val pipelineResVersionDao: PipelineResVersionDao,
+    private val pipelineResourceVersionDao: PipelineResourceVersionDao,
     private val dslContext: DSLContext,
-    private val client: Client
+    private val client: Client,
+    private val redisOperation: RedisOperation
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(PipelineAtomStatisticsService::class.java)
-        private val executors = Executors.newFixedThreadPool(8)
     }
 
     /**
@@ -70,48 +72,52 @@ class PipelineAtomStatisticsService @Autowired constructor(
         val currentVersionModelStr = getVersionModelString(projectId, pipelineId, version) ?: return
         val currentVersionModel = JsonUtil.to(currentVersionModelStr, Model::class.java)
         // 获取当前流水线版本模型中插件的集合（去掉重复插件）
-        val currentVersionAtomSet = getModelAtomSet(currentVersionModel)
-        when {
-            deleteFlag -> {
-                addPipelineNumUpdate(currentVersionAtomSet, pipelineNumUpdateList, false)
-            }
-            else -> {
-                if (version == null) {
-                    return
+        val currentVersionAtomSet = ModelUtils.getModelAtoms(currentVersionModel)
+        val lock = RedisLock(redisOperation, "$pipelineId:updateAtomPipelineNum", 60)
+        try {
+            lock.lock()
+            when {
+                deleteFlag -> {
+                    addPipelineNumUpdate(currentVersionAtomSet, pipelineNumUpdateList, false)
                 }
-                if (version > 1 && !restoreFlag) {
-                    val lastVersionModelStr = getVersionModelString(projectId, pipelineId, version - 1) ?: return
-                    val lastVersionModel = JsonUtil.to(lastVersionModelStr, Model::class.java)
-                    // 获取上一个流水线版本模型中插件的集合（去掉重复插件）
-                    val lastVersionAtomSet = getModelAtomSet(lastVersionModel)
-                    val dataList = mutableSetOf<String>()
-                    dataList.addAll(currentVersionAtomSet)
-                    // 获取当前版本新增插件集合
-                    currentVersionAtomSet.removeAll(lastVersionAtomSet)
-                    addPipelineNumUpdate(currentVersionAtomSet, pipelineNumUpdateList, true)
-                    // 获取当前版本删除插件集合
-                    lastVersionAtomSet.removeAll(dataList)
-                    addPipelineNumUpdate(lastVersionAtomSet, pipelineNumUpdateList, false)
-                } else {
-                    addPipelineNumUpdate(currentVersionAtomSet, pipelineNumUpdateList, true)
+                else -> {
+                    if (version == null) {
+                        return
+                    }
+                    if (version > 1 && !restoreFlag) {
+                        val lastVersionModelStr = getVersionModelString(projectId, pipelineId, version - 1) ?: return
+                        val lastVersionModel = JsonUtil.to(lastVersionModelStr, Model::class.java)
+                        // 获取上一个流水线版本模型中插件的集合（去掉重复插件）
+                        val lastVersionAtomSet = ModelUtils.getModelAtoms(lastVersionModel)
+                        val dataList = mutableSetOf<String>()
+                        dataList.addAll(currentVersionAtomSet)
+                        // 获取当前版本新增插件集合
+                        currentVersionAtomSet.removeAll(lastVersionAtomSet)
+                        addPipelineNumUpdate(currentVersionAtomSet, pipelineNumUpdateList, true)
+                        // 获取当前版本删除插件集合
+                        lastVersionAtomSet.removeAll(dataList)
+                        addPipelineNumUpdate(lastVersionAtomSet, pipelineNumUpdateList, false)
+                    } else {
+                        addPipelineNumUpdate(currentVersionAtomSet, pipelineNumUpdateList, true)
+                    }
                 }
             }
-        }
-        // 更新store统计表插件对应的流水线的数量
-        executors.submit {
+            // 更新store统计表插件对应的流水线的数量
             val pipelineNumUpdateResult =
                 client.get(ServiceStoreStatisticResource::class)
                     .updatePipelineNum(StoreTypeEnum.ATOM, pipelineNumUpdateList)
             if (pipelineNumUpdateResult.isNotOk()) {
                 logger.warn(
                     "updateAtomPipelineNum pipelineId:$pipelineId,version:$version," +
-                        "pipelineNumUpdateResult:$pipelineNumUpdateResult"
+                            "pipelineNumUpdateResult:$pipelineNumUpdateResult"
                 )
                 throw ErrorCodeException(
                     errorCode = pipelineNumUpdateResult.status.toString(),
                     defaultMessage = pipelineNumUpdateResult.message
                 )
             }
+        } finally {
+            lock.unlock()
         }
     }
 
@@ -127,19 +133,7 @@ class PipelineAtomStatisticsService @Autowired constructor(
         }
     }
 
-    private fun getModelAtomSet(model: Model): MutableSet<String> {
-        val modelAtomSet = mutableSetOf<String>()
-        model.stages.forEach { stage ->
-            stage.containers.forEach { container ->
-                container.elements.forEach { element ->
-                    modelAtomSet.add(element.getAtomCode())
-                }
-            }
-        }
-        return modelAtomSet
-    }
-
     private fun getVersionModelString(projectId: String, pipelineId: String, version: Int?): String? {
-        return pipelineResVersionDao.getVersionModelString(dslContext, projectId, pipelineId, version)
+        return pipelineResourceVersionDao.getVersionModelString(dslContext, projectId, pipelineId, version)
     }
 }

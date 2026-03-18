@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -73,5 +73,9 @@ data class WebHookParams(
     var thirdUrl: String? = null,
     var thirdSecretToken: String? = null,
     // 插件版本
-    var version: String? = null
+    var version: String? = null,
+    // 跳过WIP
+    var skipWip: Boolean? = false,
+    // 触发代码库的链接地址[SVN触发时需关注{关联代码库地址}和{触发器配置的相对路径}]
+    var sourceRepoUrl: String? = ""
 )

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,6 +28,7 @@
 package com.tencent.devops.repository.service.scm
 
 import com.tencent.devops.common.api.enums.ScmType
+import com.tencent.devops.scm.code.git.api.GitHook
 import com.tencent.devops.scm.enums.CodeSvnRegion
 import com.tencent.devops.scm.pojo.CommitCheckRequest
 import com.tencent.devops.scm.pojo.GitCommit
@@ -36,7 +37,9 @@ import com.tencent.devops.scm.pojo.GitMrChangeInfo
 import com.tencent.devops.scm.pojo.GitMrInfo
 import com.tencent.devops.scm.pojo.GitMrReviewInfo
 import com.tencent.devops.scm.pojo.GitProjectInfo
+import com.tencent.devops.scm.pojo.GitTagInfo
 import com.tencent.devops.scm.pojo.RevisionInfo
+import com.tencent.devops.scm.pojo.TapdWorkItem
 import com.tencent.devops.scm.pojo.TokenCheckResult
 
 @Suppress("ALL")
@@ -62,7 +65,9 @@ interface IScmOauthService {
         token: String?,
         region: CodeSvnRegion?,
         userName: String?,
-        search: String? = null
+        search: String? = null,
+        page: Int = 1,
+        pageSize: Int = 20
     ): List<String>
 
     fun listTags(
@@ -95,6 +100,27 @@ interface IScmOauthService {
         region: CodeSvnRegion?,
         userName: String,
         event: String?
+    )
+
+    fun getWebHooks(
+        projectName: String,
+        url: String,
+        type: ScmType,
+        token: String?
+    ): List<GitHook>
+
+    fun updateWebHook(
+        hookId: Long,
+        projectName: String,
+        url: String,
+        type: ScmType,
+        privateKey: String?,
+        passPhrase: String?,
+        token: String?,
+        region: CodeSvnRegion?,
+        userName: String,
+        event: String?,
+        hookUrl: String?
     )
 
     fun addCommitCheck(
@@ -155,4 +181,27 @@ interface IScmOauthService {
         token: String?,
         crId: Long
     ): GitCommitReviewInfo?
+
+    /**
+     * 获取指定 TAG
+     */
+    fun getTag(
+        projectName: String,
+        url: String,
+        type: ScmType,
+        token: String?,
+        tagName: String
+    ): GitTagInfo?
+
+    /**
+     * 获取mr关联的tapd单
+     */
+    fun getTapdWorkItems(
+        projectName: String,
+        url: String,
+        type: ScmType,
+        token: String?,
+        refType: String,
+        iid: Long
+    ): List<TapdWorkItem>
 }

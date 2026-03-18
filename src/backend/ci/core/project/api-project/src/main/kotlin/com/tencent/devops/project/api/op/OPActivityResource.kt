@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -33,21 +33,21 @@ import com.tencent.devops.project.pojo.OPActivityUpdate
 import com.tencent.devops.project.pojo.OPActivityVO
 import com.tencent.devops.project.pojo.Result
 import com.tencent.devops.project.pojo.enums.ActivityType
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.DELETE
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.POST
-import javax.ws.rs.PUT
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.DELETE
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.PUT
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["OP_ACTIVITI"], description = "项目最新动态")
+@Tag(name = "OP_ACTIVITI", description = "项目最新动态")
 @Path("/op/activities")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -55,26 +55,26 @@ interface OPActivityResource {
 
     @POST
     @Path("/types/{type}")
-    @ApiOperation("添加")
+    @Operation(summary = "添加")
     fun addActivity(
-        @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
         userId: String,
-        @ApiParam("最新动态类型")
+        @Parameter(description = "最新动态类型")
         @PathParam("type")
         type: ActivityType,
-        @ApiParam("最新动态")
+        @Parameter(description = "最新动态")
         info: ActivityInfo
     ): Result<Boolean>
 
     @GET
     @Path("/{fieldName}/enum")
-    @ApiOperation("获取字段常量信息")
+    @Operation(summary = "获取字段常量信息")
     fun getField(
-        @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
         userId: String,
-        @ApiParam("最新动态ID")
+        @Parameter(description = "最新动态ID")
         @PathParam("fieldName")
         fieldName: String
     ): Result<List<String>>
@@ -82,59 +82,59 @@ interface OPActivityResource {
 //    @GET
 // //    @Path("/{fieldName}/enum")
 //    @Path("/fields/{fieldName}/enum")
-//    @ApiOperation("获取字段常量信息")
+//    @Operation(summary = "获取字段常量信息")
 //    fun getFieldV2(
-//            @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+//            @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
 //            @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
 //            userId: String,
-//            @ApiParam("最新动态ID")
+//            @Parameter(description = "最新动态ID")
 //            @PathParam("fieldName")
 //            fieldName: String
 //    ): Result<List<String>>
 
     @PUT
     @Path("/{activityId}")
-    @ApiOperation("修改")
+    @Operation(summary = "修改")
     fun upDateActivity(
-        @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
         userId: String,
-        @ApiParam("最新动态ID")
+        @Parameter(description = "最新动态ID")
         @PathParam("activityId")
         activityId: Long,
-        @ApiParam("最新动态")
+        @Parameter(description = "最新动态")
         opActivityUpdate: OPActivityUpdate
     ): Result<Boolean>
 
     @DELETE
     @Path("/{activityId}")
-    @ApiOperation("删除")
+    @Operation(summary = "删除")
     fun deleteActivity(
-        @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
         userId: String,
-        @ApiParam("最新动态ID")
+        @Parameter(description = "最新动态ID")
         @PathParam("activityId")
         activityId: Long
     ): Result<Boolean>
 
     @GET
     @Path("/{activityId}")
-    @ApiOperation("根据ID查询")
+    @Operation(summary = "根据ID查询")
     fun getActivity(
-        @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
         userId: String,
-        @ApiParam("最新动态ID")
+        @Parameter(description = "最新动态ID")
         @PathParam("activityId")
         activityId: Long
     ): Result<OPActivityVO>
 
     @GET
     @Path("/list")
-    @ApiOperation("查询最新动态列表")
+    @Operation(summary = "查询最新动态列表")
     fun listActivity(
-        @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
         userId: String
     ): Result<List<OPActivityVO>>

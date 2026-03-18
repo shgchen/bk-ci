@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,14 +27,13 @@
 
 package com.tencent.devops.store.pojo.atom
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("获取并解析插件配置quality.json的返回数据")
+@Schema(title = "获取并解析插件配置quality.json的返回数据")
 data class GetAtomQualityConfigResult(
-    @ApiModelProperty("状态码", required = true)
+    @get:Schema(title = "状态码", required = true)
     val errorCode: String,
-    @ApiModelProperty("参数", required = true)
+    @get:Schema(title = "参数", required = true)
     val errorParams: Array<String>
 ) {
     override fun equals(other: Any?): Boolean {

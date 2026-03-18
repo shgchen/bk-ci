@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,19 +30,19 @@ package com.tencent.devops.auth.api.service
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.auth.pojo.TokenInfo
 import com.tencent.devops.common.api.auth.AUTH_HEADER_USER_ID
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["AUTH_SERVICE_TOKEN"], description = "权限校验--token相关")
+@Tag(name = "AUTH_SERVICE_TOKEN", description = "权限校验--token相关")
 @Path("/service/token")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -50,18 +50,18 @@ interface ServiceTokenResource {
 
     @POST
     @Path("/validate")
-    @ApiOperation("校验用户是否有action的权限")
+    @Operation(summary = "校验用户是否有action的权限")
     fun validateToken(
-        @ApiParam("权限Token", required = false)
+        @Parameter(description = "权限Token", required = false)
         @QueryParam("access_token")
         accessToken: String
     ): Result<TokenInfo>
 
-    @ApiOperation("获取用户访问openapi的accessToken")
+    @Operation(summary = "获取用户访问openapi的accessToken")
     @GET
     @Path("/get")
     fun getAccessToken(
-        @ApiParam(value = "用户ID", required = true)
+        @Parameter(description = "用户ID", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String
     ): Result<TokenInfo>

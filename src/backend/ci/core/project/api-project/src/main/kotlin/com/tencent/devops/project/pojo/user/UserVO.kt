@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,22 +27,21 @@
 
 package com.tencent.devops.project.pojo.user
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("用户-信息模型")
+@Schema(title = "用户-信息模型")
 data class UserVO(
-    @ApiModelProperty("中文名")
+    @get:Schema(title = "中文名")
 //    @JsonProperty("chinese_name")
     var chineseName: String,
-    @ApiModelProperty("头像URL")
+    @get:Schema(title = "头像URL")
 //    @JsonProperty("avatar_url")
     val avatarUrl: String?,
-    @ApiModelProperty("bkpaas用户ID")
+    @get:Schema(title = "bkpaas用户ID")
 //    @JsonProperty("bkpaas_user_id")
     val bkpaasUserId: String?,
-    @ApiModelProperty("用户名")
+    @get:Schema(title = "用户名")
     var username: String,
-    @ApiModelProperty("权限")
+    @get:Schema(title = "权限")
     val permissions: String?
 )

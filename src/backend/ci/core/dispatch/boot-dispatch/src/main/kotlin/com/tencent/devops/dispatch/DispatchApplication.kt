@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,9 +30,14 @@ package com.tencent.devops.dispatch
 import com.tencent.devops.common.service.MicroService
 import com.tencent.devops.common.service.MicroServiceApplication
 import org.springframework.context.annotation.ComponentScan
+import org.springframework.scheduling.annotation.EnableScheduling
 
 @MicroService
-@ComponentScan("com.tencent.devops.plugin", "com.tencent.devops.dispatch")
+@EnableScheduling
+@ComponentScan(
+    "com.tencent.devops.plugin",
+    "com.tencent.devops.dispatch"
+)
 class DispatchApplication
 
 fun main(args: Array<String>) {

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -99,8 +99,9 @@ class CodeGitlabScmImpl constructor(
         } catch (ignored: Throwable) {
             logger.warn("Fail to check the gitlab token", ignored)
             throw ScmException(
-                ignored.message ?: I18nUtil.getCodeLanMessage(
-                    messageCode = USER_ACCESS_CHECK_FAIL
+                I18nUtil.getCodeLanMessage(
+                    CommonMessageCode.THIRD_PARTY_SERVICE_OPERATION_FAILED,
+                    params = arrayOf(ScmType.CODE_GITLAB.name, ignored.message ?: "")
                 ),
                 ScmType.CODE_GITLAB.name
             )
@@ -115,9 +116,9 @@ class CodeGitlabScmImpl constructor(
             } catch (ignored: Throwable) {
                 logger.warn("Fail to check the private key of git", ignored)
                 throw ScmException(
-                    ignored.message ?: I18nUtil.getCodeLanMessage(
-                        GITLAB_INVALID
-                    ),
+                    GitUtils.matchExceptionCode(ignored.message ?: "")?.let {
+                        I18nUtil.getCodeLanMessage(it)
+                    } ?: ignored.message ?: I18nUtil.getCodeLanMessage(GITLAB_INVALID),
                     ScmType.CODE_GITLAB.name
                 )
             }

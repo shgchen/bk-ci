@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -26,6 +26,8 @@
  */
 package com.tencent.devops.openapi.resources.apigw.v4
 
+import com.tencent.devops.common.api.util.PageUtil
+import com.tencent.devops.common.auth.api.pojo.ProjectConditionDTO
 import com.tencent.devops.common.client.Client
 import com.tencent.devops.common.client.consul.ConsulConstants.PROJECT_TAG_REDIS_KEY
 import com.tencent.devops.common.redis.RedisOperation
@@ -34,11 +36,14 @@ import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.openapi.api.apigw.v4.ApigwProjectResourceV4
 import com.tencent.devops.openapi.service.OpenapiPermissionService
 import com.tencent.devops.project.api.service.ServiceProjectResource
+import com.tencent.devops.project.pojo.ProjectBaseInfo
 import com.tencent.devops.project.pojo.ProjectCreateInfo
 import com.tencent.devops.project.pojo.ProjectCreateUserInfo
+import com.tencent.devops.project.pojo.ProjectSortType
 import com.tencent.devops.project.pojo.ProjectUpdateInfo
 import com.tencent.devops.project.pojo.ProjectVO
 import com.tencent.devops.project.pojo.Result
+import com.tencent.devops.project.pojo.enums.PluginDetailsDisplayOrder
 import com.tencent.devops.project.pojo.enums.ProjectValidateType
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -62,10 +67,9 @@ class ApigwProjectResourceV4Impl @Autowired constructor(
         appCode: String?,
         apigwType: String?,
         userId: String,
-        projectCreateInfo: ProjectCreateInfo,
-        accessToken: String?
+        projectCreateInfo: ProjectCreateInfo
     ): Result<Boolean> {
-        logger.info("OPENAPI_PROJECT_V4|$userId|create|$projectCreateInfo|$accessToken|$projectRouteTag")
+        logger.info("OPENAPI_PROJECT_V4|$userId|create|$projectCreateInfo|$projectRouteTag")
 
         // 创建项目需要指定对接的主集群。 不同集群可能共用同一个套集群
         if (!projectRouteTag.isNullOrEmpty()) {
@@ -74,8 +78,7 @@ class ApigwProjectResourceV4Impl @Autowired constructor(
 
         return client.get(ServiceProjectResource::class).create(
             userId = userId,
-            projectCreateInfo = projectCreateInfo,
-            accessToken = accessToken
+            projectCreateInfo = projectCreateInfo
         )
     }
 
@@ -84,15 +87,13 @@ class ApigwProjectResourceV4Impl @Autowired constructor(
         apigwType: String?,
         userId: String,
         projectId: String,
-        projectUpdateInfo: ProjectUpdateInfo,
-        accessToken: String?
+        projectUpdateInfo: ProjectUpdateInfo
     ): Result<Boolean> {
-        logger.info("OPENAPI_PROJECT_V4|$userId|update|$projectId|$projectUpdateInfo|$accessToken")
+        logger.info("OPENAPI_PROJECT_V4|$userId|update|$projectId|$projectUpdateInfo")
         return client.get(ServiceProjectResource::class).update(
             userId = userId,
             projectId = projectId,
-            projectUpdateInfo = projectUpdateInfo,
-            accessToken = accessToken
+            projectUpdateInfo = projectUpdateInfo
         )
     }
 
@@ -100,8 +101,7 @@ class ApigwProjectResourceV4Impl @Autowired constructor(
         appCode: String?,
         apigwType: String?,
         userId: String,
-        projectId: String,
-        accessToken: String?
+        projectId: String
     ): Result<ProjectVO?> {
         logger.info("OPENAPI_PROJECT_V4|$userId|get|$projectId")
         return client.get(ServiceProjectResource::class).get(
@@ -113,11 +113,37 @@ class ApigwProjectResourceV4Impl @Autowired constructor(
         appCode: String?,
         apigwType: String?,
         userId: String,
-        accessToken: String?
+        productIds: String?,
+        channelCodes: String?,
+        sort: ProjectSortType?,
+        page: Int?,
+        pageSize: Int?
     ): Result<List<ProjectVO>> {
         logger.info("OPENAPI_PROJECT_V4|$userId|list")
         return client.get(ServiceProjectResource::class).list(
-            userId = userId
+            userId = userId,
+            productIds = productIds,
+            channelCodes = channelCodes,
+            sort = sort,
+            page = page,
+            pageSize = pageSize
+        )
+    }
+
+    override fun listByConditions(
+        appCode: String?,
+        apigwType: String?,
+        userId: String,
+        projectConditionDTO: ProjectConditionDTO,
+        page: Int,
+        pageSize: Int
+    ): Result<List<ProjectVO>> {
+        logger.info("OPENAPI_PROJECT_V4|listByConditions|$userId|$projectConditionDTO")
+        val sqlLimit = PageUtil.convertPageSizeToSQLLimit(page, pageSize)
+        return client.get(ServiceProjectResource::class).listProjectDetailsByCondition(
+            projectConditionDTO = projectConditionDTO,
+            limit = sqlLimit.limit,
+            offset = sqlLimit.offset
         )
     }
 
@@ -144,7 +170,7 @@ class ApigwProjectResourceV4Impl @Autowired constructor(
         projectId: String,
         createInfo: ProjectCreateUserInfo
     ): Result<Boolean?> {
-        logger.info("createProjectUser v4 |$userId|$projectId|$createInfo|")
+        logger.info("createProjectUser v4 |$appCode|$userId|$projectId|$createInfo")
         openapiPermissionService.validProjectManagerPermission(appCode, apigwType, userId, projectId)
         val projectConsulTag = redisOperation.hget(PROJECT_TAG_REDIS_KEY, projectId)
         if (!projectConsulTag.isNullOrEmpty()) {
@@ -153,6 +179,49 @@ class ApigwProjectResourceV4Impl @Autowired constructor(
         return client.get(ServiceProjectResource::class).createProjectUser(
             projectId = projectId,
             createInfo = createInfo
+        )
+    }
+
+    override fun updateProjectProductId(
+        appCode: String?,
+        apigwType: String?,
+        userId: String?,
+        projectId: String,
+        productName: String?,
+        productId: Int?
+    ): Result<Boolean> {
+        logger.info("updateProjectProductId v4 |$appCode|$userId|$projectId|$productName")
+        openapiPermissionService.validProjectManagerPermission(appCode, apigwType, userId, projectId)
+        return client.get(ServiceProjectResource::class).updateProjectProductId(
+            projectCode = projectId,
+            productName = productName,
+            productId = productId
+        )
+    }
+
+    override fun getProjectListByProductId(
+        appCode: String?,
+        apigwType: String?,
+        userId: String?,
+        productId: Int
+    ): Result<List<ProjectBaseInfo>> {
+        logger.info("getProjectListByProductId v4 |$appCode|$userId|$productId")
+        return client.get(ServiceProjectResource::class).getProjectListByProductId(
+            productId = productId
+        )
+    }
+
+    override fun updatePluginDetailsDisplay(
+        appCode: String?,
+        apigwType: String?,
+        userId: String?,
+        projectId: String,
+        pluginDetailsDisplayOrder: List<PluginDetailsDisplayOrder>
+    ): Result<Boolean> {
+        logger.info("updateProjectProductId v4 |$appCode|$userId|$projectId|$pluginDetailsDisplayOrder")
+        return client.get(ServiceProjectResource::class).updatePluginDetailsDisplay(
+            projectId = projectId,
+            pluginDetailsDisplayOrder = pluginDetailsDisplayOrder
         )
     }
 }

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -26,6 +26,8 @@
  */
 
 package com.tencent.devops.common.pipeline.pojo.element.trigger.enums
+
+import com.tencent.devops.common.api.enums.ScmType
 
 enum class CodeEventType {
     // git event
@@ -58,5 +60,81 @@ enum class CodeEventType {
     FORM_COMMIT,
     SHELVE_COMMIT,
     SHELVE_DELETE,
-    SHELVE_SUBMIT;
+    SHELVE_SUBMIT,
+
+    // 子流水线
+    PARENT_PIPELINE;
+
+    fun isMergeRequest() = this == MERGE_REQUEST || this == MERGE_REQUEST_ACCEPT || this == PULL_REQUEST
+
+    companion object {
+        const val MESSAGE_CODE_PREFIX = "EVENT_TYPE"
+
+        /**
+         * 工蜂事件类型
+         */
+        val CODE_GIT_EVENTS = listOf(
+            PUSH,
+            MERGE_REQUEST,
+            MERGE_REQUEST_ACCEPT,
+            TAG_PUSH,
+            NOTE,
+            REVIEW,
+            ISSUES
+        )
+
+        /**
+         * Github事件类型
+         */
+        val CODE_GITHUB_EVENTS = listOf(
+            PUSH,
+            PULL_REQUEST,
+            CREATE,
+            REVIEW,
+            ISSUES,
+            NOTE
+        )
+
+        val CODE_P4_EVENTS = listOf(
+            CHANGE_COMMIT,
+            CHANGE_SUBMIT,
+            CHANGE_CONTENT,
+            SHELVE_COMMIT,
+            SHELVE_SUBMIT
+        )
+
+        val CODE_GITLAB_EVENTS = listOf(
+            PUSH,
+            MERGE_REQUEST,
+            MERGE_REQUEST_ACCEPT,
+            TAG_PUSH
+        )
+
+        val CODE_TGIT_EVENTS = listOf(
+            PUSH,
+            MERGE_REQUEST,
+            MERGE_REQUEST_ACCEPT,
+            TAG_PUSH,
+            NOTE,
+            ISSUES
+        )
+
+        val CODE_SVN_EVENTS = listOf(
+            POST_COMMIT,
+            PRE_COMMIT,
+            LOCK_COMMIT
+        )
+
+        fun getEventsByScmType(scmType: ScmType?): List<CodeEventType> = when (scmType) {
+            ScmType.CODE_GIT -> CODE_GIT_EVENTS
+            ScmType.CODE_TGIT -> CODE_TGIT_EVENTS
+            ScmType.GITHUB -> CODE_GITHUB_EVENTS
+            ScmType.CODE_GITLAB -> CODE_GITLAB_EVENTS
+            ScmType.CODE_SVN -> CODE_SVN_EVENTS
+            ScmType.CODE_P4 -> CODE_P4_EVENTS
+            else -> values().toList()
+        }
+
+        fun convert(eventType: String?) = values().find { it.name == eventType }
+    }
 }

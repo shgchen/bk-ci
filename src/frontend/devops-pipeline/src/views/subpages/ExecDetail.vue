@@ -2,9 +2,8 @@
     <section
         class="pipeline-detail-wrapper"
         @scroll="handlerScroll"
-        v-bkloading="{ isLoading: isLoading || fetchingAtomList }"
+        v-bkloading="{ isLoading: isLoading }"
     >
-        
         <empty-tips
             v-if="hasNoPermission"
             :show-lock="true"
@@ -23,8 +22,19 @@
                     }"
                 ></span>
                 <aside class="exec-detail-summary-header-title">
-                    <bk-tag class="exec-status-tag" type="stroke" :theme="statusTagTheme">
+                    <bk-tag
+                        class="exec-status-tag"
+                        type="stroke"
+                        :theme="statusTagTheme"
+                    >
                         <span class="exec-status-label">
+                            <i
+                                v-if="isRunning"
+                                :class="['devops-icon', {
+                                    'icon-hourglass hourglass-queue': execDetail.status === 'QUEUE',
+                                    'icon-circle-2-1 spin-icon': execDetail.status === 'RUNNING'
+                                }]"
+                            />
                             {{ statusLabel }}
                             <span
                                 v-if="execDetail.status === 'CANCELED'"
@@ -34,17 +44,27 @@
                             </span>
                         </span>
                     </bk-tag>
-                    <span class="exec-detail-summary-header-build-msg">
+                    <span
+                        v-bk-overflow-tips
+                        class="exec-detail-summary-header-build-msg"
+                    >
                         {{ execDetail.buildMsg }}
                     </span>
                 </aside>
                 <aside class="exec-detail-summary-header-trigger">
-                    <img v-if="execDetail.triggerUserProfile" class="exec-trigger-profile" />
-                    <logo class="exec-trigger-profile" name="default-user" size="24" />
-                    <span v-if="execDetail.triggerUser">
+                    <img
+                        v-if="execDetail.triggerUserProfile"
+                        class="exec-trigger-profile"
+                    />
+                    <logo
+                        class="exec-trigger-profile"
+                        name="default-user"
+                        size="24"
+                    />
+                    <span v-if="startUser">
                         {{
                             $t("details.executorInfo", [
-                                execDetail.triggerUser,
+                                startUser,
                                 execDetail.trigger,
                                 execFormatStartTime
                             ])
@@ -52,13 +72,17 @@
                     </span>
                 </aside>
             </div>
-            <p class="summary-header-shadow" v-show="show"></p>
+            <p
+                class="summary-header-shadow"
+                v-show="show"
+            ></p>
             <Summary
                 ref="detailSummary"
                 :visible="summaryVisible"
                 :exec-detail="execDetail"
+                :version-change="pipelineInfo?.versionChange"
             ></Summary>
-            
+
             <p class="pipeline-exec-gap">
                 <span
                     @click="collapseSummary"
@@ -81,9 +105,11 @@
                     {{ panel.label }}
                 </span>
             </header>
-            <div :class="['exec-detail-main', {
-                'is-outputs-panel': curItemTab === 'outputs'
-            }]">
+            <div
+                :class="['exec-detail-main', {
+                    'is-outputs-panel': curItemTab === 'outputs'
+                }]"
+            >
                 <component
                     :is="curPanel.component"
                     v-bind="curPanel.bindData"
@@ -107,12 +133,14 @@
                 <plugin
                     :exec-detail="execDetail"
                     :editing-element-pos="editingElementPos"
+                    :properties="curProject.properties?.pluginDetailsDisplayOrder"
                     @close="hideSidePanel"
                 />
             </template>
             <template v-else-if="showContainerPanel">
                 <job
                     :exec-detail="execDetail"
+                    :pipeline="pipelineModel"
                     :editing-element-pos="editingElementPos"
                     @close="hideSidePanel"
                 />
@@ -136,24 +164,35 @@
 
 <script>
     import AtomPropertyPanel from '@/components/AtomPropertyPanel'
-    import Summary from '@/components/ExecDetail/Summary'
+    import codeRecord from '@/components/codeRecord'
+    import emptyTips from '@/components/devops/emptyTips'
     import job from '@/components/ExecDetail/job'
     import plugin from '@/components/ExecDetail/plugin'
     import stage from '@/components/ExecDetail/stage'
+    import Summary from '@/components/ExecDetail/Summary'
     import ExecPipeline from '@/components/ExecPipeline'
     import Logo from '@/components/Logo'
     import Outputs from '@/components/Outputs'
     import StagePropertyPanel from '@/components/StagePropertyPanel'
     import stageReviewPanel from '@/components/StageReviewPanel'
     import StartParams from '@/components/StartParams'
-    import codeRecord from '@/components/codeRecord'
-    import emptyTips from '@/components/devops/emptyTips'
     import pipelineOperateMixin from '@/mixins/pipeline-operate-mixin'
-    import pipelineConstMixin from '@/mixins/pipelineConstMixin'
+    import {
+        handlePipelineNoPermission,
+        RESOURCE_ACTION
+    } from '@/utils/permission'
     import { mapThemeOfStatus } from '@/utils/pipelineStatus'
     import { convertTime } from '@/utils/util'
     import webSocketMessage from '@/utils/webSocketMessage'
     import { mapActions, mapGetters, mapState } from 'vuex'
+
+    const PANELS = {
+        executeDetail: 'executeDetail',
+        outputs: 'outputs',
+        reports: 'reports',
+        codeRecords: 'codeRecords',
+        startupParams: 'startupParams'
+    }
 
     export default {
         components: {
@@ -171,7 +210,7 @@
             AtomPropertyPanel,
             Summary
         },
-        mixins: [pipelineOperateMixin, pipelineConstMixin],
+        mixins: [pipelineOperateMixin],
 
         data () {
             return {
@@ -194,9 +233,10 @@
                             theme: 'success',
                             size: 'normal',
                             handler: () => {
-                                this.toApplyPermission(this.$permissionActionMap.execute, {
-                                    id: this.routerParams.pipelineId,
-                                    type: this.$permissionResourceTypeMap.PIPELINE_DEFAULT
+                                handlePipelineNoPermission({
+                                    projectId: this.routerParams.projectId,
+                                    resourceCode: this.routerParams.pipelineId,
+                                    action: RESOURCE_ACTION.EXECUTE
                                 })
                             },
                             text: this.$t('applyPermission')
@@ -208,12 +248,12 @@
 
         computed: {
             ...mapState('atom', [
+                'pipelineInfo',
                 'editingElementPos',
                 'isPropertyPanelVisible',
                 'isShowCompleteLog',
                 'showPanelType',
                 'fetchingAtomList',
-                'pipeline',
                 'showStageReviewPanel'
             ]),
             ...mapGetters('atom', {
@@ -223,21 +263,28 @@
             execFormatStartTime () {
                 return convertTime(this.execDetail?.queueTime)
             },
+            isRunning () {
+                return ['RUNNING', 'QUEUE'].includes(this.execDetail?.status)
+            },
+            archiveFlag () {
+                return this.$route.query.archiveFlag
+            },
             panels () {
                 return [
                     {
-                        name: 'executeDetail',
+                        name: PANELS.executeDetail,
                         label: this.$t('details.executeDetail'),
                         component: 'exec-pipeline',
                         className: 'exec-pipeline',
                         bindData: {
                             execDetail: this.execDetail,
-                            isLatestBuild: this.isLatestBuild,
-                            matchRules: this.curMatchRules
+                            isLatestBuild: this.archiveFlag ? !this.archiveFlag : this.isLatestBuild,
+                            matchRules: this.curMatchRules,
+                            isRunning: this.isRunning
                         }
                     },
                     {
-                        name: 'outputs',
+                        name: PANELS.outputs,
                         label: this.$t('details.artifact'),
                         className: '',
                         component: 'outputs',
@@ -246,7 +293,7 @@
                         }
                     },
                     {
-                        name: 'reports',
+                        name: PANELS.reports,
                         label: this.$t('details.report'),
                         className: '',
                         component: 'outputs',
@@ -255,14 +302,14 @@
                         }
                     },
                     {
-                        name: 'codeRecords',
+                        name: PANELS.codeRecords,
                         label: this.$t('details.codeRecords'),
                         className: '',
                         component: 'code-record',
                         bindData: {}
                     },
                     {
-                        name: 'startupParams',
+                        name: PANELS.startupParams,
                         label: this.$t('details.startupParams'),
                         className: '',
                         component: 'start-params',
@@ -341,10 +388,16 @@
                     }
             },
             routerParams () {
-                return this.$route.params
+                return {
+                    ...this.$route.params,
+                    ...this.$route.query
+                }
             },
             curItemTab () {
-                return this.routerParams.type || 'executeDetail'
+                if (PANELS[this.routerParams.type]) {
+                    return this.routerParams.type
+                }
+                return PANELS.executeDetail
             },
             curPanel () {
                 return this.panels.find(panel => panel.name === this.curItemTab)
@@ -357,12 +410,34 @@
             },
             isLatestBuild () {
                 return this.execDetail?.buildNum === this.execDetail?.latestBuildNum && this.execDetail?.curVersion === this.execDetail?.latestVersion
+            },
+            pipelineModel () {
+                return this.execDetail?.model || {}
+            },
+            executeCount () {
+                return this.execDetail?.executeCount ?? 1
+            },
+            recordList () {
+                const list = [...this.execDetail?.recordList]
+                return (
+                    list.reverse().map((record, index) => ({
+                        id: index + 1,
+                        user: record.startUser
+                    })) ?? []
+                )
+            },
+            startUser () {
+                return this.recordList.find(i => i.id === this.executeCount)?.user || ''
             }
         },
 
         watch: {
             execDetail (val) {
                 this.isLoading = val === null
+
+                if (val) {
+                    this.$updateTabTitle?.(`#${val.buildNum}  ${val.buildMsg} | ${val.pipelineName}`)
+                }
             },
             'routerParams.buildNo': {
                 handler (val, oldVal) {
@@ -376,16 +451,29 @@
                 if (error.code === 403) {
                     this.hasNoPermission = true
                 }
+            },
+            '$route.params.type': {
+                handler (newVal) {
+                    if (newVal !== 'outputs') {
+                        const query = { ...this.$route.query }
+                        delete query.metadataKey
+                        delete query.metadataValues
+                        this.$router.replace({ query })
+                    }
+                },
+                immediate: true
             }
         },
         beforeRouteEnter (to, from, next) {
-            if (!to.params.type) {
+            
+            if (!PANELS[to.params.type]) {
                 next({
                     name: 'pipelinesDetail',
                     params: {
                         ...to.params,
-                        type: 'executeDetail'
-                    }
+                        type: PANELS.executeDetail
+                    },
+                    query: to.query
                 })
             } else {
                 next()
@@ -394,7 +482,9 @@
         mounted () {
             this.requestPipelineExecDetail(this.routerParams)
             webSocketMessage.installWsMessage(this.setPipelineDetail)
-
+            webSocketMessage.registeOnReconnect(() => {
+                this.requestPipelineExecDetail(this.routerParams)
+            })
             // 第三方系统、通知等，点击链接进入流水线执行详情页面时，定位到具体的 task/ job (自动打开对应的侧滑框)
             const {
                 stageIndex,
@@ -417,7 +507,8 @@
 
         beforeDestroy () {
             this.setPipelineDetail(null)
-
+            this.resetAtomModalMap()
+            this.isLoading = false
             webSocketMessage.unInstallWsMessage()
         },
 
@@ -430,7 +521,8 @@
                 'setPipelineDetail',
                 'getInitLog',
                 'getAfterLog',
-                'pausePlugin'
+                'pausePlugin',
+                'resetAtomModalMap'
             ]),
             handlerScroll (e) {
                 this.show = e.target.scrollTop > 88
@@ -440,7 +532,7 @@
             hideSidePanel () {
                 this.showLog = false
             },
-            handlePiplineClick (args) {
+            handlePipelineClick (args) {
                 this.togglePropertyPanel({
                     isShow: true,
                     editingElementPos: args
@@ -489,7 +581,8 @@
                     params: {
                         ...this.routerParams,
                         type: panel.name
-                    }
+                    },
+                    query: this.$route.query
                 })
             },
             collapseSummary () {
@@ -599,7 +692,7 @@
         height: 12px;
         background: #EAEBF0;
 
-        border-radius: 2px 2px 0 0;
+        border-radius:  0 0 2px 2px;
         text-align: center;
         line-height: 12px;
         font-size: 12px;
@@ -679,6 +772,7 @@
     margin: 0 24px;
     flex: 1;
     box-shadow: 0 2px 2px 0 #00000026;
+    height: calc(100% - 205px);
     &.is-outputs-panel {
         overflow: hidden;
     }
@@ -695,6 +789,7 @@
   .bk-sideslider-wrapper {
     top: 0;
     padding-bottom: 0;
+    height: 100vh;
     .bk-sideslider-content {
       height: calc(100% - 60px);
     }
@@ -732,11 +827,6 @@
       }
       .item-label {
         color: #c4cdd6;
-      }
-      .icon-retry {
-        font-size: 20px;
-        color: $primaryColor;
-        cursor: pointer;
       }
       .icon-stop-shape {
         font-size: 15px;

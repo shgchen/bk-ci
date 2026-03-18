@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -23,128 +23,119 @@
 
 import Vue from 'vue'
 import App from './App'
+import enClass from './directives/en-class'
+import enStyle from './directives/en-style'
 import focus from './directives/focus/index.js'
 import createRouter from './router'
 import store from './store'
 
-import '@icon-cool/bk-icon-devops'
-import '@icon-cool/bk-icon-devops/src/index'
+import createLocale from '@locale'
 import mavonEditor from 'mavon-editor'
 import 'mavon-editor/dist/css/index.css'
 import PortalVue from "portal-vue"; // eslint-disable-line
 import VeeValidate from 'vee-validate'
 import validationENMessages from 'vee-validate/dist/locale/en'
+import validationJAMessages from 'vee-validate/dist/locale/ja'
 import validationCNMessages from 'vee-validate/dist/locale/zh_CN'
-import createLocale from '../../locale'
 import ExtendsCustomRules from './utils/customRules'
 import validDictionary from './utils/validDictionary'
 
-import bkMagic from 'bk-magic-vue'
-import BkPipeline from 'bkui-pipeline'
-import { pipelineDocs } from '../../common-lib/docs'
 import {
-    actionMap,
-    resourceMap,
-    resourceTypeMap
-} from '../../common-lib/permission-conf'
+    handlePipelineNoPermission,
+    RESOURCE_ACTION
+} from '@/utils/permission'
+import bkMagic from 'bk-magic-vue'
 
-// 全量引入 bk-magic-vue 样式
-require('bk-magic-vue/dist/bk-magic-vue.min.css')
+import createDocs from '../../common-lib/docs'
+// 权限指令
+import 'bk-magic-vue/dist/bk-magic-vue.min.css'
+import { BkPermission, PermissionDirective } from 'bk-permission'
+import 'bk-permission/dist/main.css'
 
-const { i18n, setLocale } = createLocale(
-    require.context('@locale/pipeline/', false, /\.json$/)
+const { lang, i18n, setLocale } = createLocale(
+    require.context('@locale/pipeline/', false, /\.json$/),
+    Vue
 )
+const { pipelineDocs } = createDocs(lang, window.BK_CI_VERSION)
+const isInIframe = window.self !== window.parent
 
 Vue.use(focus)
-Vue.use(bkMagic)
+Vue.use(enClass)
+Vue.use(enStyle)
 Vue.use(PortalVue)
 Vue.use(mavonEditor)
-
+Vue.use(PermissionDirective(handlePipelineNoPermission))
+Vue.use(BkPermission, {
+    i18n
+})
 Vue.use(VeeValidate, {
     i18nRootKey: 'validations', // customize the root path for validation messages.
     i18n,
     fieldsBagName: 'veeFields',
     dictionary: {
+        'ja-JP': validationJAMessages,
         'en-US': validationENMessages,
         'zh-CN': validationCNMessages
     }
 })
 VeeValidate.Validator.localize(validDictionary)
 ExtendsCustomRules(VeeValidate.Validator.extend)
-console.log(i18n.locale)
-Vue.use(BkPipeline, {
-    i18n
-})
 
 Vue.prototype.$setLocale = setLocale
-Vue.prototype.$permissionActionMap = actionMap
-Vue.prototype.$permissionResourceMap = resourceMap
-Vue.prototype.$permissionResourceTypeMap = resourceTypeMap
+Vue.prototype.$permissionResourceAction = RESOURCE_ACTION
 Vue.prototype.$pipelineDocs = pipelineDocs
 Vue.prototype.$bkMessage = function (config) {
     config.ellipsisLine = config.ellipsisLine || 3
     bkMagic.bkMessage(config)
 }
 /* eslint-disable */
-// 扩展字符串，判断是否为蓝盾变量格式
+// 扩展字符串，判断是否为蓝盾变量格式（传统模式变量格式）
 String.prototype.isBkVar = function () {
-    return /\$\{{2}([\w\_\.\s-]+)\}{2}/g.test(this) || /\$\{([\w\_\.\s-]+)\}/g.test(this)
+    return (
+        /\$\{\{([\w_.-]+)\}\}/.test(this) || 
+        /\$\{([\w_.-]+)\}/.test(this)
+      )
 }
-
+// 制约模式下的变量格式
+String.prototype.isBKConstraintVar = function () {
+    return /\$\{\{([\w_.-]+)\}\}/.test(this)
+}
+// 提取蓝盾变量名
+String.prototype.extractBkVar = function () {
+    return this.replace(/\$\{\{([\w_.-]+)\}\}|\$\{([\w_.-]+)\}/g, (match, p1, p2) => {
+        return p1 || p2
+    })
+}
 /* eslint-disable */
 
 Vue.mixin({
     methods: {
-        // handleError (e, permissionAction, instance, projectId, resourceMap = this.$permissionResourceMap.pipeline) {
-        handleError(e, noPermissionList) {
-            if (e.code === 403) {
-                // 没有权限编辑
-                // this.setPermissionConfig(resourceMap, permissionAction, instance ? [instance] : [], projectId)
-                this.$showAskPermissionDialog({
-                    noPermissionList,
-                });
+        handleError (e, data, delay = 3000) {
+            if (e.code === 403) { // 没有权限编辑
+                handlePipelineNoPermission(data)
             } else {
                 this.$showTips({
                     message: e.message || e,
-                    theme: "error",
-                });
+                    delay,
+                    theme: 'error'
+                })
             }
         },
-        /**
-         * 设置权限弹窗的参数
-         */
-        setPermissionConfig(
-            resourceId,
-            actionId,
-            instanceId = [],
-            projectId = this.$route.params.projectId
-        ) {
-            this.$showAskPermissionDialog({
-                noPermissionList: [
-                    {
-                        actionId,
-                        resourceId,
-                        instanceId,
-                        projectId,
-                    },
-                ],
-            });
-        },
-    },
-});
+    }
+})
 
-if (window.top === window.self) {
+if (!isInIframe) {
     // 只能以iframe形式嵌入
     location.href = `${WEB_URL_PREFIX}${location.pathname}`;
 }
 
 global.pipelineVue = new Vue({
     el: "#app",
-    router: createRouter(store),
-    i18n,
+    router: createRouter(store, isInIframe),
     store,
+    i18n,
     components: {
-        App,
+        App
     },
-    template: "<App/>",
-});
+    template: '<App/>'
+})

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -40,6 +40,7 @@ import com.tencent.devops.artifactory.pojo.enums.FileChannelTypeEnum
 import com.tencent.devops.artifactory.pojo.enums.FileTypeEnum
 import com.tencent.devops.artifactory.util.DefaultPathUtils
 import com.tencent.devops.common.api.constant.CommonMessageCode
+import com.tencent.devops.common.api.constant.KEY_SHA_CONTENT
 import com.tencent.devops.common.api.exception.ErrorCodeException
 import com.tencent.devops.common.api.pojo.Page
 import com.tencent.devops.common.api.util.PageUtil
@@ -52,6 +53,15 @@ import com.tencent.devops.common.archive.util.MimeUtil
 import com.tencent.devops.common.auth.api.AuthPermission
 import com.tencent.devops.common.auth.api.AuthResourceType
 import com.tencent.devops.common.service.utils.HomeHostUtil
+import java.io.File
+import java.io.FileInputStream
+import java.io.InputStream
+import java.io.OutputStream
+import java.net.URLDecoder
+import java.net.URLEncoder
+import java.time.LocalDateTime
+import jakarta.servlet.http.HttpServletResponse
+import jakarta.ws.rs.NotFoundException
 import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
@@ -62,15 +72,6 @@ import org.springframework.util.FileCopyUtils
 import org.springframework.util.FileSystemUtils
 import org.springframework.web.context.request.RequestContextHolder
 import org.springframework.web.context.request.ServletRequestAttributes
-import java.io.File
-import java.io.FileInputStream
-import java.io.InputStream
-import java.io.OutputStream
-import java.net.URLDecoder
-import java.net.URLEncoder
-import java.time.LocalDateTime
-import javax.servlet.http.HttpServletResponse
-import javax.ws.rs.NotFoundException
 
 @Service
 @Suppress("UNUSED", "TooManyFunctions", "UnusedPrivateMember", "NestedBlockDepth", "MagicNumber")
@@ -92,7 +93,7 @@ class DiskArchiveFileServiceImpl : ArchiveFileServiceImpl() {
                 size = 0,
                 createdTime = 0,
                 modifiedTime = 0,
-                checksums = FileChecksums(sha256 = "", sha1 = "", md5 = ""),
+                checksums = FileChecksums(sha256 = "", sha1 = "", md5 = "", crc64ecma = ""),
                 meta = emptyMap()
             )
         } else {
@@ -110,7 +111,8 @@ class DiskArchiveFileServiceImpl : ArchiveFileServiceImpl() {
                 checksums = FileChecksums(
                     sha256 = FileDigestUtils.fileSha256(inputFiles) ?: "",
                     sha1 = FileDigestUtils.fileSha1(inputFiles) ?: "",
-                    md5 = FileDigestUtils.fileMD5(inputFiles) ?: ""
+                    md5 = FileDigestUtils.fileMD5(inputFiles) ?: "",
+                    crc64ecma = ""
                 ),
                 meta = fileDao.getFileMeta(dslContext, infoRecord.id)
             )
@@ -306,14 +308,14 @@ class DiskArchiveFileServiceImpl : ArchiveFileServiceImpl() {
         if (filePath.contains("..")) {
             throw ErrorCodeException(errorCode = CommonMessageCode.PARAMETER_IS_INVALID, params = arrayOf(filePath))
         }
-        val file = File("${getBasePath()}$fileSeparator${URLDecoder.decode(filePath, "UTF-8")}")
+        val file = File("${getBasePath()}$fileSeparator$filePath")
         response.contentType = MimeUtil.mediaType(filePath)
         FileCopyUtils.copy(FileInputStream(file), response.outputStream)
     }
 
     override fun downloadFileToLocal(userId: String, filePath: String, response: HttpServletResponse) {
         logger.info("downloadFileToLocal, filePath: $filePath")
-        val file = File("${getBasePath()}$fileSeparator${URLDecoder.decode(filePath, "UTF-8")}")
+        val file = File("${getBasePath()}$fileSeparator$filePath")
         // 如果文件不存在，提示404
         if (!file.exists()) {
             logger.info("file($filePath) not found")
@@ -357,7 +359,7 @@ class DiskArchiveFileServiceImpl : ArchiveFileServiceImpl() {
         fileType: FileTypeEnum?,
         props: Map<String, String?>?,
         fileChannelType: FileChannelTypeEnum,
-        logo: Boolean?
+        staticFlag: Boolean?
     ): String {
         logger.info("uploadFile|filePath=$filePath|fileName=$fileName|props=$props")
         val uploadFileName = fileName ?: file.name
@@ -383,7 +385,7 @@ class DiskArchiveFileServiceImpl : ArchiveFileServiceImpl() {
         uploadFileToRepo(destPath, file)
         val shaContent = file.inputStream().use { ShaUtils.sha1InputStream(it) }
         var fileProps: Map<String, String?> = props ?: mapOf()
-        fileProps = fileProps.plus("shaContent" to shaContent)
+        fileProps = fileProps.plus(KEY_SHA_CONTENT to shaContent)
         val path = destPath.substring(getBasePath().length)
         val fileId = UUIDUtil.generate()
         dslContext.transaction { t ->
@@ -677,7 +679,6 @@ class DiskArchiveFileServiceImpl : ArchiveFileServiceImpl() {
     }
 
     override fun getFileContent(
-        userId: String,
         projectId: String,
         repoName: String,
         filePath: String
@@ -692,7 +693,6 @@ class DiskArchiveFileServiceImpl : ArchiveFileServiceImpl() {
     }
 
     override fun listFileNamesByPath(
-        userId: String,
         projectId: String,
         repoName: String,
         filePath: String

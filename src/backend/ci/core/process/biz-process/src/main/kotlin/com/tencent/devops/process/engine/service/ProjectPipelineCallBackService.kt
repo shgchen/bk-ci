@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,14 +27,21 @@
 
 package com.tencent.devops.process.engine.service
 
+import com.tencent.bk.audit.annotations.ActionAuditRecord
+import com.tencent.bk.audit.annotations.AuditAttribute
+import com.tencent.bk.audit.annotations.AuditInstanceRecord
 import com.tencent.devops.common.api.exception.ErrorCodeException
 import com.tencent.devops.common.api.exception.ParamBlankException
 import com.tencent.devops.common.api.model.SQLPage
+import com.tencent.devops.common.api.util.AESUtil
 import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.api.util.OkhttpUtils
 import com.tencent.devops.common.api.util.timestampmilli
+import com.tencent.devops.common.audit.ActionAuditContent
+import com.tencent.devops.common.auth.api.ActionId
 import com.tencent.devops.common.auth.api.AuthPermission
 import com.tencent.devops.common.auth.api.AuthProjectApi
+import com.tencent.devops.common.auth.api.ResourceTypeId
 import com.tencent.devops.common.auth.code.PipelineAuthServiceCode
 import com.tencent.devops.common.client.Client
 import com.tencent.devops.common.notify.enums.NotifyType
@@ -43,11 +50,13 @@ import com.tencent.devops.common.pipeline.event.CallBackEvent
 import com.tencent.devops.common.pipeline.event.CallBackNetWorkRegionType
 import com.tencent.devops.common.pipeline.event.PipelineCallbackEvent
 import com.tencent.devops.common.pipeline.event.ProjectPipelineCallBack
+import com.tencent.devops.common.pipeline.pojo.secret.ISecretParam
 import com.tencent.devops.common.service.trace.TraceTag
 import com.tencent.devops.common.service.utils.HomeHostUtil
 import com.tencent.devops.notify.api.service.ServiceNotifyMessageTemplateResource
 import com.tencent.devops.notify.pojo.SendNotifyMessageTemplateRequest
 import com.tencent.devops.process.constant.ProcessMessageCode
+import com.tencent.devops.process.dao.PipelineCallbackDao
 import com.tencent.devops.process.dao.ProjectPipelineCallbackDao
 import com.tencent.devops.process.dao.ProjectPipelineCallbackHistoryDao
 import com.tencent.devops.process.permission.PipelinePermissionService
@@ -55,19 +64,20 @@ import com.tencent.devops.process.pojo.CallBackHeader
 import com.tencent.devops.process.pojo.CreateCallBackResult
 import com.tencent.devops.process.pojo.PipelineNotifyTemplateEnum
 import com.tencent.devops.process.pojo.ProjectPipelineCallBackHistory
-import com.tencent.devops.process.pojo.setting.PipelineModelVersion
 import com.tencent.devops.project.api.service.ServiceAllocIdResource
 import com.tencent.devops.project.api.service.ServiceProjectResource
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Request
 import okhttp3.RequestBody
 import org.jooq.DSLContext
+import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 
 @Suppress("ALL")
 @Service
@@ -80,8 +90,15 @@ class ProjectPipelineCallBackService @Autowired constructor(
     private val projectPipelineCallBackUrlGenerator: ProjectPipelineCallBackUrlGenerator,
     private val client: Client,
     private val pipelineRepositoryService: PipelineRepositoryService,
-    private val pipelinePermissionService: PipelinePermissionService
+    private val pipelinePermissionService: PipelinePermissionService,
+    private val pipelineCallbackDao: PipelineCallbackDao
 ) {
+
+    @Value("\${project.callback.secretParam.aes-key:project_callback_aes_key}")
+    private val aesKey = ""
+
+    @Value("\${project.callback.black-ports:#{null}}")
+    private val blackPorts: List<Int> = listOf()
 
     companion object {
         private val logger = LoggerFactory.getLogger(ProjectPipelineCallBackService::class.java)
@@ -94,13 +111,26 @@ class ProjectPipelineCallBackService @Autowired constructor(
         url: String,
         region: CallBackNetWorkRegionType?,
         event: String,
-        secretToken: String?
+        secretToken: String?,
+        secretParam: ISecretParam? = null,
+        needCheckPermission: Boolean = true
     ): CreateCallBackResult {
         // 验证用户是否为管理员
-        validProjectManager(userId, projectId)
+        if (needCheckPermission) {
+            validProjectManager(userId, projectId)
+        }
         if (!OkhttpUtils.validUrl(url)) {
             logger.warn("$projectId|callback url Invalid")
             throw ErrorCodeException(errorCode = ProcessMessageCode.ERROR_CALLBACK_URL_INVALID)
+        }
+        val port = OkhttpUtils.getPort(url) ?: -1
+        if (blackPorts.contains(port)) {
+            // url 存在高危端口号
+            logger.warn("url[$url] with high-risk port detected")
+            throw ErrorCodeException(
+                errorCode = ProcessMessageCode.ERROR_CALLBACK_URL_CONTAINS_HIGH_RISK_PORT,
+                params = arrayOf(port.toString())
+            )
         }
         val callBackUrl = projectPipelineCallBackUrlGenerator.generateCallBackUrl(
             region = region,
@@ -121,7 +151,8 @@ class ProjectPipelineCallBackService @Autowired constructor(
                     projectId = projectId,
                     callBackUrl = callBackUrl,
                     events = it.name,
-                    secretToken = secretToken
+                    secretToken = secretToken,
+                    secretParam = secretParam
                 )
                 projectPipelineCallbackDao.save(
                     dslContext = dslContext,
@@ -130,7 +161,12 @@ class ProjectPipelineCallBackService @Autowired constructor(
                     userId = userId,
                     callbackUrl = projectPipelineCallBack.callBackUrl,
                     secretToken = projectPipelineCallBack.secretToken,
-                    id = client.get(ServiceAllocIdResource::class).generateSegmentId("PROJECT_PIPELINE_CALLBACK").data
+                    id = client.get(ServiceAllocIdResource::class).generateSegmentId(
+                        "PROJECT_PIPELINE_CALLBACK"
+                    ).data,
+                    secretParam = secretParam?.let {
+                        AESUtil.encrypt(aesKey, JsonUtil.toJson(secretParam, false))
+                    }
                 )
                 successEvents.add(it.name)
             } catch (e: Throwable) {
@@ -159,7 +195,13 @@ class ProjectPipelineCallBackService @Autowired constructor(
                     callBackUrl = it.callbackUrl,
                     events = it.events,
                     secretToken = it.secretToken,
-                    enable = it.enable
+                    enable = it.enable,
+                    failureTime = it.failureTime,
+                    secretParam = if (it.secretParam.isNullOrBlank()) {
+                        null
+                    } else {
+                        JsonUtil.to(AESUtil.decrypt(aesKey, it.secretParam), ISecretParam::class.java)
+                    }
                 )
             )
         }
@@ -192,9 +234,11 @@ class ProjectPipelineCallBackService @Autowired constructor(
         )
     }
 
-    fun delete(userId: String, projectId: String, id: Long) {
+    fun delete(userId: String, projectId: String, id: Long, needCheckPermission: Boolean = true) {
         checkParam(userId, projectId)
-        validProjectManager(userId, projectId)
+        if (needCheckPermission) {
+            validProjectManager(userId, projectId)
+        }
         projectPipelineCallbackDao.get(
             dslContext = dslContext,
             projectId = projectId,
@@ -210,26 +254,35 @@ class ProjectPipelineCallBackService @Autowired constructor(
         )
     }
 
-    fun disable(callBack: ProjectPipelineCallBack) {
+    fun disable(projectId: String, id: Long) {
         // 修改接口状态
         projectPipelineCallbackDao.disable(
             dslContext = dslContext,
-            projectId = callBack.projectId,
-            id = callBack.id!!
+            projectId = projectId,
+            id = id
         )
         // 通知用户接口被禁用
-        sendDisableNotifyMessage(callBack)
+        sendDisableNotifyMessage(projectId = projectId, id = id)
+    }
+
+    fun batchDisable(projectId: String, callbackIds: String) {
+        val ids = callbackIds.split(",")
+            .filter { it.isNotEmpty() }
+            .map { it.toLong() }
+        ids.forEach { id ->
+            disable(projectId = projectId, id = id)
+        }
     }
 
     /**
      *  发送回调禁用通知
      */
-    fun sendDisableNotifyMessage(callBack: ProjectPipelineCallBack) {
+    fun sendDisableNotifyMessage(projectId: String, id: Long) {
         try {
             val callbackRecord = projectPipelineCallbackDao.get(
                 dslContext = dslContext,
-                projectId = callBack.projectId,
-                id = callBack.id!!
+                projectId = projectId,
+                id = id
             )
             callbackRecord?.run {
                 with(callbackRecord) {
@@ -261,8 +314,7 @@ class ProjectPipelineCallBackService @Autowired constructor(
             }
         } catch (e: Exception) {
             logger.warn(
-                "Failure to send disable notify message for " +
-                        "[${callBack.projectId}|${callBack.callBackUrl}|${callBack.events}]", e
+                "Failure to send disable notify message for [$projectId|$id]", e
             )
         }
     }
@@ -287,6 +339,19 @@ class ProjectPipelineCallBackService @Autowired constructor(
             dslContext = dslContext,
             projectId = projectId,
             ids = ids
+        )
+    }
+
+    fun updateFailureTime(
+        projectId: String,
+        id: Long,
+        failureTime: LocalDateTime?
+    ) {
+        projectPipelineCallbackDao.updateFailureTime(
+            dslContext = dslContext,
+            projectId = projectId,
+            id = id,
+            failureTime = failureTime
         )
     }
 
@@ -469,6 +534,15 @@ class ProjectPipelineCallBackService @Autowired constructor(
         }
     }
 
+    @ActionAuditRecord(
+        actionId = ActionId.PIPELINE_EDIT,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.PIPELINE
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.PIPELINE_EDIT_BIND_PIPELINE_CALLBACK_CONTENT
+    )
     fun bindPipelineCallBack(
         userId: String,
         projectId: String,
@@ -490,7 +564,7 @@ class ProjectPipelineCallBackService @Autowired constructor(
             url = callbackInfo.callbackUrl
         )
         callbackInfo.callbackUrl = callBackUrl
-        val model = pipelineRepositoryService.getModel(projectId, pipelineId) ?: return
+        val model = pipelineRepositoryService.getPipelineResourceVersion(projectId, pipelineId)?.model ?: return
         val newEventMap = mutableMapOf<String, PipelineCallbackEvent>()
 
         if (model.events?.isEmpty() == true) {
@@ -500,19 +574,37 @@ class ProjectPipelineCallBackService @Autowired constructor(
             // 若key存在会覆盖原来的value,否则就是追加新key
             newEventMap[callbackInfo.callbackName] = callbackInfo
         }
-        model.events = newEventMap
-        val newModel = mutableListOf<PipelineModelVersion>()
-        newModel.add(
-            PipelineModelVersion(
-                pipelineId = pipelineId,
+        dslContext.transaction { transactionContext ->
+            val transaction = DSL.using(transactionContext)
+            pipelineCallbackDao.save(
+                dslContext = transaction,
                 projectId = projectId,
-                model = JsonUtil.toJson(model, formatted = false),
-                creator = model.pipelineCreator ?: userId
+                pipelineId = pipelineId,
+                userId = userId,
+                list = newEventMap.map { (key, value) ->
+                    val encodeToken = value.secretToken?.let { AESUtil.encrypt(aesKey, it) }
+                    value.copy(secretToken = encodeToken)
+                }
             )
-        )
-        pipelineRepositoryService.batchUpdatePipelineModel(
-            userId = userId,
-            pipelineModelVersionList = newModel
+        }
+    }
+
+    fun getPipelineCallback(
+        projectId: String,
+        pipelineId: String,
+        event: String?
+    ) = pipelineCallbackDao.list(
+        dslContext = dslContext,
+        projectId = projectId,
+        pipelineId = pipelineId,
+        event = event
+    ).map {
+        ProjectPipelineCallBack(
+            projectId = it.projectId,
+            callBackUrl = it.url,
+            events = it.eventType,
+            secretToken = it.secretToken?.let { AESUtil.decrypt(aesKey, it) },
+            name = it.name
         )
     }
 

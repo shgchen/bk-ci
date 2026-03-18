@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,16 +29,15 @@ package com.tencent.devops.quality.api.v2.pojo.response
 
 import com.tencent.devops.quality.api.v2.pojo.enums.QualityDataType
 import com.tencent.devops.common.quality.pojo.enums.QualityOperation
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("指标列表页面响应")
+@Schema(title = "指标列表页面响应")
 data class IndicatorListResponse(
-    @ApiModelProperty("脚本指标")
+    @get:Schema(title = "脚本指标")
     val scriptIndicators: List<IndicatorListItem>,
-    @ApiModelProperty("系统指标")
+    @get:Schema(title = "系统指标")
     val systemIndicators: List<IndicatorListItem>,
-    @ApiModelProperty("研发商店指标")
+    @get:Schema(title = "研发商店指标")
     val marketIndicators: List<IndicatorListItem>
 ) {
     data class IndicatorListItem(

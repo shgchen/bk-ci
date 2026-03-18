@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -41,7 +41,6 @@ import com.tencent.devops.common.pipeline.pojo.element.market.MarketCheckImageEl
 import com.tencent.devops.common.pipeline.pojo.element.matrix.MatrixStatusElement
 import com.tencent.devops.common.pipeline.pojo.element.quality.QualityGateInElement
 import com.tencent.devops.common.pipeline.pojo.element.quality.QualityGateOutElement
-import com.tencent.devops.common.pipeline.pojo.element.trigger.CodeGitGenericWebHookTriggerElement
 import com.tencent.devops.common.pipeline.pojo.element.trigger.CodeGitWebHookTriggerElement
 import com.tencent.devops.common.pipeline.pojo.element.trigger.CodeGithubWebHookTriggerElement
 import com.tencent.devops.common.pipeline.pojo.element.trigger.CodeGitlabWebHookTriggerElement
@@ -68,7 +67,6 @@ class EnvControlTaskTypeTest {
         assertEquals(EnvControlTaskType.parse(""), actualNull)
         assertEquals(EnvControlTaskType.parse("nullActual"), actualNull)
         assertEquals(EnvControlTaskType.parse("Other"), actualNull)
-        assertEquals(EnvControlTaskType.parse(CodeGitGenericWebHookTriggerElement.classType), actualNull)
         assertEquals(EnvControlTaskType.parse(CodeP4WebHookTriggerElement.classType), actualNull)
         assertEquals(EnvControlTaskType.parse(MatrixStatusElement.classType), actualNull)
         assertEquals(EnvControlTaskType.parse(CodeGitWebHookTriggerElement.classType), actualNull)

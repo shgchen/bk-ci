@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,6 +27,7 @@
 
 package com.tencent.devops.scm
 
+import com.tencent.devops.scm.code.git.api.GitHook
 import com.tencent.devops.scm.pojo.GitCommit
 import com.tencent.devops.scm.pojo.GitCommitReviewInfo
 import com.tencent.devops.scm.pojo.GitDiff
@@ -34,7 +35,10 @@ import com.tencent.devops.scm.pojo.GitMrChangeInfo
 import com.tencent.devops.scm.pojo.GitMrInfo
 import com.tencent.devops.scm.pojo.GitMrReviewInfo
 import com.tencent.devops.scm.pojo.GitProjectInfo
+import com.tencent.devops.scm.pojo.GitTagInfo
+import com.tencent.devops.scm.pojo.LoginSession
 import com.tencent.devops.scm.pojo.RevisionInfo
+import com.tencent.devops.scm.pojo.TapdWorkItem
 
 @Suppress("ALL")
 interface IScm {
@@ -57,6 +61,10 @@ interface IScm {
     fun checkTokenAndUsername()
 
     fun addWebHook(hookUrl: String)
+
+    fun getWebHooks(): List<GitHook> = emptyList()
+
+    fun updateWebHook(hookId: Long, hookUrl: String) = Unit
 
     fun createBranch(branch: String, ref: String) {}
     fun deleteBranch(branch: String) {}
@@ -90,4 +98,10 @@ interface IScm {
     fun getProjectInfo(projectName: String): GitProjectInfo? = null
 
     fun getCommitReviewInfo(crId: Long): GitCommitReviewInfo? = null
+
+    fun getLoginSession(): LoginSession? = null
+
+    fun getTag(tagName: String): GitTagInfo? = null
+
+    fun getTapdWorkItems(refType: String, iid: Long): List<TapdWorkItem> = listOf()
 }

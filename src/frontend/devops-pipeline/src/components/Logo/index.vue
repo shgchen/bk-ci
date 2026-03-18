@@ -1,7 +1,11 @@
 <template>
-    <svg :width="size" :height="size" style="fill: currentColor">
+    <svg
+        :width="size"
+        :height="size"
+        style="fill: currentColor"
+    >
         <title v-if="title">{{ title }}</title>
-        <use v-bind="{ 'xlink:href': `#${name}` }"></use>
+        <use v-bind="{ 'href': `#${name}`, 'xlink:href': `#${name}` }"></use>
     </svg>
 </template>
 

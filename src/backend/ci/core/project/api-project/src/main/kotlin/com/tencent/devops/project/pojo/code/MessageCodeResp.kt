@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,19 +28,18 @@
 package com.tencent.devops.project.pojo.code
 
 import com.tencent.devops.common.api.pojo.MessageCodeDetail
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("返回码列表信息")
+@Schema(title = "返回码列表信息")
 data class MessageCodeResp(
-    @ApiModelProperty("总记录数", required = true)
+    @get:Schema(title = "总记录数", required = true)
     val count: Long,
-    @ApiModelProperty("当前页码值", required = false)
+    @get:Schema(title = "当前页码值", required = false)
     val page: Int?,
-    @ApiModelProperty("每页记录大小", required = false)
+    @get:Schema(title = "每页记录大小", required = false)
     val pageSize: Int?,
-    @ApiModelProperty("总页数", required = true)
+    @get:Schema(title = "总页数", required = true)
     val totalPages: Int,
-    @ApiModelProperty("数据集合", required = false)
+    @get:Schema(title = "数据集合", required = false)
     val records: List<MessageCodeDetail>?
 )

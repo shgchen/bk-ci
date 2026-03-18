@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,6 +30,7 @@ package com.tencent.devops.common.webhook.service.code.matcher
 import com.tencent.devops.common.pipeline.pojo.element.trigger.enums.CodeEventType
 import com.tencent.devops.common.webhook.pojo.code.CodeWebhookEvent
 import com.tencent.devops.common.webhook.service.code.loader.CodeWebhookHandlerRegistrar
+import com.tencent.devops.common.webhook.service.code.pojo.WebhookMatchResult
 import com.tencent.devops.repository.pojo.Repository
 
 @Suppress("TooManyFunctions")
@@ -38,7 +39,7 @@ abstract class AbstractScmWebhookMatcher<T : CodeWebhookEvent>(
 ) : ScmWebhookMatcher {
     protected val eventHandler by lazy { CodeWebhookHandlerRegistrar.getHandler(webhookEvent = event) }
 
-    override fun preMatch(): ScmWebhookMatcher.MatchResult {
+    override fun preMatch(): WebhookMatchResult {
         return eventHandler.preMatch(event)
     }
 
@@ -82,11 +83,23 @@ abstract class AbstractScmWebhookMatcher<T : CodeWebhookEvent>(
         return eventHandler.getMessage(event)
     }
 
+    override fun getEventDesc(): String {
+        return eventHandler.getEventDesc(event)
+    }
+
+    override fun getExternalId(): String {
+        return eventHandler.getExternalId(event)
+    }
+
     override fun retrieveParams(projectId: String?, repository: Repository?): Map<String, Any> {
         return eventHandler.retrieveParams(
             event = event,
             projectId = projectId,
             repository = repository
         )
+    }
+
+    override fun getCompatibilityRepoName(): Set<String> {
+        return eventHandler.getCompatibilityRepoName(event)
     }
 }

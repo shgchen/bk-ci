@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -59,6 +59,8 @@ class ProjectVOTest {
             bgName = "ssd",
             centerId = 87987.toString(),
             centerName = "fghfg",
+            businessLineId = 123.toString(),
+            businessLineName = "businessLineName",
             deptId = 2.toString(),
             deptName = "",
             description = "job project",
@@ -127,6 +129,8 @@ class ProjectVOTest {
             centerName = "fghfg",
             deptId = 2.toString(),
             deptName = "",
+            businessLineId = 123.toString(),
+            businessLineName = "businessLineName",
             description = "job project",
             englishName = "job",
             extra = "",

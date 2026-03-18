@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,23 +28,24 @@
 
 package com.tencent.devops.process.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("流水线-流水线权限")
+@Schema(title = "流水线-流水线权限")
 data class PipelinePermissions(
-    @ApiModelProperty("管理员权限", required = true)
+    @get:Schema(title = "管理员权限", required = true)
     val canManage: Boolean,
-    @ApiModelProperty("删除权限", required = true)
-    val canDelete: Boolean,
-    @ApiModelProperty("查看权限", required = true)
-    val canView: Boolean,
-    @ApiModelProperty("编辑权限", required = true)
-    val canEdit: Boolean,
-    @ApiModelProperty("执行权限", required = true)
-    val canExecute: Boolean,
-    @ApiModelProperty("下载权限", required = true)
-    val canDownload: Boolean,
-    @ApiModelProperty("分享权限", required = true)
-    val canShare: Boolean
+    @get:Schema(title = "删除权限", required = true)
+    val canDelete: Boolean = false,
+    @get:Schema(title = "查看权限", required = true)
+    val canView: Boolean = false,
+    @get:Schema(title = "编辑权限", required = true)
+    val canEdit: Boolean = false,
+    @get:Schema(title = "执行权限", required = true)
+    val canExecute: Boolean = false,
+    @get:Schema(title = "下载权限", required = true)
+    val canDownload: Boolean = false,
+    @get:Schema(title = "分享权限", required = true)
+    val canShare: Boolean = false,
+    @get:Schema(title = "归档权限", required = true)
+    val canArchive: Boolean = false
 )

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,13 +27,16 @@
 
 package com.tencent.devops.common.api.enums
 
-enum class ScmType {
-    CODE_SVN,
-    CODE_GIT,
-    CODE_GITLAB,
-    GITHUB,
-    CODE_TGIT,
-    CODE_P4
+enum class ScmType(val alis: String) {
+    CODE_SVN("svn"),
+    CODE_GIT("git"),
+    CODE_GITLAB("gitlab"),
+    GITHUB("github"),
+    CODE_TGIT("tgit"),
+    CODE_P4("p4"),
+    SCM_GIT("scm_git"),
+    SCM_SVN("scm_svn"),
+    SCM_P4("scm_p4")
     ;
 
     companion object {
@@ -45,6 +48,33 @@ enum class ScmType {
                 GITHUB -> 4.toShort()
                 CODE_TGIT -> 5.toShort()
                 CODE_P4 -> 6.toShort()
+                SCM_GIT -> 7.toShort()
+                SCM_SVN -> 8.toShort()
+                SCM_P4 -> 9.toShort()
+            }
+        }
+
+        fun parse(alis: String?): ScmType? {
+            if (alis.isNullOrBlank()) return null
+            values().forEach {
+                if (alis == it.alis) return it
+            }
+            return null
+        }
+
+        /**
+         * short值转ScmType
+         * @see parse
+         */
+        fun parseShort(scmType: Short): ScmType {
+            return when (scmType) {
+                1.toShort() -> CODE_SVN
+                2.toShort() -> CODE_GIT
+                3.toShort() -> CODE_GITLAB
+                4.toShort() -> GITHUB
+                5.toShort() -> CODE_TGIT
+                6.toShort() -> CODE_P4
+                else -> CODE_GITLAB
             }
         }
     }

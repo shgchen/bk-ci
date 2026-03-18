@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,29 +27,30 @@
 
 package com.tencent.devops.process.pojo.classify
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("")
+@Schema(title = "")
 data class PipelineNewViewSummary(
-    @ApiModelProperty("视图id", required = false)
+    @get:Schema(title = "视图id", required = false)
     val id: String,
-    @ApiModelProperty("项目id", required = false)
+    @get:Schema(title = "项目id", required = false)
     val projectId: String,
-    @ApiModelProperty("视图名称", required = false)
+    @get:Schema(title = "视图名称", required = false)
     val name: String,
-    @ApiModelProperty("是否项目", required = false)
+    @get:Schema(title = "是否项目", required = false)
     val projected: Boolean,
-    @ApiModelProperty("创建时间", required = false)
+    @get:Schema(title = "创建时间", required = false)
     val createTime: Long,
-    @ApiModelProperty("更新时间", required = false)
+    @get:Schema(title = "更新时间", required = false)
     val updateTime: Long,
-    @ApiModelProperty("创建者", required = false)
+    @get:Schema(title = "创建者", required = false)
     val creator: String,
-    @ApiModelProperty("是否置顶", required = false)
+    @get:Schema(title = "是否置顶", required = false)
     val top: Boolean = false,
-    @ApiModelProperty("流水线组类型,1--动态,2--静态", required = true)
+    @get:Schema(title = "流水线组类型,1--动态,2--静态", required = true)
     val viewType: Int,
-    @ApiModelProperty("流水线个数", required = true)
-    val pipelineCount: Int
+    @get:Schema(title = "流水线个数", required = true)
+    val pipelineCount: Int,
+    @get:Schema(title = "是否是PAC流水线组", required = true)
+    val pac: Boolean? = false
 )

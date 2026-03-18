@@ -1,14 +1,11 @@
 plugins {
-    id("com.tencent.devops.boot") version "0.0.7"
-    detektCheck
-    `task-license-report` // 检查License合规
+    id("com.tencent.devops.boot") version "1.1.0"
+    nexusPublishing
+    licenseReport // 检查License合规
 }
-
-apply(plugin = "org.owasp.dependencycheck")
 
 allprojects {
     apply(plugin = "com.tencent.devops.boot")
-
     // 包路径
     group = "com.tencent.bk.devops.ci"
     // 版本
@@ -17,11 +14,17 @@ allprojects {
 
     // 加载boot的插件
     if (name.startsWith("boot-")) {
-        pluginManager.apply("org.owasp.dependencycheck") // 检查依赖包漏洞版本
+        pluginManager.apply("task-sharding-db-table-check") // 分区表检查插件
         pluginManager.apply("task-i18n-load") // i18n插件
         if (System.getProperty("devops.assemblyMode") == "KUBERNETES") {
             pluginManager.apply("task-docker-build") // Docker镜像构建
         }
+    }
+
+    // 新增maven 仓库
+    repositories {
+        add(maven { url = uri("https://repo.jenkins-ci.org/releases") })
+        add(maven { url = uri("https://central.sonatype.com/repository/maven-snapshots/") })
     }
 
     // 版本管理
@@ -29,9 +32,8 @@ allprojects {
         setApplyMavenExclusions(false)
         dependencies {
             dependency("org.json:json:${Versions.orgJson}")
-            dependency("javax.ws.rs:javax.ws.rs-api:${Versions.Jaxrs}")
-            dependency("org.bouncycastle:bcpkix-jdk15on:${Versions.BouncyCastle}")
-            dependency("org.bouncycastle:bcprov-jdk15on:${Versions.BouncyCastle}")
+            dependency("org.bouncycastle:bcpkix-jdk18on:${Versions.BouncyCastle}")
+            dependency("org.bouncycastle:bcprov-jdk18on:${Versions.BouncyCastle}")
             dependency("com.github.fge:json-schema-validator:${Versions.JsonSchema}")
             dependency("com.networknt:json-schema-validator:${Versions.YamlSchema}")
             dependency("org.apache.commons:commons-exec:${Versions.CommonExec}")
@@ -67,6 +69,10 @@ allprojects {
             dependency("org.bouncycastle:bcprov-ext-jdk15on:${Versions.BouncyCastle}")
             dependency("org.mybatis:mybatis:${Versions.MyBatis}")
             dependency("commons-io:commons-io:${Versions.CommonIo}")
+            dependency("com.tencent.bk.sdk:crypto-java-sdk:${Versions.BkCrypto}")
+            dependency("mysql:mysql-connector-java:${Versions.MysqlDriver}")
+            dependency("org.apache.shardingsphere:shardingsphere-jdbc:${Versions.ShardingSphere}")
+            dependency("org.apache.shardingsphere:shardingsphere-infra-algorithm-core:${Versions.ShardingSphere}")
             dependencySet("org.glassfish.jersey.containers:${Versions.Jersey}") {
                 entry("jersey-container-servlet-core")
                 entry("jersey-container-servlet")
@@ -79,20 +85,20 @@ allprojects {
             dependencySet("org.glassfish.jersey.ext:${Versions.Jersey}") {
                 entry("jersey-bean-validation")
                 entry("jersey-entity-filtering")
-                entry("jersey-spring5")
+                entry("jersey-spring6")
             }
             dependencySet("org.glassfish.jersey.media:${Versions.Jersey}") {
                 entry("jersey-media-multipart")
                 entry("jersey-media-json-jackson")
             }
             dependency("org.glassfish.jersey.inject:jersey-hk2:${Versions.Jersey}")
-            dependencySet("io.swagger:${Versions.Swagger}") {
-                entry("swagger-annotations")
-                entry("swagger-jersey2-jaxrs")
-                entry("swagger-models")
+            dependencySet("io.swagger.core.v3:${Versions.Swagger}") {
+                entry("swagger-annotations-jakarta")
+                entry("swagger-jaxrs2-jakarta")
+                entry("swagger-models-jakarta")
             }
             dependencySet("com.github.docker-java:${Versions.DockerJava}") {
-                entry("docker-java")
+                entry("docker-java-core")
                 entry("docker-java-transport-okhttp")
             }
             dependencySet("com.tencent.bk.repo:${Versions.TencentBkRepo}") {
@@ -108,24 +114,30 @@ allprojects {
             dependency("io.mockk:mockk:${Versions.mockk}")
             dependencySet("io.github.resilience4j:${Versions.Resilience4j}") {
                 entry("resilience4j-circuitbreaker")
-            }
-            // TODO 修复IPv6单栈环境报错问题, 等后面Okhttp3版本升级上来就可以去掉
-            dependencySet("com.squareup.okhttp3:${Versions.Okhttp}") {
-                entry("logging-interceptor")
-                entry("mockwebserver")
-                entry("okcurl")
-                entry("okhttp")
-                entry("okhttp-dnsoverhttps")
-                entry("okhttp-sse")
-                entry("okhttp-testing-support")
-                entry("okhttp-tls")
-                entry("okhttp-urlconnection")
+                entry("resilience4j-core")
             }
             dependencySet("org.eclipse.jgit:${Versions.jgit}") {
                 entry("org.eclipse.jgit")
                 entry("org.eclipse.jgit.ssh.jsch")
             }
             dependency("com.tencent.bk.sdk:iam-java-sdk:${Versions.iam}")
+            dependency("com.tencent.bk.sdk:spring-boot-bk-audit-starter:${Versions.audit}")
+            dependency("com.jakewharton:disklrucache:${Versions.disklrucache}")
+            // worker需要依赖
+            dependency("org.jvnet.winp:winp:${Versions.Winp}")
+            dependency("net.java.dev.jna:jna:${Versions.Jna}")
+            dependency("org.jenkins-ci:version-number:${Versions.JenkinsVersionNumber}")
+            dependencySet("com.tencent.bk.devops.scm:${Versions.devopsScm}") {
+                entry("devops-scm-api")
+                entry("devops-scm-spring-boot-starter")
+            }
+            // lettuce 6.4.1 有BUG
+            dependency("io.lettuce:lettuce-core:6.4.2.RELEASE")
+            // spring-amqp 3.2.0 有BUG https://github.com/spring-projects/spring-amqp/issues/2914
+            dependency("org.springframework.amqp:spring-amqp:3.2.8")
+            // spring-boot 3.4.0 引入的snakeyaml 2.3版本有BUG
+            // https://bitbucket.org/snakeyaml/snakeyaml/issues/1100/parsing-big-yaml-with-emoji-doesnt-work
+            dependency("org.yaml:snakeyaml:2.4")
         }
     }
 
@@ -136,12 +148,16 @@ allprojects {
         it.exclude("org.slf4j", "log4j-over-slf4j")
         it.exclude("org.slf4j", "slf4j-log4j12")
         it.exclude("org.slf4j", "slf4j-nop")
-        it.exclude("javax.ws.rs", "jsr311-api")
         it.exclude("dom4j", "dom4j")
         it.exclude("com.flipkart.zjsonpatch", "zjsonpatch")
         it.exclude("com.zaxxer", "HikariCP-java7")
         it.exclude("com.tencent.devops", "devops-boot-starter-plugin")
         it.exclude("org.bouncycastle", "bcutil-jdk15on")
+        it.exclude("io.swagger", "swagger-annotations")
+        it.exclude("io.swagger", "swagger-models")
+        it.exclude("commons-logging", "commons-logging")
+        it.exclude("com.vaadin.external.google", "android-json")
+        it.exclude("org.apache.shardingsphere", "shardingsphere-test-util")
     }
     dependencies {
         // 兼容dom4j 的 bug : https://github.com/gradle/gradle/issues/13656
@@ -150,5 +166,9 @@ allprojects {
                 allVariants { withDependencies { clear() } }
             }
         }
+    }
+    configurations.all {
+        resolutionStrategy.cacheChangingModulesFor(0,"seconds")
+        resolutionStrategy.cacheDynamicVersionsFor(0,"seconds")
     }
 }

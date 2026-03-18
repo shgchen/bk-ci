@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -73,6 +73,52 @@ object RepositoryMessageCode {
     const val REPOSITORY_ID_AND_NAME_ARE_EMPTY = "2115024" // 仓库ID和仓库名都为空
     const val USER_NEED_PROJECT_X_PERMISSION = "2115025" // 用户（{0}）无（{1}）项目权限
     const val NOT_AUTHORIZED_BY_OAUTH = "2115026" // 用户[{0}]尚未进行OAUTH授权，请先授权。
+    const val CAN_NOT_SWITCH_REPO_URL = "2115027" // 不可切换代码库地址
+    const val ERROR_REPO_ENABLE_PAC_FAIL = "2115028" // 代码库开启PAC失败。
+    const val ERROR_REPO_CI_DIR_EXISTS = "2115029" // 代码库关闭PAC失败，CI文件夹仍存在。
+    const val ERROR_GIT_PROJECT_NOT_FOUND_OR_NOT_PERMISSION = "2115030" // 工蜂项目({0})不存在或没有权限访问
+    const val ERROR_REPO_URL_HAS_ENABLED_PAC = "2115031" // 代码库已在项目[{0}]开启pac
+    const val ERROR_REPO_NOT_ENABLED_PAC = "2115032" // 代码库没有开启pac
+    const val ERROR_AUTH_TYPE_ENABLED_PAC = "2115033" // pac模式需要使用oauth
+    const val ERROR_MEMBER_NOT_FOUND = "2115034" // 仓库成员{0}不存在
+    const val ERROR_MEMBER_LEVEL_LOWER_MASTER = "2115035" // 开启pac需要master以上权限
+    const val ERROR_DEFAULT_BRANCH_IS_EMPTY = "2115036" // 默认分支不能为空
+    const val ERROR_REPO_REPEATEDLY_ENABLED_PAC = "2115037" // 代码库已开启PAC。
+    const val PAC_REPO_CAN_NOT_DELETE = "2115038" // 代码库已开启PAC,不能删除
+    const val PAC_REPO_CAN_NOT_RENAME = "2115039" // 代码库已开启PAC,不能重命名
+
+    const val ATOM_REPO_CAN_NOT_EDIT = "2115040" // 插件仓库不得修改
+    const val ATOM_REPO_CAN_NOT_DELETE = "2115041" // 插件仓库不得删除
+
+    const val ERROR_USER_HAVE_NOT_USED_OAUTH = "2115042" // 用户没有使用过Oauth
+    const val ERROR_USER_HAVE_NOT_DOWNLOAD_PEM = "2115043" // 用户（{0}）无（{1}）项目下载权限
+    const val NOT_GITHUB_AUTHORIZED_BY_OAUTH = "2115044" // 用户[{0}]尚未进行GITHUB OAUTH授权，请先授权。
+    const val REPOSITORY_NO_SUPPORT_OAUTH = "2115045" // （{0}）类型代码库暂不支持OAUTH授权
+    const val OAUTH_INFO_OCCUPIED_CANNOT_DELETE = "2115049" // OAUTH授权信息被占用，无法删除
+
+    const val USER_NOT_PERMISSIONS_OPERATE_REPOSITORY = "2115046" // 用户({0})无权限在工程({1})下{2}流水线{3}
+    const val FAIL_TO_GET_OPEN_COPILOT_TOKEN = "2115048" // 获取open copilot token 失败, 失败详情: {0}
+    const val EMPTY_COMMIT_RECORD = "2115050" // 无代码变更记录
+    const val REPOSITORY_NO_SUPPORT_AI_SUMMARY = "2115051" // 仅支持工蜂代码库生成AI摘要，
+
+    const val ERROR_WEBHOOK_SERVER_REPO_FULL_NAME_IS_EMPTY = "2115052" // webhook解析结果,fullName不能为空
+    const val ERROR_SCM_PROVIDER_NOT_FOUND = "2115053" // 源代码提供者{0}不存在
+    const val ERROR_SCM_CONFIG_NOT_FOUND = "2115054" // 源代码配置{0}不存在
+    const val ERROR_SCM_PROVIDER_NOT_SUPPORT_AUTH_TYPE = "2115055" // 源代码提供者不支持授权类型:{0}
+    const val ERROR_SCM_PROXY_SERVICE_NOT_FOUND = "2115056" // scm代理服务[{0}]没有发现
+    const val ERROR_SCM_PROXY_SERVICE_METHOD_NOT_FOUND = "2115057" // scm代理服务[{0}]的方法[{0}]不存在
+    const val ERROR_NOT_SUPPORT_SCM_PROVIDER_TYPE = "2115058" // 不支持的源码提供者类型:{0}
+    const val ERROR_NOT_SUPPORT_CREDENTIAL_TYPE = "2115059" // 不支持的凭证类型:{0}
+    const val ERROR_SCM_CONFIG_IN_USED_CAN_NOT_DELETE = "2115060" // 代码源[{0}]已关联代码库,不能删除
+    const val ERROR_NOT_SUPPORT_REPOSITORY_AUTH = "2115061" // 不支持的代码库鉴权方式
+    const val ERROR_NOT_SUPPORT_REPOSITORY_TYPE_ENABLE_PAC = "2115062" // 仅支持git类型代码库开启PAC
+    const val ERROR_NOT_OAUTH_PROXY_FORBIDDEN_DELETE = "2115063" // 非OAUTH授权代持人无法删除
+    const val ERROR_AUTHORIZATION_USER_INFO_EXPIRED = "2115064" // [{0}]授权用户信息已失效
+    const val ERROR_USER_NO_PERMISSION_OAUTH_ACCOUNT = "2115065" // 用户 [{0}] 没有 oauth 账户 [{1}] 的使用权限
+
+    const val ERROR_SCM_API_NOT_READ_PERMISSION = "2115066" // 用户/凭证[{0}]没有仓库[{1}]访问权限
+    const val ERROR_SCM_API_UNKNOWN_EXCEPTION = "2115067" // 调用[{0}]接口失败，异常信息: {1}
+    const val ERROR_SCM_API_FILE_NOT_FOUND = "2115069" // 分支[{1}]上不存在文件[{2}]
 
     const val BK_REQUEST_FILE_SIZE_LIMIT = "bkRequestFileSizeLimit" // 请求文件不能超过1M
     const val OPERATION_ADD_CHECK_RUNS = "OperationAddCheckRuns" // 添加检测任务
@@ -82,4 +128,7 @@ object RepositoryMessageCode {
     const val OPERATION_GET_TAG = "OperationGetTag" // 获取指定Tag
     const val OPERATION_LIST_BRANCHS = "OperationListBranchs" // 获取分支列表
     const val OPERATION_LIST_TAGS = "OperationListTags" // 获取Tag列表
+
+    const val TRIGGER_CONDITION_PREFIX = "trigger.condition"
+    const val CREDENTIAL_TYPE_PREFIX = "CREDENTIAL_TYPE_"
 }

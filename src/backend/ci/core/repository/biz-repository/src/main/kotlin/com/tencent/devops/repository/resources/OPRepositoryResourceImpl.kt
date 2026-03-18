@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -31,11 +31,13 @@ import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.repository.api.OPRepositoryResource
 import com.tencent.devops.repository.service.OPRepositoryService
+import com.tencent.devops.scm.config.GitConfig
 import org.springframework.beans.factory.annotation.Autowired
 
 @RestResource
 class OPRepositoryResourceImpl @Autowired constructor(
-    private val opRepositoryService: OPRepositoryService
+    private val opRepositoryService: OPRepositoryService,
+    private val gitConfig: GitConfig
 ) : OPRepositoryResource {
     override fun addHashId() {
         opRepositoryService.addHashId()
@@ -60,7 +62,8 @@ class OPRepositoryResourceImpl @Autowired constructor(
     }
 
     override fun updateGitProjectId() {
-        opRepositoryService.updateGitProjectId(
+        opRepositoryService.updateAction(
+            "updateGitProjectId",
             listOf(
                 { opRepositoryService.updateCodeGitProjectId() },
                 { opRepositoryService.updateGitLabProjectId() }
@@ -69,8 +72,63 @@ class OPRepositoryResourceImpl @Autowired constructor(
     }
 
     override fun updateGithubProjectId() {
-        opRepositoryService.updateGitProjectId(
+        opRepositoryService.updateAction(
+            "updateGitProjectId",
             listOf { opRepositoryService.updateCodeGithubProjectId() }
         )
+    }
+
+    override fun setGrayGitHookUrl(projectId: String, repositoryId: Long): Result<Boolean> {
+        opRepositoryService.updateGitHookUrl(
+            projectId = projectId,
+            repositoryId = repositoryId,
+            newHookUrl = gitConfig.gitGrayHookUrl,
+            oldHookUrl = gitConfig.gitHookUrl
+        )
+        return Result(true)
+    }
+
+    override fun removeGrayGitHookUrl(projectId: String, repositoryId: Long): Result<Boolean> {
+        opRepositoryService.updateGitHookUrl(
+            projectId = projectId,
+            repositoryId = repositoryId,
+            newHookUrl = gitConfig.gitHookUrl,
+            oldHookUrl = gitConfig.gitGrayHookUrl
+        )
+        return Result(true)
+    }
+
+    override fun removeRepositoryPipelineRef(projectId: String, repoHashId: String): Result<Boolean> {
+        opRepositoryService.removeRepositoryPipelineRef(
+            projectId = projectId,
+            repoHashId = repoHashId
+        )
+        return Result(true)
+    }
+
+    override fun updateRepoCredentialType(projectId: String?, repoHashId: String?): Result<Boolean> {
+        opRepositoryService.updateAction(
+            "updateRepoCredentialType",
+            listOf {
+                opRepositoryService.updateRepoCredentialType(
+                    projectId = projectId,
+                    repoHashId = repoHashId
+                )
+            }
+        )
+        return Result(true)
+    }
+
+    override fun updateRepoScmCode(projectId: String?, repoHashId: String?): Result<Boolean> {
+        opRepositoryService.updateAction(
+            "updateRepoScmCode",
+            listOf {
+                opRepositoryService.updateRepoScmCode(
+                    projectId = projectId,
+                    repoHashId = repoHashId
+                )
+            }
+        )
+        return Result(true)
     }
 }

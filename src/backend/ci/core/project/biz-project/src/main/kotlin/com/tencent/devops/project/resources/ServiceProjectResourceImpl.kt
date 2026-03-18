@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,20 +27,28 @@
 
 package com.tencent.devops.project.resources
 
+import com.tencent.bk.audit.annotations.AuditEntry
+import com.tencent.devops.common.api.exception.ParamBlankException
+import com.tencent.devops.common.auth.api.ActionId
+import com.tencent.devops.common.auth.api.ActionId.PROJECT_CREATE
 import com.tencent.devops.common.auth.api.AuthPermission
-import com.tencent.devops.common.auth.api.pojo.MigrateProjectConditionDTO
+import com.tencent.devops.common.auth.api.pojo.ProjectConditionDTO
 import com.tencent.devops.common.auth.api.pojo.SubjectScopeInfo
 import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.project.api.service.ServiceProjectResource
 import com.tencent.devops.project.pojo.OrgInfo
 import com.tencent.devops.project.pojo.ProjectBaseInfo
+import com.tencent.devops.project.pojo.ProjectByConditionDTO
 import com.tencent.devops.project.pojo.ProjectCreateExtInfo
 import com.tencent.devops.project.pojo.ProjectCreateInfo
 import com.tencent.devops.project.pojo.ProjectCreateUserInfo
+import com.tencent.devops.project.pojo.ProjectOrganizationInfo
+import com.tencent.devops.project.pojo.ProjectProperties
+import com.tencent.devops.project.pojo.ProjectSortType
 import com.tencent.devops.project.pojo.ProjectUpdateInfo
 import com.tencent.devops.project.pojo.ProjectVO
-import com.tencent.devops.project.pojo.ProjectWithPermission
 import com.tencent.devops.project.pojo.Result
+import com.tencent.devops.project.pojo.enums.PluginDetailsDisplayOrder
 import com.tencent.devops.project.pojo.enums.ProjectChannelCode
 import com.tencent.devops.project.pojo.enums.ProjectValidateType
 import com.tencent.devops.project.service.ProjectOrganizationService
@@ -60,35 +68,63 @@ class ServiceProjectResourceImpl @Autowired constructor(
     }
 
     override fun verifyUserProjectPermission(
-        accessToken: String?,
         projectCode: String,
         userId: String
     ): Result<Boolean> {
         return Result(
             projectPermissionService.verifyUserProjectPermission(
-                accessToken = accessToken,
                 projectCode = projectCode,
                 userId = userId
             )
         )
     }
 
-    override fun list(userId: String): Result<List<ProjectVO>> {
-        return Result(projectService.list(userId))
+    override fun list(
+        userId: String,
+        productIds: String?,
+        channelCodes: String?,
+        sort: ProjectSortType?,
+        page: Int?,
+        pageSize: Int?
+    ): Result<List<ProjectVO>> {
+        return Result(
+            projectService.list(
+                userId = userId,
+                productIds = productIds,
+                channelCodes = channelCodes,
+                sort = sort,
+                page = page,
+                pageSize = pageSize
+            )
+        )
     }
 
     override fun getAllProject(): Result<List<ProjectVO>> {
         return Result(projectService.getAllProject())
     }
 
-    override fun listMigrateProjects(
-        migrateProjectConditionDTO: MigrateProjectConditionDTO,
+    override fun listProjectsByCondition(
+        projectConditionDTO: ProjectConditionDTO,
         limit: Int,
         offset: Int
-    ): Result<List<ProjectWithPermission>> {
+    ): Result<List<ProjectByConditionDTO>> {
         return Result(
-            projectService.listMigrateProjects(
-                migrateProjectConditionDTO = migrateProjectConditionDTO,
+            projectService.listProjectsByCondition(
+                projectConditionDTO = projectConditionDTO,
+                limit = limit,
+                offset = offset
+            )
+        )
+    }
+
+    override fun listProjectDetailsByCondition(
+        projectConditionDTO: ProjectConditionDTO,
+        limit: Int,
+        offset: Int
+    ): Result<List<ProjectVO>> {
+        return Result(
+            projectService.listProjectDetailsByCondition(
+                projectConditionDTO = projectConditionDTO,
                 limit = limit,
                 offset = offset
             )
@@ -96,7 +132,7 @@ class ServiceProjectResourceImpl @Autowired constructor(
     }
 
     override fun listByProjectCode(projectCodes: Set<String>): Result<List<ProjectVO>> {
-        return Result(projectService.list(projectCodes))
+        return Result(projectService.list(projectCodes = projectCodes, enabled = true))
     }
 
     override fun listOnlyByProjectCode(projectCodes: Set<String>): Result<List<ProjectVO>> {
@@ -115,16 +151,15 @@ class ServiceProjectResourceImpl @Autowired constructor(
         return Result(projectService.getByEnglishName(englishName))
     }
 
+    @AuditEntry(actionId = PROJECT_CREATE)
     override fun create(
         userId: String,
-        projectCreateInfo: ProjectCreateInfo,
-        accessToken: String?
+        projectCreateInfo: ProjectCreateInfo
     ): Result<Boolean> {
         // 创建项目
         projectService.create(
             userId = userId,
             projectCreateInfo = projectCreateInfo,
-            accessToken = accessToken,
             createExtInfo = ProjectCreateExtInfo(needAuth = true, needValidate = true),
             projectChannel = ProjectChannelCode.BS
         )
@@ -132,6 +167,7 @@ class ServiceProjectResourceImpl @Autowired constructor(
         return Result(true)
     }
 
+    @AuditEntry(actionId = PROJECT_CREATE)
     override fun createExtSystem(
         userId: String,
         projectInfo: ProjectCreateInfo,
@@ -151,18 +187,27 @@ class ServiceProjectResourceImpl @Autowired constructor(
         )
     }
 
+    @AuditEntry(actionId = ActionId.PROJECT_EDIT)
     override fun update(
         userId: String,
         projectId: String,
-        projectUpdateInfo: ProjectUpdateInfo,
-        accessToken: String?
+        projectUpdateInfo: ProjectUpdateInfo
     ): Result<Boolean> {
-        return Result(projectService.update(userId, englishName = projectId, projectUpdateInfo, accessToken))
+        return Result(projectService.update(userId, englishName = projectId, projectUpdateInfo))
     }
 
     override fun updateProjectName(userId: String, projectCode: String, projectName: String): Result<Boolean> {
         return Result(
             projectService.updateProjectName(userId = userId, projectId = projectCode, projectName = projectName)
+        )
+    }
+
+    override fun updateProjectProperties(projectCode: String, properties: ProjectProperties): Result<Boolean> {
+        return Result(
+            projectService.updateProjectProperties(
+                projectCode = projectCode,
+                properties = properties
+            )
         )
     }
 
@@ -202,7 +247,6 @@ class ServiceProjectResourceImpl @Autowired constructor(
     override fun hasPermission(userId: String, projectId: String, permission: AuthPermission): Result<Boolean> {
         return Result(
             projectService.verifyUserProjectPermission(
-                accessToken = null,
                 userId = userId,
                 projectId = projectId,
                 permission = permission
@@ -218,6 +262,59 @@ class ServiceProjectResourceImpl @Autowired constructor(
             projectService.updateProjectSubjectScopes(
                 projectId = projectId,
                 subjectScopes = subjectScopes
+            )
+        )
+    }
+
+    override fun updateProjectProductId(
+        projectCode: String,
+        productName: String?,
+        productId: Int?
+    ): Result<Boolean> {
+        projectService.updateProjectProductId(
+            englishName = projectCode,
+            productName = productName,
+            productId = productId
+        )
+        return Result(true)
+    }
+
+    override fun updateOrganizationByEnglishName(
+        projectCode: String,
+        projectOrganizationInfo: ProjectOrganizationInfo
+    ): Result<Boolean> {
+        if (projectOrganizationInfo.bgId == null || projectOrganizationInfo.bgName.isNullOrBlank()) {
+            throw ParamBlankException("bgId or bgName must be not null.")
+        }
+        projectService.updateOrganizationByEnglishName(
+            englishName = projectCode,
+            projectOrganizationInfo = projectOrganizationInfo
+        )
+        return Result(true)
+    }
+
+    override fun getProjectListByProductId(productId: Int): Result<List<ProjectBaseInfo>> {
+        return Result(
+            projectService.getProjectListByProductId(
+                productId = productId
+            )
+        )
+    }
+
+    override fun getExistedEnglishName(englishName: List<String>): Result<List<String>?> {
+        return Result(
+            projectService.getExistedEnglishName(englishName)
+        )
+    }
+
+    override fun updatePluginDetailsDisplay(
+        projectId: String,
+        pluginDetailsDisplayOrder: List<PluginDetailsDisplayOrder>
+    ): Result<Boolean> {
+        return Result(
+            projectService.updatePluginDetailsDisplay(
+                englishName = projectId,
+                pluginDetailsDisplayOrder = pluginDetailsDisplayOrder
             )
         )
     }

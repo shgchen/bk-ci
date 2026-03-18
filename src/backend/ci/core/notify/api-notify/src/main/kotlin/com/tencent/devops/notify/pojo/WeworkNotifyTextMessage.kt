@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,19 +28,18 @@ package com.tencent.devops.notify.pojo
 
 import com.tencent.devops.common.notify.enums.WeworkReceiverType
 import com.tencent.devops.common.notify.enums.WeworkTextType
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("企业微信多媒体消息")
+@Schema(title = "企业微信多媒体消息")
 data class WeworkNotifyTextMessage(
-    @ApiModelProperty("接收人Id", required = true)
+    @get:Schema(title = "接收人Id", required = true)
     val receivers: Collection<String>,
-    @ApiModelProperty("接收人类型", required = true)
+    @get:Schema(title = "接收人类型", required = true)
     val receiverType: WeworkReceiverType,
-    @ApiModelProperty("文本内容类型", required = true)
+    @get:Schema(title = "文本内容类型", required = true)
     var textType: WeworkTextType,
-    @ApiModelProperty("文本内容", required = true)
+    @get:Schema(title = "文本内容", required = true)
     var message: String,
-    @ApiModelProperty("attachments消息事件", required = false)
+    @get:Schema(title = "attachments消息事件", required = false)
     var attachments: WeworkMarkdownAttachment? = null
 )

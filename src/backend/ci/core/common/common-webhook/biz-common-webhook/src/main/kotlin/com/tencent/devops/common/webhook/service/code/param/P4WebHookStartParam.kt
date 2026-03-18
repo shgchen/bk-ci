@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -33,6 +33,7 @@ import com.tencent.devops.common.webhook.pojo.code.BK_REPO_P4_WEBHOOK_INCLUDE_PA
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_P4_WEBHOOK_P4PORT
 import com.tencent.devops.common.webhook.pojo.code.WebHookParams
 import com.tencent.devops.common.webhook.service.code.matcher.ScmWebhookMatcher
+import com.tencent.devops.common.webhook.service.code.pojo.WebhookMatchResult
 import com.tencent.devops.repository.pojo.Repository
 import org.springframework.stereotype.Service
 
@@ -47,22 +48,24 @@ class P4WebHookStartParam : ScmWebhookStartParams<CodeP4WebHookTriggerElement> {
         projectId: String,
         element: CodeP4WebHookTriggerElement,
         repo: Repository,
-        matcher: ScmWebhookMatcher,
+        matcher: ScmWebhookMatcher?,
         variables: Map<String, String>,
         params: WebHookParams,
-        matchResult: ScmWebhookMatcher.MatchResult
+        matchResult: WebhookMatchResult
     ): Map<String, Any> {
         val startParams = mutableMapOf<String, Any>()
         with(element.data.input) {
             startParams[BK_REPO_P4_WEBHOOK_P4PORT] = repo.url
             startParams[BK_REPO_P4_WEBHOOK_EVENT_TYPE] = params.eventType ?: ""
             startParams[BK_REPO_P4_WEBHOOK_INCLUDE_PATHS] = includePaths ?: ""
-            startParams.putAll(
-                matcher.retrieveParams(
-                    projectId = projectId,
-                    repository = repo
+            matcher?.let {
+                startParams.putAll(
+                    matcher.retrieveParams(
+                        projectId = projectId,
+                        repository = repo
+                    )
                 )
-            )
+            }
         }
 
         return startParams

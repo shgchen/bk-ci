@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,6 +27,7 @@
 
 package com.tencent.devops.misc.dao.project
 
+import com.tencent.devops.common.db.utils.skipCheck
 import com.tencent.devops.model.project.tables.TProject
 import org.jooq.Condition
 import org.jooq.DSLContext
@@ -37,7 +38,6 @@ import org.springframework.stereotype.Repository
 
 @Repository
 class ProjectMiscDao {
-
     fun getMinId(
         dslContext: DSLContext,
         projectIdList: List<String>? = null
@@ -47,7 +47,7 @@ class ProjectMiscDao {
             if (!projectIdList.isNullOrEmpty()) {
                 baseStep.where(ENGLISH_NAME.`in`(projectIdList))
             }
-            return baseStep.fetchOne(0, Long::class.java)!!
+            return baseStep.skipCheck().fetchOne(0, Long::class.java)!!
         }
     }
 
@@ -60,7 +60,7 @@ class ProjectMiscDao {
             if (!projectIdList.isNullOrEmpty()) {
                 baseStep.where(ENGLISH_NAME.`in`(projectIdList))
             }
-            return baseStep.fetchOne(0, Long::class.java)!!
+            return baseStep.skipCheck().fetchOne(0, Long::class.java)!!
         }
     }
 

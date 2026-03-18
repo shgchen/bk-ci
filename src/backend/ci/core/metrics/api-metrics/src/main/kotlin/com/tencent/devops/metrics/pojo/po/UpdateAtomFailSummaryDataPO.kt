@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,22 +27,21 @@
 
 package com.tencent.devops.metrics.pojo.po
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 import java.time.LocalDateTime
 
-@ApiModel("更新插件失败汇总数据")
+@Schema(title = "更新插件失败汇总数据")
 data class UpdateAtomFailSummaryDataPO(
-    @ApiModelProperty("主键ID")
+    @get:Schema(title = "主键ID")
     val id: Long,
-    @ApiModelProperty("项目ID")
+    @get:Schema(title = "项目ID")
     val projectId: String,
-    @ApiModelProperty("插件标识")
+    @get:Schema(title = "插件标识")
     val atomCode: String,
-    @ApiModelProperty("错误次数")
+    @get:Schema(title = "错误次数")
     var errorCount: Int,
-    @ApiModelProperty("修改人")
+    @get:Schema(title = "修改人")
     var modifier: String,
-    @ApiModelProperty("更新时间")
+    @get:Schema(title = "更新时间")
     var updateTime: LocalDateTime
 )

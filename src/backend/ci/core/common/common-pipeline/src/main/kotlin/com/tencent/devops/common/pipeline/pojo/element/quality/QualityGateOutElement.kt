@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,23 +27,26 @@
 
 package com.tencent.devops.common.pipeline.pojo.element.quality
 
+import com.tencent.devops.common.api.constant.KEY_ELEMENT_ENABLE
+import com.tencent.devops.common.api.constant.KEY_TASK_ATOM
 import com.tencent.devops.common.pipeline.pojo.element.Element
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("质量红线(准出)", description = QualityGateOutElement.classType)
+@Schema(title = "质量红线(准出)", description = QualityGateOutElement.classType)
 data class QualityGateOutElement(
-    @ApiModelProperty("任务名称", required = true)
+    @get:Schema(title = "任务名称", required = true)
     override val name: String = "质量红线(准出)",
-    @ApiModelProperty("id", required = false)
+    @get:Schema(title = "id", required = false)
     override var id: String? = null,
-    @ApiModelProperty("状态", required = false)
+    @get:Schema(title = "状态", required = false)
     override var status: String? = null,
-    @ApiModelProperty("拦截原子", required = false)
+    @get:Schema(title = "拦截原子", required = false)
     var interceptTask: String? = null,
-    @ApiModelProperty("拦截原子名称", required = false)
+    @get:Schema(title = "拦截原子id", required = false)
+    var interceptTaskId: String? = null,
+    @get:Schema(title = "拦截原子名称", required = false)
     var interceptTaskName: String? = null,
-    @ApiModelProperty("审核人", required = false)
+    @get:Schema(title = "审核人", required = false)
     var reviewUsers: Set<String>? = null
 ) : Element(name, id, status) {
     companion object {
@@ -53,4 +56,27 @@ data class QualityGateOutElement(
     override fun getTaskAtom() = "qualityGateOutTaskAtom"
 
     override fun getClassType() = classType
+
+    override fun initTaskVar(): MutableMap<String, Any> {
+        val taskVar = mutableMapOf<String, Any>()
+        taskVar[QualityGateOutElement::name.name] = name
+        taskVar[QualityGateOutElement::version.name] = version
+        taskVar[KEY_TASK_ATOM] = getTaskAtom()
+        taskVar[QualityGateOutElement::classType.name] = getClassType()
+        taskVar[KEY_ELEMENT_ENABLE] = elementEnabled()
+        interceptTask?.let {
+            taskVar[QualityGateOutElement::interceptTask.name] = it
+        }
+        interceptTaskId?.let {
+            taskVar[QualityGateOutElement::interceptTaskId.name] = it
+        }
+        interceptTaskName?.let {
+            taskVar[QualityGateOutElement::interceptTaskName.name] = it
+        }
+        reviewUsers?.let {
+            taskVar[QualityGateOutElement::reviewUsers.name] = it
+        }
+        retryCountAuto?.let { taskVar[::retryCountAuto.name] = it }
+        return taskVar
+    }
 }

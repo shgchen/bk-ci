@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,7 +29,9 @@ package com.tencent.devops.worker.common.api.report
 
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.google.gson.JsonParser
+import com.tencent.bkrepo.repository.pojo.token.TokenType
 import com.tencent.devops.artifactory.constant.REALM_LOCAL
+import com.tencent.devops.artifactory.pojo.ReportPluginConfig
 import com.tencent.devops.artifactory.pojo.enums.FileTypeEnum
 import com.tencent.devops.common.api.exception.RemoteServiceException
 import com.tencent.devops.common.api.pojo.Result
@@ -114,7 +116,8 @@ class ReportResourceApi : AbstractBuildResourceApi(), ReportSDKApi {
         name: String,
         reportType: String?,
         reportEmail: ReportEmail?,
-        token: String?
+        token: String?,
+        compressed: Boolean
     ): Result<Boolean> {
         val indexFileEncode = encode(indexFile)
         val nameEncode = encode(name)
@@ -132,6 +135,26 @@ class ReportResourceApi : AbstractBuildResourceApi(), ReportSDKApi {
         val responseContent = request(request,
             MessageUtil.getMessageByLocale(CREATE_REPORT_FAIL, AgentEnv.getLocaleLanguage()))
         return objectMapper.readValue(responseContent)
+    }
+
+    override fun getRepoToken(
+        userId: String,
+        projectId: String,
+        repoName: String,
+        path: String,
+        type: TokenType,
+        expireSeconds: Long
+    ): String? {
+        return null
+    }
+
+    override fun getPluginConfig(): Result<ReportPluginConfig> {
+        return Result(ReportPluginConfig(
+            enableCompress = false,
+            enableCompressPipelines = emptyList(),
+            compressThreshold = Long.MAX_VALUE,
+            compressSizeLimit = 0
+        ))
     }
 
     companion object {

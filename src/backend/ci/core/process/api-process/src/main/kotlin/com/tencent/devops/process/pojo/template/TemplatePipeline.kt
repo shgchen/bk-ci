@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,30 +27,31 @@
 
 package com.tencent.devops.process.pojo.template
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
 /**
  * deng
  * 2019-01-08
  * 模板实例化的流水线
  */
-@ApiModel("")
+@Schema(title = "")
 data class TemplatePipeline(
-    @ApiModelProperty("模板id", required = false)
+    @get:Schema(title = "模板id", required = false)
     val templateId: String,
-    @ApiModelProperty("版本名称", required = false)
+    @get:Schema(title = "版本名称", required = false)
     val versionName: String,
-    @ApiModelProperty("版本", required = false)
+    @get:Schema(title = "版本", required = false)
     val version: Long,
-    @ApiModelProperty("流水线id", required = false)
+    @get:Schema(title = "流水线id", required = false)
     val pipelineId: String,
-    @ApiModelProperty("流水线名称", required = false)
+    @get:Schema(title = "流水线名称", required = false)
     val pipelineName: String,
-    @ApiModelProperty("更新时间", required = false)
+    @get:Schema(title = "更新时间", required = false)
     val updateTime: Long,
-    @ApiModelProperty("是否有编辑权限", required = false)
+    @get:Schema(title = "是否有编辑权限", required = false)
     val hasPermission: Boolean,
-    @ApiModelProperty("流水线模板状态", required = false)
-    val status: TemplatePipelineStatus
+    @get:Schema(title = "流水线模板状态", required = false)
+    val status: TemplatePipelineStatus,
+    @get:Schema(title = "模板实例化错误信息", required = false)
+    val instanceErrorInfo: String? = null
 )

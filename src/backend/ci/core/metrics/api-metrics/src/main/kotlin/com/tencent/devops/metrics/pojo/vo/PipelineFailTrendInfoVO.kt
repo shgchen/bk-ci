@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,15 +28,14 @@
 package com.tencent.devops.metrics.pojo.vo
 
 import com.tencent.devops.metrics.pojo.`do`.PipelineFailStatisticsInfoDO
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("流水线失败趋势信息视图")
+@Schema(title = "流水线失败趋势信息视图")
 data class PipelineFailTrendInfoVO(
-    @ApiModelProperty("错误类型名称")
+    @get:Schema(title = "错误类型名称")
     val name: String?,
-    @ApiModelProperty("错误类型标识")
+    @get:Schema(title = "错误类型标识")
     val errorType: Int,
-    @ApiModelProperty("错误信息集合")
+    @get:Schema(title = "错误信息集合")
     val failInfos: List<PipelineFailStatisticsInfoDO>
 )

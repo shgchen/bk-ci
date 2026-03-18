@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -39,7 +39,8 @@ class RegexContainFilter(
     // 过滤器名字
     private val filterName: String,
     private val triggerOn: String,
-    private val included: List<String>
+    private val included: List<String>,
+    private val failedReason: String = ""
 ) : WebhookFilter {
 
     companion object {
@@ -48,6 +49,15 @@ class RegexContainFilter(
 
     override fun doFilter(response: WebhookFilterResponse): Boolean {
         logger.info("$pipelineId|triggerOn:$triggerOn|included:$included|$filterName filter")
+        val filterResult = filterAction()
+        if (!filterResult && failedReason.isNotBlank()) {
+            response.failedReason = failedReason
+        }
+        return filterResult
+    }
+
+    @SuppressWarnings("ReturnCount")
+    private fun filterAction(): Boolean {
         if (included.isEmpty()) {
             return true
         }

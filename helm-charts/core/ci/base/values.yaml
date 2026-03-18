@@ -9,9 +9,9 @@ rbac:
   enabled: true
   serviceAccount: bkci
   clusterRole:
-    enabled: false
+    enabled: true
   clusterRoleBinding:
-    enabled: false
+    enabled: true
 
 ## Add labels to all the deployed resources
 commonLabels: {}
@@ -39,19 +39,19 @@ gatewayImage:
   registry: __image_registry__
   repository: bkci-gateway
   tag: __image_gateway_tag__
-  pullPolicy: IfNotPresent 
+  pullPolicy: IfNotPresent
   pullSecrets: []
 backendImage:
   registry: __image_registry__
   repository: bkci-backend
   tag: __image_backend_tag__
-  pullPolicy: IfNotPresent 
+  pullPolicy: IfNotPresent
   pullSecrets: []
 frontendImage:
   registry: __image_registry__
   repository: bkci-frontend
   tag: __image_frontend_tag__
-  pullPolicy: IfNotPresent 
+  pullPolicy: IfNotPresent
   pullSecrets: []
 
 # 日志采集配置
@@ -79,7 +79,13 @@ init:
   iam: true
   turbo: false
   bkrepo: true
-  defaultImage: true
+  migrateTemplate: true
+  defaultImage:
+    enabled: true
+    image:
+      registry: bkci
+      repository: ci
+      tag: jdk17
   plugin:
     enabled: false
     atoms:
@@ -110,8 +116,8 @@ multiCluster:
 
 # 内部数据源配置
 mysql:
-  image: 
-    tag: 5.7.26
+  image:
+    tag: 8.0.37-debian-12-r2
   enabled: true
   auth:
     # 修改此选项必须删除mysql的pvc , 否则会创建mysql失败
@@ -138,7 +144,7 @@ mysql:
       collation-server=utf8_general_ci
       max_connections=2000
       default-time-zone='+08:00'
-      sql_mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+      sql_mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
       [client]
       port=3306
       socket=/opt/bitnami/mysql/tmp/mysql.sock
@@ -151,14 +157,14 @@ mysql:
 redis:
   enabled: true
   auth:
-    password: bluking
+    password: blueking
   replica:
     replicaCount: 1
-    persistence: 
+    persistence:
       size: 10Gi
   master:
-    persistence: 
-      size: 10Gi 
+    persistence:
+      size: 10Gi
 elasticsearch:
   enabled: true
   master:
@@ -173,13 +179,16 @@ elasticsearch:
       size: 10Gi
 rabbitmq:
   enabled: true
+  image:
+    repository: bitnami/rabbitmq
+    tag: 3.10.8-debian-11-r4
   persistence:
     size: 10Gi
   auth:
     username: admin
     password: blueking
     erlangCookie: blueking # 修改此选项必须删除rabbitmq的pvc , 否则会创建rabbitmq失败
-  communityPlugins: "https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/releases/download/3.8.17/rabbitmq_delayed_message_exchange-3.8.17.8f537ac.ez"
+  communityPlugins: "https://bkopen-1252002024.file.myqcloud.com/ce7/files/rabbitmq_delayed_message_exchange-3.10.2.ez"
   extraPlugins: "rabbitmq_delayed_message_exchange"
   extraConfiguration: |-
     # ipv6 , 需要开启这些选项
@@ -227,7 +236,7 @@ influxdb:
       enabled: false
     livenessProbe:
       enabled: false
-    initdbScripts: 
+    initdbScripts:
       creata_db.sh: |
         influx -host localhost -port "$INFLUXDB_HTTP_PORT_NUMBER" -username "${INFLUXDB_ADMIN_USER}" -password "${INFLUXDB_ADMIN_USER_PASSWORD}" -execute "create database agentMetrix;"
 mongodb:
@@ -287,68 +296,21 @@ kubernetes-manager:
 
   # 内部数据源配置
   mysql:
-    enabled: true
-    nameOverride: kubernetes-manager-mysql
-    image:
-      tag: 5.7.26
-    auth:
-      # 修改此选项必须删除mysql的pvc , 否则会创建mysql失败
-      rootPassword: blueking
-    primary:
-      persistence:
-        size: 10Gi
-      configuration: |-
-        [mysqld]
-        default_authentication_plugin=mysql_native_password
-        skip-name-resolve
-        explicit_defaults_for_timestamp
-        basedir=/opt/bitnami/mysql
-        plugin_dir=/opt/bitnami/mysql/lib/plugin
-        port=3306
-        socket=/opt/bitnami/mysql/tmp/mysql.sock
-        datadir=/bitnami/mysql/data
-        tmpdir=/opt/bitnami/mysql/tmp
-        max_allowed_packet=16M
-        bind-address=*
-        pid-file=/opt/bitnami/mysql/tmp/mysqld.pid
-        log-error=/opt/bitnami/mysql/logs/mysqld.log
-        character-set-server=UTF8
-        collation-server=utf8_general_ci
-        max_connections=2000
-        default-time-zone='+08:00'
-        [client]
-        port=3306
-        socket=/opt/bitnami/mysql/tmp/mysql.sock
-        default-character-set=UTF8
-        plugin_dir=/opt/bitnami/mysql/lib/plugin
-        [manager]
-        port=3306
-        socket=/opt/bitnami/mysql/tmp/mysql.sock
-        pid-file=/opt/bitnami/mysql/tmp/mysqld.pid
+    enabled: false
 
   redis:
-    enabled: true
-    nameOverride: kubernetes-manager-redis
-    auth:
-      password: bluking
-    replica:
-      replicaCount: 1
-      persistence:
-        size: 10Gi
-    master:
-      persistence:
-        size: 10Gi
+    enabled: false
 
   #外部数据库
   externalMysql:
-    host: localhost
+    host: "" #为空时使用bkci的mysql
     port: 3306
-    username: bkci
-    password: bkci
+    username: root
+    password: blueking
   externalRedis:
-    host: localhost
+    host: "" #为空时使用bkci的redis
     port: 6379
-    password: bkci
+    password: blueking
 
   # kubernetesManager service
   service:
@@ -390,7 +352,7 @@ kubernetes-manager:
       targetCPU: 80
       targetMemory: 80
     # 使用的镜像
-    image: bkci/bkci-kubernetes-manager:0.0.31
+    image: bkci/bkci-kubernetes-manager:0.0.33
     # 决定每次helm部署时的构建机所在的命名空间，同时dockerInitSh也在那里，为空时默认为 {{ .Release.Namespace }}
     builderNamespace:
     redis:
@@ -409,11 +371,13 @@ kubernetes-manager:
         apiToken:
           key: Devops-Token
           value: landun
-        rsaPrivateKey: |
+        rsaPrivateKey: ""
     volumeMount:
       # 流水线构建工作空间和agent日志在容器内的挂载点
       dataPath: /data/devops/workspace
       logPath: /data/devops/logs
+    docker:
+      enable: true
   dockerInit:
     # 是否使用当前chart的 dockerinit.sh
     useDockerInit: true
@@ -634,131 +598,8 @@ dispatch:
     targetCPU: 80
     targetMemory: 80
 
-# dispatchDocker Deployment
-dispatchDocker:
-  enabled: true
-  replicas: 1
-  podLabels: {}
-  resources:
-    requests:
-      cpu: 100m
-      memory: 1000Mi
-    limits:
-      cpu: 500m
-      memory: 1500Mi
-  jvm:
-    heapPct: "70.0"
-    initSecs: 50
-  hostAliases: []
-  containerSecurityContext:
-    enabled: false
-    runAsUser: 1001
-    runAsNonRoot: true
-  podSecurityContext:
-    enabled: false
-    fsGroup: 1001
-  podAffinityPreset: ""
-  podAntiAffinityPreset: soft
-  nodeAffinityPreset:
-    type: ""
-    key: ""
-    values: []
-  affinity: {}
-  nodeSelector: {}
-  tolerations: []
-  podAnnotations: {}
-  priorityClassName: ""
-  autoscaling:
-    enabled: false
-    minReplicas: 1
-    maxReplicas: 3
-    targetCPU: 80
-    targetMemory: 80
-
-# dispatchKubernetes Deployment
-dispatchKubernetes:
-  enabled: true
-  replicas: 1
-  podLabels: {}
-  resources:
-    requests:
-      cpu: 100m
-      memory: 1000Mi
-    limits:
-      cpu: 500m
-      memory: 1500Mi
-  jvm:
-    heapPct: "70.0"
-    initSecs: 50
-  hostAliases: []
-  containerSecurityContext:
-    enabled: false
-    runAsUser: 1001
-    runAsNonRoot: true
-  podSecurityContext:
-    enabled: false
-    fsGroup: 1001
-  podAffinityPreset: ""
-  podAntiAffinityPreset: soft
-  nodeAffinityPreset:
-    type: ""
-    key: ""
-    values: []
-  affinity: {}
-  nodeSelector: {}
-  tolerations: []
-  podAnnotations: {}
-  priorityClassName: ""
-  autoscaling:
-    enabled: false
-    minReplicas: 1
-    maxReplicas: 3
-    targetCPU: 80
-    targetMemory: 80
-
 # environment Deployment
 environment:
-  enabled: true
-  replicas: 1
-  podLabels: {}
-  resources:
-    requests:
-      cpu: 100m
-      memory: 1000Mi
-    limits:
-      cpu: 500m
-      memory: 1500Mi
-  jvm:
-    heapPct: "70.0"
-    initSecs: 50
-  hostAliases: []
-  containerSecurityContext:
-    enabled: false
-    runAsUser: 1001
-    runAsNonRoot: true
-  podSecurityContext:
-    enabled: false
-    fsGroup: 1001
-  podAffinityPreset: ""
-  podAntiAffinityPreset: soft
-  nodeAffinityPreset:
-    type: ""
-    key: ""
-    values: []
-  affinity: {}
-  nodeSelector: {}
-  tolerations: []
-  podAnnotations: {}
-  priorityClassName: ""
-  autoscaling:
-    enabled: false
-    minReplicas: 1
-    maxReplicas: 3
-    targetCPU: 80
-    targetMemory: 80
-
-# image Deployment
-image:
   enabled: true
   replicas: 1
   podLabels: {}
@@ -880,47 +721,6 @@ metrics:
     targetCPU: 80
     targetMemory: 80
 
-# monitoring Deployment
-monitoring:
-  enabled: true
-  replicas: 1
-  podLabels: {}
-  resources:
-    requests:
-      cpu: 100m
-      memory: 1000Mi
-    limits:
-      cpu: 500m
-      memory: 1500Mi
-  jvm:
-    heapPct: "70.0"
-    initSecs: 50
-  hostAliases: []
-  containerSecurityContext:
-    enabled: false
-    runAsUser: 1001
-    runAsNonRoot: true
-  podSecurityContext:
-    enabled: false
-    fsGroup: 1001
-  podAffinityPreset: ""
-  podAntiAffinityPreset: soft
-  nodeAffinityPreset:
-    type: ""
-    key: ""
-    values: []
-  affinity: {}
-  nodeSelector: {}
-  tolerations: []
-  podAnnotations: {}
-  priorityClassName: ""
-  autoscaling:
-    enabled: false
-    minReplicas: 1
-    maxReplicas: 3
-    targetCPU: 80
-    targetMemory: 80
-
 # notify Deployment
 notify:
   enabled: true
@@ -968,47 +768,6 @@ openapi:
   secret:
     enabled: false
     content: ""
-  replicas: 1
-  podLabels: {}
-  resources:
-    requests:
-      cpu: 100m
-      memory: 1000Mi
-    limits:
-      cpu: 500m
-      memory: 1500Mi
-  jvm:
-    heapPct: "70.0"
-    initSecs: 50
-  hostAliases: []
-  containerSecurityContext:
-    enabled: false
-    runAsUser: 1001
-    runAsNonRoot: true
-  podSecurityContext:
-    enabled: false
-    fsGroup: 1001
-  podAffinityPreset: ""
-  podAntiAffinityPreset: soft
-  nodeAffinityPreset:
-    type: ""
-    key: ""
-    values: []
-  affinity: {}
-  nodeSelector: {}
-  tolerations: []
-  podAnnotations: {}
-  priorityClassName: ""
-  autoscaling:
-    enabled: false
-    minReplicas: 1
-    maxReplicas: 3
-    targetCPU: 80
-    targetMemory: 80
-
-# plugin Deployment
-plugin:
-  enabled: true
   replicas: 1
   podLabels: {}
   resources:
@@ -1337,9 +1096,9 @@ websocket:
 turbo:
   enabled: false
   image:
-    registry: registry-1.docker.io/bkci
+    registry: bkci
     repository: bkci-turbo
-    tag: 0.0.18
+    tag: 0.0.21
     pullPolicy: IfNotPresent
     pullSecrets: []
   replicaCount: 1
@@ -1384,19 +1143,18 @@ turbo:
     targetCPU: 80
     targetMemory: 80
 
-# gateway Deployment
-gateway:
+# frontend Deployment
+frontend:
   enabled: true
-  type: ClusterIP
   replicas: 1
   podLabels: {}
   resources:
     requests:
       cpu: 100m
-      memory: 500Mi
+      memory: 512Mi
     limits:
       cpu: 500m
-      memory: 800Mi
+      memory: 1024Mi
   hostAliases: []
   containerSecurityContext:
     enabled: false
@@ -1423,21 +1181,19 @@ gateway:
     targetCPU: 80
     targetMemory: 80
 
-# stream Deployment
-stream:
-  enabled: false
+# gateway Deployment
+gateway:
+  enabled: true
+  type: ClusterIP
   replicas: 1
   podLabels: {}
   resources:
     requests:
       cpu: 100m
-      memory: 2000Mi
+      memory: 500Mi
     limits:
       cpu: 500m
-      memory: 3000Mi
-  jvm:
-    heapPct: "70.0"
-    initSecs: 50
+      memory: 800Mi
   hostAliases: []
   containerSecurityContext:
     enabled: false

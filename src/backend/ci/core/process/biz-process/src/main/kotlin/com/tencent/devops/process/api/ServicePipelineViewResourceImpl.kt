@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,8 +27,10 @@
 
 package com.tencent.devops.process.api
 
+import com.tencent.bk.audit.annotations.AuditEntry
 import com.tencent.devops.common.api.exception.CustomException
 import com.tencent.devops.common.api.pojo.Result
+import com.tencent.devops.common.auth.api.ActionId
 import com.tencent.devops.common.pipeline.enums.ChannelCode
 import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.common.web.utils.I18nUtil
@@ -46,7 +48,7 @@ import com.tencent.devops.process.pojo.classify.PipelineViewPipelinePage
 import com.tencent.devops.process.service.PipelineListFacadeService
 import com.tencent.devops.process.service.view.PipelineViewGroupService
 import com.tencent.devops.process.service.view.PipelineViewService
-import javax.ws.rs.core.Response
+import jakarta.ws.rs.core.Response
 import org.springframework.beans.factory.annotation.Autowired
 
 @RestResource
@@ -129,6 +131,7 @@ class ServicePipelineViewResourceImpl @Autowired constructor(
         )
     }
 
+    @AuditEntry(actionId = ActionId.PIPELINE_GROUP_CREATE)
     override fun addView(
         userId: String,
         projectId: String,
@@ -161,6 +164,7 @@ class ServicePipelineViewResourceImpl @Autowired constructor(
         )
     }
 
+    @AuditEntry(actionId = ActionId.PIPELINE_GROUP_DELETE)
     override fun deleteView(
         userId: String,
         projectId: String,
@@ -177,6 +181,7 @@ class ServicePipelineViewResourceImpl @Autowired constructor(
         )
     }
 
+    @AuditEntry(actionId = ActionId.PIPELINE_GROUP_EDIT)
     override fun updateView(
         userId: String,
         projectId: String,
@@ -192,6 +197,24 @@ class ServicePipelineViewResourceImpl @Autowired constructor(
                 viewIdEncode = getViewId(viewId, viewName, projectId, isProject),
                 pipelineView = pipelineView
             )
+        )
+    }
+
+    override fun listViewIdsByPipelineId(
+        projectId: String,
+        pipelineId: String
+    ): Result<Set<Long>> {
+        return Result(
+            pipelineViewGroupService.listViewIdsByPipelineId(projectId, pipelineId)
+        )
+    }
+
+    override fun listPipelineIdByViewIds(
+        projectId: String,
+        viewIdsEncode: List<String>
+    ): Result<List<String>> {
+        return Result(
+            pipelineViewGroupService.listPipelineIdsByViewIds(projectId, viewIdsEncode)
         )
     }
 }

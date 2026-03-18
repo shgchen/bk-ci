@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -74,8 +74,15 @@ class AuthProjectService @Autowired constructor(
             offset = page.offset.toInt()
             limit = page.limit.toInt()
         }
-        val projectRecords = projectService.listByChannel(limit, offset, ProjectChannelCode.BS)
-        val count = projectRecords?.count
+        val projectRecords = projectService.listByChannel(
+            limit = limit,
+            offset = offset,
+            projectChannelCode = listOf(
+                ProjectChannelCode.BS.name,
+                ProjectChannelCode.PREBUILD.name
+            )
+        )
+        val count = projectRecords.count
         val projectInfo = mutableListOf<InstanceInfoDTO>()
         projectRecords?.records?.map {
             val entity = InstanceInfoDTO()
@@ -96,7 +103,10 @@ class AuthProjectService @Autowired constructor(
         logger.info("getProjectInfo ids[$idList], attribute[$attribute]")
         authTokenApi.checkToken(token)
         val ids = idList.toSet()
-        val projectInfo = projectService.list(ids)
+        val projectInfo = projectService.list(
+            projectCodes = ids,
+            enabled = true
+        )
         val entityList = mutableListOf<InstanceInfoDTO>()
 
         projectInfo?.map {
@@ -145,7 +155,7 @@ class AuthProjectService @Autowired constructor(
         val routerTag = projectService.getByEnglishName(projectCode)!!.routerTag
         val managerUser = bkTag.invokeByTag(routerTag) {
             client.getGateway(ServiceProjectAuthResource::class).getProjectUsers(
-                token = tokenService.getSystemToken(null)!!,
+                token = tokenService.getSystemToken()!!,
                 projectCode = projectCode,
                 group = BkAuthGroup.MANAGER
             ).data ?: emptyList()

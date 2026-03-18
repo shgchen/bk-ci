@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -71,7 +71,7 @@ object EnvironmentMessageCode {
     const val ERROR_ENV_DEPLOY_CAN_NOT_ADD_AGENT = "2105022" // 构建节点[{0}]不能添加到非构建环境
     const val ERROR_NODE_CHANGE_USER_NOT_SUPPORT = "2105023" // 节点类型【{0}】不支持修改导入人
     const val ERROR_NODE_IMPORT_EXCEED = "2105024" // 环境管理：导入节点数不能超过配额[{0}]
-    const val ERROR_NODE_IP_ILLEGAL_USER = "2105025" // 环境管理：非法 IP [{0}], 请确认是否是服务器的责任人
+    const val ERROR_NODE_IP_ILLEGAL_USER = "2105025" // 环境管理：非法 IP [{0}], 请确认当前用户[{1}]是否是服务器的主备负责人 - 测试机导入｜重新导入
     const val ERROR_QUOTA_LIMIT = "2105026" // 环境管理：配额不足，总量{0}, 已使用: {1}
     const val ERROR_VM_CAN_NOT_DESTROY = "2105027" // 环境管理：虚拟机状态为:{0}, 不允许销毁！请稍后操作！
     const val ERROR_VM_CAN_NOT_IMAGED = "2105028" // 环境管理：虚拟机状态为:{0}, 无法制作镜像!
@@ -91,7 +91,32 @@ object EnvironmentMessageCode {
     const val ERROR_NO_PERMISSION_TO_USE_THIRD_PARTY_BUILD_ENV = "2105042" // 无权限使用第三方构建机环境
     const val ERROR_THIRD_PARTY_BUILD_ENV_NODE_NOT_EXIST = "2105043" // 第三方构建机环境节点不存在
     const val ERROR_PIPE_NOT_FOUND = "2105044" // 环境管理：不存在该管道信息
-    const val ERROR_NODE_NO_USE_PERMISSSION = "2105045" // 环境管理：没有节点使用权限
+    const val ERROR_NODE_NO_USE_PERMISSSION = "2105045" // 环境管理：节点[{0}]没有使用权限
+    // "2105046" 环境管理: 不在CMDB中的IP [{0}]; 无权限的IP [{1}], 请确认当前用户[{2}]或节点导入人[{3}]是否为这些节点的主备负责人 - 脚本执行｜文件分发
+    const val ERROR_NODE_IP_ILLEGAL = "2105046"
+    const val ERROR_CMDB_INTERFACE_TIME_OUT = "2105047" // 环境管理: CMDB接口请求超时，请重试
+    const val ERROR_CMDB_RESPONSE = "2105048" // 环境管理: CMDB接口请求异常，请重试
+    const val ERROR_SCRIPT_EXECUTE_HOST_EMPTY = "2105049" // 环境管理: 脚本执行: 主机为空
+    const val ERROR_DISTRIBUTE_FILE_EXECUTE_TARGET_HOST_EMPTY = "2105050" // 环境管理: 文件分发: 执行目标主机为空
+    const val ERROR_DISTRIBUTE_FILE_FILE_SOURCE_HOST_EMPTY = "2105051" // 环境管理: 文件分发: 文件源主机为空
+    const val ERROR_ENV_LIST_NODE_NOT_IN_CC_OR_CMDB = "2105052" // 环境管理: 环境中的[{0}]不在CC/CMDB中
+    const val ERROR_NODE_LIST_NODE_NOT_IN_CC_OR_CMDB = "2105053" // 环境管理: 节点中的[{0}]不在CC/CMDB中
+    const val ERROR_JOB_INSTANCE_NOT_BELONG_TO_PROJECT = "2105054" // 环境管理: 请求的job实例不属于当前项目或已过期(超过一个月)
+    const val ERROR_FAIL_TO_CREATE_AGENT_INSTALL_TASK = "2105055" // 环境管理: 创建Agent安装任务失败：{0}
+    const val ERROR_INPUT_TOO_MANY_IP = "2105056" // 环境管理: 输入的IP数量不可超过{0}
+    const val ERROR_NODE_NOT_BELONG_TO_PROJECT = "2105057" // 环境管理: IP {0} 未被作为节点导入项目 {1}，请到【环境管理-节点】导入测试机后重试
+    const val ERROR_AGENT_ALREADY_INSTALL = "2105058" // 环境管理: Agent重复安装报错
+    const val ERROR_NODE_TAG_EXIST = "2105059" // 环境管理: 标签[{0}]已经存在
+    const val ERROR_NODE_TAG_HAS_NODE = "2105060" // 环境管理: 当前标签还存在标记的节点
+    const val ERROR_NODE_TAG_ONLY_SUP_THIRD = "2105061" // 环境管理: 标签功能仅支持第三方构建机
+    const val ERROR_NODE_TAG_NO_ALLOW_VALUES = "2105062" // 环境管理: 标签[{0}]不支持一个节点添加多个值
+    const val ERROR_NODE_TAG_NO_EDIT_PERMISSSION = "2105063" // 环境管理：没有标签编辑权限
+    const val ERROR_NODE_TAG_NOW_UPDATING = "2105064" // 环境管理：标签正在被修改或添加节点，请重试
+    const val ERROR_NODE_TAG_INTERNAL_NOT_EDIT = "2105065" // 环境管理：系统内置标签不能被删除或修改
+    const val ERROR_NODES_NO_EDIT_PERMISSSION = "2105066" // 环境管理：没有节点[{0}]编辑权限
+    // 环境管理：修改节点导入人仅支持节点类型为CMDB，非CMDB类型的节点：[{0}]
+    const val ERROR_NODE_TYPE_TO_CHANGE_CREATOR_ONLY_SUPPORT_CMDB = "2105067"
+    const val ERROR_NODE_NO_IMPORT_PERMISSION_NODES = "2105068" // 环境管理：没有节点[{0}]导入权限，仅有节点的主备份负责人才可导入
 
     const val BK_NORMAL_VERSION = "bkNormalVersion" // 8核16G（普通版）
     const val BK_INTEL_XEON_SKYLAKE_PROCESSOR = "bkIntelXeonSkylakeProcessor" // 2.5GHz 64核 Intel Xeon Skylake 6133处理器
@@ -99,4 +124,9 @@ object EnvironmentMessageCode {
     const val BK_SOLID_STATE_DISK = "bkSolidStateDisk" // {0}GB 固态硬盘
     const val BK_ESTIMATED_DELIVERY_TIME = "bkEstimatedDeliveryTime" // 预计交付周期：{0}分钟
     const val BK_HIGH_END_VERSION = "bkHighEndVersion" // 32核64G（高配版）
+    const val AGENT_VERSION = "agentVersion" // Agent版本
+    const val AGENT_STATUS = "agentStatus" // Agent版本
+    const val OS_TYPE = "osType" // 操作系统
+    const val NODE_USAGE_BUILD = "nodeUsageBuild" // 构建
+    const val NODE_USAGE_DEPLOYMENT = "nodeUsageDeployment" // 部署
 }

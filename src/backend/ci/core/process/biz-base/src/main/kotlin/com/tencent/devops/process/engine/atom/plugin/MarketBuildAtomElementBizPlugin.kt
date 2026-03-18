@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -33,9 +33,13 @@ import com.tencent.devops.common.pipeline.pojo.element.atom.BeforeDeleteParam
 import com.tencent.devops.common.pipeline.pojo.element.market.MarketBuildAtomElement
 import com.tencent.devops.process.plugin.ElementBizPlugin
 import com.tencent.devops.process.plugin.annotation.ElementBiz
+import com.tencent.devops.process.pojo.pipeline.PipelineYamlVo
+import org.springframework.beans.factory.annotation.Autowired
 
 @ElementBiz
-class MarketBuildAtomElementBizPlugin : ElementBizPlugin<MarketBuildAtomElement> {
+class MarketBuildAtomElementBizPlugin @Autowired constructor(
+    private val elementBizPluginServices: List<IElementBizPluginService>
+) : ElementBizPlugin<MarketBuildAtomElement> {
 
     override fun elementClass(): Class<MarketBuildAtomElement> {
         return MarketBuildAtomElement::class.java
@@ -49,12 +53,17 @@ class MarketBuildAtomElementBizPlugin : ElementBizPlugin<MarketBuildAtomElement>
         userId: String,
         channelCode: ChannelCode,
         create: Boolean,
-        container: Container
+        container: Container,
+        yamlInfo: PipelineYamlVo?
     ) = Unit
 
+    @Suppress("UNCHECKED_CAST")
     override fun beforeDelete(element: MarketBuildAtomElement, param: BeforeDeleteParam) {
         val inputMap = element.data["input"] as Map<String, Any>
         MarketBuildUtils.beforeDelete(inputMap, element.getAtomCode(), element.version, param)
+        elementBizPluginServices.find {
+            it.supportElement(element)
+        }?.beforeDelete(element = element, param = param)
     }
 
     override fun check(element: MarketBuildAtomElement, appearedCnt: Int) = Unit

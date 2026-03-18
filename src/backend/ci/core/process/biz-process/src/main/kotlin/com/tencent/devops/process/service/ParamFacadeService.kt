@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -39,6 +39,7 @@ import com.tencent.devops.common.pipeline.enums.BuildFormPropertyType
 import com.tencent.devops.common.pipeline.enums.ChannelCode
 import com.tencent.devops.common.pipeline.pojo.BuildFormProperty
 import com.tencent.devops.common.pipeline.pojo.BuildFormValue
+import com.tencent.devops.common.pipeline.pojo.cascade.RepoRefCascadeParam
 import com.tencent.devops.common.service.utils.LogUtils
 import com.tencent.devops.common.web.utils.I18nUtil
 import com.tencent.devops.process.constant.ProcessMessageCode.ERROR_SUB_PIPELINE_PARAM_FILTER_FAILED
@@ -86,6 +87,8 @@ class ParamFacadeService @Autowired constructor(
                 filterParams.add(addArtifactoryProperties(userId, projectId, it))
             } else if (it.type == BuildFormPropertyType.SUB_PIPELINE) {
                 filterParams.add(addSubPipelineProperties(userId, projectId, pipelineId, it))
+            } else if (it.type == BuildFormPropertyType.REPO_REF) {
+                filterParams.add(addRepoRefs(projectId, it))
             } else {
                 filterParams.add(it)
             }
@@ -114,6 +117,8 @@ class ParamFacadeService @Autowired constructor(
                 addArtifactoryProperties(userId, projectId, property)
             } else if (property.type == BuildFormPropertyType.SUB_PIPELINE) {
                 addSubPipelineProperties(userId, projectId, pipelineId, property)
+            } else if (property.type == BuildFormPropertyType.REPO_REF) {
+                addRepoRefs(projectId, property)
             } else {
                 property
             }
@@ -130,19 +135,33 @@ class ParamFacadeService @Autowired constructor(
             codeService.getGitRefs(projectId, formProperty.repoHashId, search)
         } catch (e: Exception) {
             logger.warn("projectId:$projectId,repoHashId:${formProperty.repoHashId} add git refs error", e)
-            listOf<String>()
+            listOf()
         }
         val options = refs.map {
             BuildFormValue(it, it)
         }
-        val searchUrl = "/process/api/user/scm/$projectId/${formProperty.repoHashId}/refs?search={words}"
+        val searchUrl = "/process/api/user/buildParam/$projectId/${formProperty.repoHashId}/gitRefs?search={words}"
         val replaceKey = "{words}"
         return copyFormProperty(
             property = formProperty,
-            options = options,
+            options = fixDefaultOptions(options = options, defaultValue = formProperty.defaultValue.toString()),
             searchUrl = searchUrl,
             replaceKey = replaceKey
         )
+    }
+
+    /**
+     * 修复默认值不展示问题
+     *
+     * 当默认值不在options列表时,流水线执行时不会展示默认值
+     */
+    private fun fixDefaultOptions(options: List<BuildFormValue>, defaultValue: String): List<BuildFormValue> {
+        if (defaultValue.isBlank() || options.map { it.key }.contains(defaultValue)) {
+            return options
+        }
+        val newOptions = options.toMutableList()
+        newOptions.add(BuildFormValue(defaultValue, defaultValue))
+        return newOptions
     }
 
     /**
@@ -175,7 +194,7 @@ class ParamFacadeService @Autowired constructor(
         aliasName: String? = null
     ): BuildFormProperty {
 
-        val aliasNames = if ((!userId.isNullOrBlank())) {
+        val options = if ((!userId.isNullOrBlank())) {
             // 检查代码库的权限， 只返回用户有权限代码库
             val hasPermissionCodelibs =
                 getPermissionCodelibList(userId, projectId, codelibFormProperty.scmType!!, aliasName)
@@ -192,7 +211,7 @@ class ParamFacadeService @Autowired constructor(
         val replaceKey = "{words}"
         return copyFormProperty(
             property = codelibFormProperty,
-            options = aliasNames,
+            options = fixDefaultOptions(options = options, defaultValue = codelibFormProperty.defaultValue.toString()),
             searchUrl = searchUrl,
             replaceKey = replaceKey
         )
@@ -274,10 +293,23 @@ class ParamFacadeService @Autowired constructor(
     ): BuildFormProperty {
         try {
             val hasPermissionPipelines = getHasPermissionPipelineList(userId, projectId)
-            val aliasName = hasPermissionPipelines
+            val options = hasPermissionPipelines
                 .filter { pipelineId == null || !it.pipelineId.contains(pipelineId) }
                 .map { BuildFormValue(it.pipelineName, it.pipelineName) }
-            return copyFormProperty(subPipelineFormProperty, aliasName)
+            val excludePipelineId = pipelineId ?: ""
+            val searchUrl = "/process/api/user/buildParam/$projectId/subPipeline?" +
+                    "permission=${AuthPermission.EXECUTE.name}&excludePipelineId=$excludePipelineId" +
+                    "&pipelineName={words}&page=1&pageSize=100"
+            val replaceKey = "{words}"
+            return copyFormProperty(
+                property = subPipelineFormProperty,
+                options = fixDefaultOptions(
+                    options = options,
+                    defaultValue = subPipelineFormProperty.defaultValue.toString()
+                ),
+                searchUrl = searchUrl,
+                replaceKey = replaceKey
+            )
         } catch (t: Throwable) {
             logger.warn("[$userId|$projectId] Fail to filter the properties of subpipelines", t)
             throw OperationException(
@@ -294,9 +326,11 @@ class ParamFacadeService @Autowired constructor(
     ): BuildFormProperty {
         return BuildFormProperty(
             id = property.id,
+            name = property.name,
             required = property.required,
             type = property.type,
             defaultValue = property.defaultValue,
+            value = property.value,
             options = options,
             desc = property.desc,
             repoHashId = property.repoHashId,
@@ -306,7 +340,12 @@ class ParamFacadeService @Autowired constructor(
             glob = property.glob,
             properties = property.properties,
             searchUrl = searchUrl,
-            replaceKey = replaceKey
+            replaceKey = replaceKey,
+            valueNotEmpty = property.valueNotEmpty,
+            category = property.category,
+            displayCondition = property.displayCondition,
+            asInstanceInput = property.asInstanceInput,
+            sensitive = property.sensitive
         )
     }
 
@@ -356,7 +395,13 @@ class ParamFacadeService @Autowired constructor(
             // 获取项目下所有流水线，并过滤出有权限部分，有权限列表为空时返回项目所有流水线
             watcher.start("s_r_summary")
             val buildPipelineRecords =
-                pipelineRuntimeService.getBuildPipelineRecords(projectId, ChannelCode.BS, hasPermissionList)
+                pipelineRuntimeService.getBuildPipelineRecords(
+                    projectId = projectId,
+                    channelCode = ChannelCode.BS,
+                    pipelineIds = hasPermissionList,
+                    page = 1,
+                    pageSize = 100
+                )
             watcher.stop()
 
             return buildPipelineRecords.map {
@@ -370,6 +415,22 @@ class ParamFacadeService @Autowired constructor(
         } finally {
             watcher.stop()
             LogUtils.printCostTimeWE(watcher, errorThreshold = 3000)
+        }
+    }
+
+    private fun addRepoRefs(
+        projectId: String,
+        formProperty: BuildFormProperty
+    ): BuildFormProperty {
+        return copyFormProperty(
+            property = formProperty,
+            options = listOf()
+        ).let {
+            it.cascadeProps = RepoRefCascadeParam().getProps(
+                projectId = projectId,
+                prop = formProperty
+            )
+            it
         }
     }
 

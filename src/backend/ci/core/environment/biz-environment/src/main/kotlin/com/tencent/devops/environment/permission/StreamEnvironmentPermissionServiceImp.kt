@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -172,7 +172,7 @@ class StreamEnvironmentPermissionServiceImp @Autowired constructor(
         logger.info("StreamEnvironmentPermissionServiceImp user:$userId projectId: $projectId ")
         return client.get(ServicePermissionAuthResource::class).validateUserResourcePermission(
             userId = userId,
-            token = tokenCheckService.getSystemToken(null) ?: "",
+            token = tokenCheckService.getSystemToken() ?: "",
             action = AuthPermission.ENABLE.value, // 环境,节点类的校验都需要按操作类的校验方式校验。即便是view类型也按操作类
             projectCode = projectId,
             resourceCode = ""

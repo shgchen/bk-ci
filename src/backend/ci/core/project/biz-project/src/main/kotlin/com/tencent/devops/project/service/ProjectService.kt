@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,20 +30,26 @@ package com.tencent.devops.project.service
 import com.tencent.devops.common.api.pojo.Page
 import com.tencent.devops.common.api.pojo.Pagination
 import com.tencent.devops.common.auth.api.AuthPermission
-import com.tencent.devops.common.auth.api.pojo.MigrateProjectConditionDTO
+import com.tencent.devops.common.auth.api.pojo.ProjectConditionDTO
 import com.tencent.devops.common.auth.api.pojo.SubjectScopeInfo
+import com.tencent.devops.model.project.tables.records.TProjectRecord
+import com.tencent.devops.project.pojo.OperationalProductVO
 import com.tencent.devops.project.pojo.ProjectBaseInfo
+import com.tencent.devops.project.pojo.ProjectByConditionDTO
+import com.tencent.devops.project.pojo.ProjectCollation
 import com.tencent.devops.project.pojo.ProjectCreateExtInfo
 import com.tencent.devops.project.pojo.ProjectCreateInfo
 import com.tencent.devops.project.pojo.ProjectCreateUserInfo
 import com.tencent.devops.project.pojo.ProjectDiffVO
 import com.tencent.devops.project.pojo.ProjectLogo
+import com.tencent.devops.project.pojo.ProjectOrganizationInfo
 import com.tencent.devops.project.pojo.ProjectProperties
+import com.tencent.devops.project.pojo.ProjectSortType
 import com.tencent.devops.project.pojo.ProjectUpdateCreatorDTO
 import com.tencent.devops.project.pojo.ProjectUpdateInfo
 import com.tencent.devops.project.pojo.ProjectVO
-import com.tencent.devops.project.pojo.ProjectWithPermission
 import com.tencent.devops.project.pojo.Result
+import com.tencent.devops.project.pojo.enums.PluginDetailsDisplayOrder
 import com.tencent.devops.project.pojo.enums.ProjectChannelCode
 import com.tencent.devops.project.pojo.enums.ProjectValidateType
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition
@@ -63,7 +69,6 @@ interface ProjectService {
     fun create(
         userId: String,
         projectCreateInfo: ProjectCreateInfo,
-        accessToken: String?,
         createExtInfo: ProjectCreateExtInfo,
         defaultProjectId: String? = null,
         projectChannel: ProjectChannelCode
@@ -86,8 +91,7 @@ interface ProjectService {
      */
     fun getByEnglishName(
         userId: String,
-        englishName: String,
-        accessToken: String?
+        englishName: String
     ): ProjectVO?
 
     /**
@@ -97,8 +101,7 @@ interface ProjectService {
      */
     fun show(
         userId: String,
-        englishName: String,
-        accessToken: String?
+        englishName: String
     ): ProjectVO?
 
     /**
@@ -106,7 +109,7 @@ interface ProjectService {
      * @param englishName projectCode 英文ID
      * @return ProjectDiffVO 如果没有则为null
      */
-    fun diff(userId: String, englishName: String, accessToken: String?): ProjectDiffVO?
+    fun diff(userId: String, englishName: String): ProjectDiffVO?
 
     /**
      * 根据项目ID/英文ID获取项目信息对象
@@ -123,7 +126,6 @@ interface ProjectService {
         userId: String,
         englishName: String,
         projectUpdateInfo: ProjectUpdateInfo,
-        accessToken: String?,
         needApproval: Boolean? = false
     ): Boolean
 
@@ -134,8 +136,7 @@ interface ProjectService {
         userId: String,
         englishName: String, /* englishName is projectId */
         inputStream: InputStream,
-        disposition: FormDataContentDisposition,
-        accessToken: String?
+        disposition: FormDataContentDisposition
     ): Result<ProjectLogo>
 
     /**
@@ -143,8 +144,7 @@ interface ProjectService {
      */
     fun uploadLogo(
         userId: String,
-        inputStream: InputStream,
-        accessToken: String?
+        inputStream: InputStream
     ): Result<String>
 
     fun updateProjectName(userId: String, projectId: String/* projectId is englishName */, projectName: String): Boolean
@@ -154,23 +154,30 @@ interface ProjectService {
      */
     fun list(
         userId: String,
-        accessToken: String?,
         enabled: Boolean? = null,
-        unApproved: Boolean
+        unApproved: Boolean,
+        sortType: ProjectSortType? = null,
+        collation: ProjectCollation? = null
     ): List<ProjectVO>
 
     fun listProjectsForApply(
         userId: String,
-        accessToken: String?,
         projectName: String?,
         projectId: String?,
         page: Int,
         pageSize: Int
-    ): Pagination<ProjectWithPermission>
+    ): Pagination<ProjectByConditionDTO>
 
-    fun list(userId: String): List<ProjectVO>
+    fun list(
+        userId: String,
+        productIds: String? = null,
+        channelCodes: String? = null,
+        sort: ProjectSortType? = null,
+        page: Int? = null,
+        pageSize: Int? = null
+    ): List<ProjectVO>
 
-    fun list(projectCodes: Set<String>): List<ProjectVO>
+    fun list(projectCodes: Set<String>, enabled: Boolean?): List<ProjectVO>
 
     fun listOnlyByProjectCode(projectCodes: Set<String>): List<ProjectVO>
 
@@ -178,15 +185,21 @@ interface ProjectService {
 
     fun list(limit: Int, offset: Int): Page<ProjectVO>
 
-    fun listByChannel(limit: Int, offset: Int, projectChannelCode: ProjectChannelCode): Page<ProjectVO>
+    fun listByChannel(limit: Int, offset: Int, projectChannelCode: List<String>): Page<ProjectVO>
 
     fun getAllProject(): List<ProjectVO>
 
-    fun listMigrateProjects(
-        migrateProjectConditionDTO: MigrateProjectConditionDTO,
+    fun listProjectsByCondition(
+        projectConditionDTO: ProjectConditionDTO,
         limit: Int,
         offset: Int
-    ): List<ProjectWithPermission>
+    ): List<ProjectByConditionDTO>
+
+    fun listProjectDetailsByCondition(
+        projectConditionDTO: ProjectConditionDTO,
+        limit: Int,
+        offset: Int
+    ): List<ProjectVO>
 
     /**
      * 获取用户已的可访问项目列表=
@@ -195,7 +208,12 @@ interface ProjectService {
 
     fun getNameByCode(projectCodes: String): HashMap<String, String>
 
-    fun updateUsableStatus(userId: String, englishName: String /* englishName is projectId */, enabled: Boolean)
+    fun updateUsableStatus(
+        userId: String? = null,
+        englishName: String /* englishName is projectId */,
+        enabled: Boolean,
+        checkPermission: Boolean = true
+    )
 
     fun searchProjectByProjectName(projectName: String, limit: Int, offset: Int): Page<ProjectVO>
 
@@ -210,8 +228,7 @@ interface ProjectService {
     fun verifyUserProjectPermission(
         userId: String,
         projectId: String,
-        permission: AuthPermission,
-        accessToken: String?
+        permission: AuthPermission
     ): Boolean
 
     fun listSecrecyProject(): Set<String>?
@@ -222,7 +239,9 @@ interface ProjectService {
 
     fun getProjectByName(projectName: String): ProjectVO?
 
-    fun updateProjectProperties(userId: String, projectCode: String, properties: ProjectProperties): Boolean
+    fun updateProjectProperties(userId: String? = null, projectCode: String, properties: ProjectProperties): Boolean
+
+    fun setDisableWhenInactiveFlag(projectCodes: List<String>): Boolean
 
     fun cancelCreateProject(userId: String, projectId: String): Boolean
 
@@ -236,4 +255,45 @@ interface ProjectService {
     ): Boolean
 
     fun updateProjectCreator(projectUpdateCreatorDtoList: List<ProjectUpdateCreatorDTO>): Boolean
+
+    fun getOperationalProducts(): List<OperationalProductVO>
+
+    fun getProductByProductId(productId: Int): OperationalProductVO?
+
+    fun getOperationalProductsByBgName(bgName: String): List<OperationalProductVO>
+
+    fun updateProjectProductId(
+        englishName: String,
+        productName: String? = null,
+        productId: Int? = null
+    )
+
+    fun updateOrganizationByEnglishName(
+        englishName: String,
+        projectOrganizationInfo: ProjectOrganizationInfo
+    )
+
+    fun fixProjectOrganization(
+        tProjectRecord: TProjectRecord
+    ): ProjectOrganizationInfo
+
+    fun getProjectListByProductId(
+        productId: Int
+    ): List<ProjectBaseInfo>
+
+    fun getExistedEnglishName(
+        englishNameList: List<String>
+    ): List<String>?
+
+    fun remindUserOfRelatedProduct(
+        userId: String,
+        englishName: String
+    ): Boolean
+
+    fun updatePluginDetailsDisplay(
+        englishName: String,
+        pluginDetailsDisplayOrder: List<PluginDetailsDisplayOrder>
+    ): Boolean
+
+    fun getPipelineDialect(projectId: String): String
 }

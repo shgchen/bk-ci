@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,59 +30,59 @@ package com.tencent.devops.dockerhost.api
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.dockerhost.pojo.DockerBuildParam
 import com.tencent.devops.dockerhost.pojo.Status
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["DOCKER_HOST"], description = "DockerHost")
+@Tag(name = "DOCKER_HOST", description = "DockerHost")
 @Path("/dockernew")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Suppress("ALL")
 interface BuildDockerHostResource {
 
-    @ApiOperation("Docker build")
+    @Operation(summary = "Docker build")
     @POST
     @Path("/build/{projectId}/{pipelineId}/{vmSeqId}/{buildId}")
     fun dockerBuild(
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @PathParam("projectId")
         projectId: String,
-        @ApiParam(value = "流水线Id", required = true)
+        @Parameter(description = "流水线Id", required = true)
         @PathParam("pipelineId")
         pipelineId: String,
-        @ApiParam(value = "vmSeqId", required = true)
+        @Parameter(description = "vmSeqId", required = true)
         @PathParam("vmSeqId")
         vmSeqId: String,
-        @ApiParam(value = "buildId", required = true)
+        @Parameter(description = "buildId", required = true)
         @PathParam("buildId")
         buildId: String,
-        @ApiParam(value = "elementId", required = true)
+        @Parameter(description = "elementId", required = true)
         @QueryParam("elementId")
         elementId: String,
-        @ApiParam(value = "是否开启镜像扫描", required = false)
+        @Parameter(description = "是否开启镜像扫描", required = false)
         @QueryParam("scanFlag")
         scanFlag: Boolean?,
-        @ApiParam("镜像构建参数", required = true)
+        @Parameter(description = "镜像构建参数", required = true)
         dockerBuildParam: DockerBuildParam
     ): Result<Boolean>
 
-    @ApiOperation("Docker build")
+    @Operation(summary = "Docker build")
     @GET
     @Path("/build/{vmSeqId}/{buildId}")
     fun getDockerBuildStatus(
-        @ApiParam(value = "vmSeqId", required = true)
+        @Parameter(description = "vmSeqId", required = true)
         @PathParam("vmSeqId")
         vmSeqId: String,
-        @ApiParam(value = "buildId", required = true)
+        @Parameter(description = "buildId", required = true)
         @PathParam("buildId")
         buildId: String
     ): Result<Pair<Status, String>>

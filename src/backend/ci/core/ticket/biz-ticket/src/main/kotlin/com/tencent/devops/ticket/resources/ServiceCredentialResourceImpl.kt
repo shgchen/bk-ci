@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,10 +27,12 @@
 
 package com.tencent.devops.ticket.resources
 
+import com.tencent.bk.audit.annotations.AuditEntry
 import com.tencent.devops.common.api.exception.ParamBlankException
 import com.tencent.devops.common.api.pojo.Page
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.api.util.PageUtil
+import com.tencent.devops.common.auth.api.ActionId
 import com.tencent.devops.common.auth.api.AuthPermission
 import com.tencent.devops.common.service.prometheus.BkTimed
 import com.tencent.devops.common.web.RestResource
@@ -38,6 +40,7 @@ import com.tencent.devops.ticket.api.ServiceCredentialResource
 import com.tencent.devops.ticket.pojo.Credential
 import com.tencent.devops.ticket.pojo.CredentialCreate
 import com.tencent.devops.ticket.pojo.CredentialInfo
+import com.tencent.devops.ticket.pojo.CredentialItemVo
 import com.tencent.devops.ticket.pojo.CredentialUpdate
 import com.tencent.devops.ticket.pojo.enums.CredentialType
 import com.tencent.devops.ticket.pojo.enums.Permission
@@ -50,6 +53,7 @@ class ServiceCredentialResourceImpl @Autowired constructor(
     private val credentialService: CredentialService
 ) : ServiceCredentialResource {
 
+    @AuditEntry(actionId = ActionId.CREDENTIAL_CREATE)
     @BkTimed(extraTags = ["operate", "create"])
     override fun create(userId: String, projectId: String, credential: CredentialCreate): Result<Boolean> {
         if (userId.isBlank()) {
@@ -69,14 +73,42 @@ class ServiceCredentialResourceImpl @Autowired constructor(
     }
 
     @BkTimed(extraTags = ["operate", "get"])
-    override fun get(projectId: String, credentialId: String, publicKey: String): Result<CredentialInfo?> {
+    override fun get(
+        projectId: String,
+        credentialId: String,
+        publicKey: String,
+        padding: Boolean?
+    ): Result<CredentialInfo?> {
         if (projectId.isBlank()) {
             throw ParamBlankException("Invalid projectId")
         }
         if (credentialId.isBlank()) {
             throw ParamBlankException("Invalid credentialId")
         }
-        return Result(credentialService.serviceGet(projectId, credentialId, publicKey))
+        return Result(
+            credentialService.serviceGet(
+                projectId = projectId,
+                credentialId = credentialId,
+                publicKey = publicKey,
+                padding = padding ?: false
+            )
+        )
+    }
+
+    override fun getCredentialItem(
+        projectId: String,
+        credentialId: String,
+        publicKey: String,
+        padding: Boolean?
+    ): Result<CredentialItemVo?> {
+        return Result(
+            credentialService.getCredentialItem(
+                projectId = projectId,
+                credentialId = credentialId,
+                publicKey = publicKey,
+                padding = padding ?: false
+            )
+        )
     }
 
     @BkTimed(extraTags = ["operate", "get"])
@@ -165,5 +197,12 @@ class ServiceCredentialResourceImpl @Autowired constructor(
             keyword = keyword
         )
         return Result(Page(pageNotNull, pageSizeNotNull, result.count, result.records))
+    }
+
+    override fun getCredentialByIds(
+        projectId: String,
+        credentialId: Set<String>
+    ): Result<List<Credential>?> {
+        return Result(credentialService.getCredentialByIds(projectId, credentialId))
     }
 }

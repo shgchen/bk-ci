@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,6 +30,7 @@ package com.tencent.devops.quality.service.v2
 import com.fasterxml.jackson.core.type.TypeReference
 import com.google.common.collect.Maps
 import com.tencent.devops.common.api.constant.DEVELOP
+import com.tencent.devops.common.api.constant.IN_READY_TEST
 import com.tencent.devops.common.api.exception.OperationException
 import com.tencent.devops.common.api.pojo.Page
 import com.tencent.devops.common.api.util.HashUtil
@@ -97,7 +98,7 @@ import com.tencent.devops.store.pojo.common.enums.StoreProjectTypeEnum
 import java.io.File
 import java.util.Base64
 import java.util.concurrent.Executors
-import javax.annotation.PostConstruct
+import jakarta.annotation.PostConstruct
 import org.jooq.DSLContext
 import org.jooq.Result
 import org.jooq.impl.DSL
@@ -259,7 +260,7 @@ class QualityIndicatorService @Autowired constructor(
             projectId = tempProjectId
         )
         val prodIndicator = if (indicatorRecords?.associateBy { it.tag }?.containsKey("IN_READY_RUNNING") == true) {
-            indicatorRecords?.filter { it.tag == "IN_READY_RUNNING" }.associateBy { it.enName }
+            indicatorRecords?.filter { it.tag == "IN_READY_RUNNING" }?.associateBy { it.enName }
         } else {
             indicatorRecords?.associateBy { it.enName }
         }
@@ -515,10 +516,15 @@ class QualityIndicatorService @Autowired constructor(
         return convertRecord(record, metadata)
     }
 
-    fun setTestIndicator(userId: String, elementType: String, indicatorUpdateList: Collection<IndicatorUpdate>): Int {
+    fun setTestIndicator(
+        userId: String,
+        elementType: String,
+        tag: String,
+        indicatorUpdateList: Collection<IndicatorUpdate>
+    ): Int {
         logger.info("QUALITY|setTestIndicator userId: $userId, elementType: $elementType")
         val testIndicatorList = indicatorDao.listByElementType(dslContext, elementType, IndicatorType.MARKET)
-            ?.filter { isTestIndicator(it) } ?: listOf()
+            ?.filter { isTestIndicator(tag, it) } ?: listOf()
         val testIndicatorMap = testIndicatorList.map { it.enName to it }.toMap()
         val lastIndicatorName = testIndicatorList.map { it.enName }
         val newIndicatorName = indicatorUpdateList.map { it.enName }
@@ -544,8 +550,8 @@ class QualityIndicatorService @Autowired constructor(
     fun serviceRefreshIndicator(elementType: String, metadataMap: Map<String /* dataId */, String /* id */>): Int {
         logger.info("QUALITY|refreshIndicator elementType: $elementType")
         val data = indicatorDao.listByElementType(dslContext, elementType, IndicatorType.MARKET)
-        val testData = data?.filter { isTestIndicator(it) } ?: listOf()
-        val prodData = data?.filter { !isTestIndicator(it) } ?: listOf()
+        val testData = data?.filter { isTestIndicator(IN_READY_TEST, it) } ?: listOf()
+        val prodData = data?.filter { !isTestIndicator(IN_READY_TEST, it) } ?: listOf()
         val userId = testData.firstOrNull()?.createUser ?: ""
 
         // 有则update
@@ -615,10 +621,10 @@ class QualityIndicatorService @Autowired constructor(
         return testData.size
     }
 
-    fun serviceDeleteTestIndicator(elementType: String): Int {
+    fun serviceDeleteTestIndicator(elementType: String, extra: String): Int {
         logger.info("QUALITY|deleteTestIndicator elementType: $elementType")
         val data = indicatorDao.listByElementType(dslContext, elementType)
-        val testData = data?.filter { isTestIndicator(it) } ?: listOf()
+        val testData = data?.filter { isTestIndicator(extra, it) } ?: listOf()
         return indicatorDao.delete(testData.map { it.id }, dslContext)
     }
 
@@ -649,8 +655,8 @@ class QualityIndicatorService @Autowired constructor(
         return result.filter { it.enable }
     }
 
-    private fun isTestIndicator(qualityIndicator: TQualityIndicatorRecord): Boolean {
-        return qualityIndicator.type == IndicatorType.MARKET.name && qualityIndicator.tag == "IN_READY_TEST"
+    private fun isTestIndicator(tag: String, qualityIndicator: TQualityIndicatorRecord): Boolean {
+        return qualityIndicator.type == IndicatorType.MARKET.name && qualityIndicator.tag == tag
     }
 
     private fun convertRecord(
@@ -793,7 +799,8 @@ class QualityIndicatorService @Autowired constructor(
             range = projectId,
             tag = "",
             enable = true,
-            type = IndicatorType.CUSTOM
+            type = IndicatorType.CUSTOM,
+            logPrompt = indicatorCreate.logPrompt ?: ""
         )
     }
 
@@ -871,5 +878,9 @@ class QualityIndicatorService @Autowired constructor(
             "WOODPECKER_SENSITIVE" to I18nUtil.getCodeLanMessage(BK_TOOL_NAME_WOODPECKER_SENSITIVE),
             "BKCHECK-CPP" to I18nUtil.getCodeLanMessage(BK_TOOL_NAME_BKCHECK_CPP),
             "BKCHECK-OC" to I18nUtil.getCodeLanMessage(BK_TOOL_NAME_BKCHECK_OC))
+    }
+
+    private fun isTestIndicator(qualityIndicator: TQualityIndicatorRecord): Boolean {
+        return qualityIndicator.type == IndicatorType.MARKET.name && qualityIndicator.tag.startsWith(IN_READY_TEST)
     }
 }

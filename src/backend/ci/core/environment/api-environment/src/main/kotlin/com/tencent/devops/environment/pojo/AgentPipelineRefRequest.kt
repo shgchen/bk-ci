@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,15 +27,14 @@
 
 package com.tencent.devops.environment.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("agent流水线引用请求")
+@Schema(title = "agent流水线引用请求")
 data class AgentPipelineRefRequest(
-    @ApiModelProperty("action", required = true)
+    @get:Schema(title = "action", required = true)
     val action: String,
-    @ApiModelProperty("pipelineId", required = true)
+    @get:Schema(title = "pipelineId", required = true)
     val pipelineId: String,
-    @ApiModelProperty("PipelineId", required = true)
+    @get:Schema(title = "PipelineId", required = true)
     val pipelineRefInfos: List<AgentPipelineRefInfo>
 )

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,16 +30,16 @@ package com.tencent.devops.auth.api.callback
 
 import com.tencent.devops.auth.pojo.ItsmCallBackInfo
 import com.tencent.devops.common.api.pojo.Result
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["EXTERNAL_AUTH_ITSM_CALLBACK"], description = "权限-itsm-回调")
+@Tag(name = "EXTERNAL_AUTH_ITSM_CALLBACK", description = "权限-itsm-回调")
 @Path("/external/auth/itsm")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -47,17 +47,17 @@ interface ExternalAuthItsmCallbackResource {
 
     @Path("/create_callback")
     @POST
-    @ApiOperation("处理Itsm项目创建回调")
+    @Operation(summary = "处理Itsm项目创建回调")
     fun handleItsmProjectCreateCallBack(
-        @ApiParam(value = "itsm回调内容", required = true)
+        @Parameter(description = "itsm回调内容", required = true)
         itsmCallBackInfo: ItsmCallBackInfo
     ): Result<Boolean>
 
     @Path("/update_callback")
     @POST
-    @ApiOperation("处理Itsm项目编辑回调")
+    @Operation(summary = "处理Itsm项目编辑回调")
     fun handleItsmProjectUpdateCallBack(
-        @ApiParam(value = "itsm回调内容", required = true)
+        @Parameter(description = "itsm回调内容", required = true)
         itsmCallBackInfo: ItsmCallBackInfo
     ): Result<Boolean>
 }

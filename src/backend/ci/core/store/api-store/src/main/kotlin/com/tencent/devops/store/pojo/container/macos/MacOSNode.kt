@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,13 +27,12 @@
 
 package com.tencent.devops.store.pojo.container.macos
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("macos构建机资源")
+@Schema(title = "macos构建机资源")
 data class MacOSNode(
-    @ApiModelProperty("macos构建资源名")
+    @get:Schema(title = "macos构建资源名")
     val id: String,
-    @ApiModelProperty("macos构建资源名")
+    @get:Schema(title = "macos构建资源名")
     val name: String
 )

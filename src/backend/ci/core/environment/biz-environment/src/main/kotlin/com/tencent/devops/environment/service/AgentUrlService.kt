@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,11 +27,14 @@
 
 package com.tencent.devops.environment.service
 
+import com.tencent.devops.common.api.pojo.OS
+import com.tencent.devops.environment.pojo.thirdpartyagent.TPAInstallType
 import com.tencent.devops.model.environment.tables.records.TEnvironmentThirdpartyAgentRecord
 
 interface AgentUrlService {
 
     fun genAgentInstallUrl(agentRecord: TEnvironmentThirdpartyAgentRecord): String
+
     /**
      *生成Agent URL
      */
@@ -41,6 +44,20 @@ interface AgentUrlService {
      * 生成构建机脚本下载链接
      */
     fun genAgentInstallScript(agentRecord: TEnvironmentThirdpartyAgentRecord): String
+
+    /**
+     * 生成批量下载构建机脚本链接
+     */
+    fun genAgentBatchInstallScript(
+        os: OS,
+        zoneName: String?,
+        gateway: String?,
+        token: String,
+        loginName: String?,
+        loginPassword: String?,
+        installType: TPAInstallType?,
+        reInstallId: String?
+    ): String
 
     /**
      * 生成网关域名

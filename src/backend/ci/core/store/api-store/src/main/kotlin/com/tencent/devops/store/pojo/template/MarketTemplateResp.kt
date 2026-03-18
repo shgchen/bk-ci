@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,17 +28,16 @@
 package com.tencent.devops.store.pojo.template
 
 import com.tencent.devops.store.pojo.common.MarketItem
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("模版市场-搜索结果")
+@Schema(title = "模版市场-搜索结果")
 data class MarketTemplateResp(
-    @ApiModelProperty("总记录数")
+    @get:Schema(title = "总记录数")
     val count: Int,
-    @ApiModelProperty("当前页码值")
+    @get:Schema(title = "当前页码值")
     val page: Int?,
-    @ApiModelProperty("每页记录大小")
+    @get:Schema(title = "每页记录大小")
     val pageSize: Int?,
-    @ApiModelProperty("数据集合")
+    @get:Schema(title = "数据集合")
     val records: List<MarketItem?>
 )

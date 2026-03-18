@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -36,10 +36,8 @@ import com.github.dockerjava.core.InvocationBuilder
 import com.github.dockerjava.core.command.LogContainerResultCallback
 import com.tencent.devops.common.api.constant.CommonMessageCode
 import com.tencent.devops.common.api.pojo.Result
-import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.dispatch.docker.pojo.DockerHostBuildInfo
 import com.tencent.devops.dockerhost.config.DockerHostConfig
-import com.tencent.devops.dockerhost.dispatch.DockerHostBuildLogResourceApi
 import com.tencent.devops.dockerhost.dispatch.DockerHostBuildResourceApi
 import com.tencent.devops.dockerhost.pojo.CheckImageRequest
 import com.tencent.devops.dockerhost.pojo.CheckImageResponse
@@ -54,14 +52,13 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
-import javax.annotation.PostConstruct
+import jakarta.annotation.PostConstruct
 
 @Component
 class DockerHostBuildService(
     private val dockerHostConfig: DockerHostConfig,
     private val environment: Environment,
-    private val dockerHostBuildApi: DockerHostBuildResourceApi,
-    private val dockerHostBuildLogResourceApi: DockerHostBuildLogResourceApi
+    private val dockerHostBuildApi: DockerHostBuildResourceApi
 ) : AbstractDockerHostBuildService(dockerHostConfig, dockerHostBuildApi) {
 
     companion object {
@@ -552,7 +549,7 @@ class DockerHostBuildService(
 
             if (cpuUsagePer >= elasticityCpuThreshold || memUsage >= elasticityMemThreshold) {
                 // 重置容器负载
-                resetContainer(container, statistics, cpuUsagePer, memUsage)
+                resetContainer(container)
                 continue
             }
         }
@@ -573,21 +570,8 @@ class DockerHostBuildService(
     }
 
     private fun resetContainer(
-        container: Container,
-        statistics: Statistics,
-        cpuUsagePer: Long,
-        memUsage: Long
+        container: Container
     ) {
-        dockerHostBuildLogResourceApi.sendFormatLog(
-            mapOf(
-                "containerName" to container.names[0],
-                "containerId" to container.id,
-                "cpuUsagePer" to cpuUsagePer.toString(),
-                "memUsagePer" to memUsage.toString(),
-                "statistics" to JsonUtil.toJson(statistics)
-            )
-        )
-
         val memReservation = dockerHostConfig.elasticityMemReservation ?: 32 * 1024 * 1024 * 1024L
         val cpuPeriod = dockerHostConfig.elasticityCpuPeriod ?: 10000
         val cpuQuota = dockerHostConfig.elasticityCpuQuota ?: 80000
@@ -770,7 +754,7 @@ class DockerHostBuildService(
             val date = sdf.parse(utcTimeLocal)
             val startTimestamp = date.time
             val nowTimestamp = System.currentTimeMillis()
-            return (nowTimestamp - startTimestamp) > (8 * 3600 * 1000)
+            return (nowTimestamp - startTimestamp) > (16 * 3600 * 1000)
         }
 
         return false

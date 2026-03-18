@@ -1,5 +1,5 @@
 -- Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
--- Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+-- Copyright (C) 2019 Tencent.  All rights reserved.
 -- BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
 -- A copy of the MIT License is included in this file.
 -- Terms of the MIT License:
@@ -38,15 +38,20 @@ if service_name == "bkrepo" then
     return
 end
 
+-- 服务重写
+if service_name == "dispatch-docker" or service_name == "dispatch-kubernetes" then
+    service_name = "dispatch"
+elseif service_name == "image" or service_name == "monitoring" or service_name == "plugin" then
+    service_name = "misc"
+end
+
 -- 获取灰度设置
 local cache_tail = ""
-local ns_config = nil
+local ns_config = config.ns
 
 if ngx.var.devops_region ~= "DEVNET" then
-    ns_config = config.ns
     cache_tail = ".normal.idc"
 else
-    ns_config = config.ns_devnet
     cache_tail = ".normal.devnet"
 end
 

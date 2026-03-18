@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -38,7 +38,7 @@ import com.tencent.devops.common.api.util.AESUtil
 import com.tencent.devops.common.api.util.JsonUtil
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
-import javax.ws.rs.core.Response
+import jakarta.ws.rs.core.Response
 import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -51,7 +51,7 @@ class ApiAccessTokenService @Autowired constructor(
     val dslContext: DSLContext
 ) {
     @Value("\${auth.accessToken.expirationTime:#{null}}")
-    private val expirationTime: Int? = null
+    private val expirationTime: Double? = null
 
     @Value("\${auth.accessToken.secret:#{null}}")
     private val secret: String? = null
@@ -94,7 +94,7 @@ class ApiAccessTokenService @Autowired constructor(
         }
         val tokenInfo = TokenInfo(
             userId = userDetails,
-            expirationTime = System.currentTimeMillis() + (expirationTime ?: EXPIRE_TIME_MILLS),
+            expirationTime = System.currentTimeMillis() + (expirationTime ?: EXPIRE_TIME_MILLS).toLong(),
             accessToken = null
         )
         tokenInfo.accessToken = try {
@@ -146,7 +146,7 @@ class ApiAccessTokenService @Autowired constructor(
     }
 
     companion object {
-        private const val EXPIRE_TIME_MILLS: Int = 14400000
+        private const val EXPIRE_TIME_MILLS: Double = 14400000.0
         private val logger = LoggerFactory.getLogger(ApiAccessTokenService::class.java)
     }
 }

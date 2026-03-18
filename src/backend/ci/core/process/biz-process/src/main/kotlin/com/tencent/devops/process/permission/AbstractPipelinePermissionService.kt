@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -37,7 +37,7 @@ import com.tencent.devops.common.auth.api.pojo.BkAuthGroup
 import com.tencent.devops.common.auth.code.PipelineAuthServiceCode
 import com.tencent.devops.common.web.utils.I18nUtil
 import com.tencent.devops.process.constant.ProcessMessageCode
-import javax.ws.rs.core.Response
+import jakarta.ws.rs.core.Response
 
 /**
  * Pipeline专用权限校验接口
@@ -56,14 +56,21 @@ abstract class AbstractPipelinePermissionService constructor(
      * @param userId userId
      * @param projectId projectId
      * @param permission 权限
+     * @param authResourceType 资源类型
      * @return 有权限返回true
      */
-    override fun checkPipelinePermission(userId: String, projectId: String, permission: AuthPermission): Boolean {
+    override fun checkPipelinePermission(
+        userId: String,
+        projectId: String,
+        permission: AuthPermission,
+        authResourceType: AuthResourceType?
+    ): Boolean {
         return checkPipelinePermission(
             userId = userId,
             projectId = projectId,
             pipelineId = "*",
-            permission = permission
+            permission = permission,
+            authResourceType = authResourceType
         )
     }
 
@@ -73,19 +80,21 @@ abstract class AbstractPipelinePermissionService constructor(
      * @param projectId projectId
      * @param pipelineId pipelineId
      * @param permission 权限
+     * @param authResourceType 资源类型
      * @return 有权限返回true
      */
     override fun checkPipelinePermission(
         userId: String,
         projectId: String,
         pipelineId: String,
-        permission: AuthPermission
+        permission: AuthPermission,
+        authResourceType: AuthResourceType?
     ): Boolean {
 
         return authPermissionApi.validateUserResourcePermission(
             user = userId,
             serviceCode = pipelineAuthServiceCode,
-            resourceType = resourceType,
+            resourceType = authResourceType ?: resourceType,
             projectCode = projectId,
             resourceCode = pipelineId,
             permission = permission
@@ -230,5 +239,9 @@ abstract class AbstractPipelinePermissionService constructor(
             projectCode = projectId,
             serviceCode = pipelineAuthServiceCode
         )
+    }
+
+    override fun isControlPipelineListPermission(projectId: String): Boolean {
+        return false
     }
 }

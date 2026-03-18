@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -26,11 +26,12 @@
  */
 package com.tencent.devops.store.pojo.common
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("卸载插件请求包体")
+@Schema(title = "卸载组件请求包体")
 data class UnInstallReq(
-    @ApiModelProperty("原因列表")
+    @get:Schema(title = "实例列表", required = false)
+    val instanceIdList: List<String>? = null,
+    @get:Schema(title = "原因列表", required = true)
     val reasonList: List<UnInstallReason?>
 )

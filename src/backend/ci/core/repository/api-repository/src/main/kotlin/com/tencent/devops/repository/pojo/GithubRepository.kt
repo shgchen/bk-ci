@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,32 +27,42 @@
 
 package com.tencent.devops.repository.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import com.tencent.devops.common.api.enums.ScmType
+import io.swagger.v3.oas.annotations.media.Schema
 
 @SuppressWarnings("ObjectPropertyNaming")
-@ApiModel("代码库模型-GitHub代码库")
+@Schema(title = "代码库模型-GitHub代码库")
 data class GithubRepository(
-    @ApiModelProperty("代码库别名", required = true)
+    @get:Schema(title = "代码库别名", required = true)
     override val aliasName: String,
-    @ApiModelProperty("URL", required = true)
+    @get:Schema(title = "URL", required = true)
     override val url: String,
-    @ApiModelProperty("用户名", required = true)
+    @get:Schema(title = "用户名", required = true)
     override var userName: String = "",
-    @ApiModelProperty("github项目名称", example = "Tencent/bkci", required = true)
+    @get:Schema(title = "github项目名称", example = "Tencent/bkci", required = true)
     override val projectName: String,
-    @ApiModelProperty("项目id", required = true)
+    @get:Schema(title = "项目id", required = true)
     override val projectId: String = "",
-    @ApiModelProperty("仓库hash id", required = false)
+    @get:Schema(title = "仓库hash id", required = false)
     override val repoHashId: String?,
-    @ApiModelProperty("Git仓库ID", required = false)
+    @get:Schema(title = "Git仓库ID", required = false)
     val gitProjectId: Long? = null,
-    @ApiModelProperty("仓库凭证ID", required = false, hidden = true, allowEmptyValue = true)
-    override val credentialId: String = ""
+    @get:Schema(title = "仓库凭证ID", required = false, hidden = true, nullable = true)
+    override val credentialId: String = "",
+    @get:Schema(title = "仓库是否开启pac", required = false)
+    override val enablePac: Boolean? = false,
+    @get:Schema(title = "yaml同步状态", required = false)
+    override val yamlSyncStatus: String? = null,
+    @get:Schema(title = "代码库标识", required = false)
+    override val scmCode: String = ScmType.GITHUB.name
 ) : Repository {
     companion object {
         const val classType = "github"
     }
 
     override fun getStartPrefix() = "https://github.com/"
+
+    override fun getScmType() = ScmType.GITHUB
+
+    override fun getExternalId(): String = gitProjectId?.toString() ?: ""
 }

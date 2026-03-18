@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,15 +27,14 @@
 
 package com.tencent.devops.process.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("stage准入准出-质量红线触发")
+@Schema(title = "stage准入准出-质量红线触发")
 data class StageQualityRequest(
-    @ApiModelProperty("准入准出标识", required = true)
+    @get:Schema(title = "准入准出标识", required = true)
     val position: String,
-    @ApiModelProperty("把关是否通过", required = true)
+    @get:Schema(title = "把关是否通过", required = true)
     val pass: Boolean,
-    @ApiModelProperty("第几次检查", required = true)
+    @get:Schema(title = "第几次检查", required = true)
     val checkTimes: Int
 )

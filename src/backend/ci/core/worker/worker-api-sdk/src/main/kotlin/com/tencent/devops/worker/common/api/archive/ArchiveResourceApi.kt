@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,6 +29,7 @@ package com.tencent.devops.worker.common.api.archive
 
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.google.gson.JsonParser
+import com.tencent.bkrepo.repository.pojo.token.TokenType
 import com.tencent.devops.artifactory.constant.REALM_LOCAL
 import com.tencent.devops.artifactory.pojo.GetFileDownloadUrlsResponse
 import com.tencent.devops.artifactory.pojo.enums.FileTypeEnum
@@ -88,7 +89,13 @@ class ArchiveResourceApi : AbstractBuildResourceApi(), ArchiveSDKApi {
         return result.data?.fileUrlList ?: emptyList()
     }
 
-    override fun uploadCustomize(file: File, destPath: String, buildVariables: BuildVariables, token: String?) {
+    override fun uploadCustomize(
+        file: File,
+        destPath: String,
+        buildVariables: BuildVariables,
+        token: String?,
+        metadata: Map<String, String>
+    ) {
         // 过滤掉用../尝试遍历上层目录的操作
         val purePath = purePath(destPath)
         val path = purePath + "/" + file.name
@@ -116,7 +123,12 @@ class ArchiveResourceApi : AbstractBuildResourceApi(), ArchiveSDKApi {
         }
     }
 
-    override fun uploadPipeline(file: File, buildVariables: BuildVariables, token: String?) {
+    override fun uploadPipeline(
+        file: File,
+        buildVariables: BuildVariables,
+        token: String?,
+        metadata: Map<String, String>
+    ) {
         LoggerService.addNormalLine("upload file >>> ${file.name}")
         val url = "/ms/artifactory/api/build/artifactories/file/archive?fileType=${FileTypeEnum.BK_ARCHIVE}"
         val fileBody = RequestBody.create(MultipartFormData, file)
@@ -206,5 +218,16 @@ class ArchiveResourceApi : AbstractBuildResourceApi(), ArchiveSDKApi {
         )
         val responseContent = request(request, "upload file:$fileName fail")
         return objectMapper.readValue(responseContent)
+    }
+
+    override fun getRepoToken(
+        userId: String,
+        projectId: String,
+        repoName: String,
+        path: String,
+        type: TokenType,
+        expireSeconds: Long
+    ): String? {
+        return null
     }
 }

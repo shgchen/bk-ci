@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -63,5 +63,34 @@ object LogUtils {
                 LOG.warn("$watcher cost $cost ms")
             }
         }
+    }
+
+    /**
+     * 获取有限长度的日志内容，默认最大长度为16K
+     * @param logStr 原始日志内容
+     * @return 截取后的日志
+     */
+    fun getLogWithLengthLimit(logStr: String?): String? {
+        val defaultMaxLength = 16384
+        return getLogWithLengthLimit(logStr, defaultMaxLength)
+    }
+
+    /**
+     * 获取有限长度的日志内容
+     * @param logStr 原始日志内容
+     * @param maxLength 最大长度，若小于0则不生效，返回原始日志
+     * @return 截取后的日志
+     */
+    fun getLogWithLengthLimit(logStr: String?, maxLength: Int): String? {
+        if (logStr == null) {
+            return null
+        }
+        if (maxLength < 0) {
+            return logStr
+        }
+        return if (logStr.length > maxLength)
+            logStr.substring(0, maxLength)
+        else
+            logStr
     }
 }

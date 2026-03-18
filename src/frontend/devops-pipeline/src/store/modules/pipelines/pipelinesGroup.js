@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -17,18 +17,18 @@
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import ajax from '@/utils/request'
-import Vue from 'vue'
 import {
-    PROCESS_API_URL_PREFIX,
-    MY_PIPELINE_VIEW_ID,
+    ALL_PIPELINE_VIEW_ID,
     COLLECT_VIEW_ID,
     COLLECT_VIEW_ID_NAME,
-    ALL_PIPELINE_VIEW_ID,
     DELETED_VIEW_ID,
-    UNCLASSIFIED_PIPELINE_VIEW_ID,
-    RECENT_USED_VIEW_ID
+    MY_PIPELINE_VIEW_ID,
+    PROCESS_API_URL_PREFIX,
+    RECENT_USED_VIEW_ID,
+    UNCLASSIFIED_PIPELINE_VIEW_ID
 } from '@/store/constants'
+import ajax from '@/utils/request'
+import Vue from 'vue'
 
 const prefix = `/${PROCESS_API_URL_PREFIX}/user/pipelineViews/projects`
 const groupPrefix = `/${PROCESS_API_URL_PREFIX}/user/pipelineGroups`
@@ -192,20 +192,23 @@ const actions = {
     requestPipelineCount (_, { projectId }) {
         return ajax.get(`${PROCESS_API_URL_PREFIX}/user/pipelines/projects/${projectId}/getCount`)
     },
+    requestAllPipelineGroup (_, { projectId }) {
+        return ajax.get(`${prefix}/${projectId}/list`)
+    },
     /**
      * 获取所有流水线分组
     */
     async requestGetGroupLists ({ commit, state, dispatch }, { projectId, viewId }) {
         try {
             const [pipelineGroups, groupCounts] = await Promise.all([
-                ajax.get(`${prefix}/${projectId}/list`),
+                dispatch('requestAllPipelineGroup', { projectId }),
                 dispatch('requestPipelineCount', { projectId })
             ])
             commit(SET_ALL_PIPELINE_GROUP, pipelineGroups.data)
             if (viewId) {
                 await dispatch('requestGroupPipelineCount', { projectId, viewId })
             }
-            
+
             state.sumView.pipelineCount = groupCounts.data.totalCount
             state.hardViews = state.hardViews.map(hardView => ({
                 ...hardView,
@@ -323,7 +326,7 @@ const actions = {
     /**
      * 删除标签分组
     */
-    deleteGroup ({ commit, state, dispatch }, { projectId, groupId }) {
+    deleteLabelGroup ({ commit, state, dispatch }, { projectId, groupId }) {
         // return {groupId}
         return ajax.delete(`${groupPrefix}/groups?projectId=${projectId}&groupId=${groupId}`).then(response => {
             return response.data

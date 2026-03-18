@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -50,5 +50,13 @@ class ServiceUserResourceImpl @Autowired constructor(
 
     override fun getProjectUserRoles(projectCode: String, roleId: BkAuthGroup): Result<List<String>> {
         return Result(bkAuthProjectApi.getProjectUsers(projectAuthServiceCode, projectCode, roleId))
+    }
+
+    override fun listDetailFromCache(userIds: List<String>): Result<List<UserDeptDetail>> {
+        return Result(userCacheService.listDetailFromCache(userIds))
+    }
+
+    override fun usernamesByParentId(parentId: Int): Result<List<String>> {
+        return Result(userCacheService.usernamesByParentIds(parentId))
     }
 }

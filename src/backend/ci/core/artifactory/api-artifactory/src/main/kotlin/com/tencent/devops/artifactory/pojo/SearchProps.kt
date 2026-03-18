@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,13 +27,14 @@
 
 package com.tencent.devops.artifactory.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("版本仓库-搜索元数据")
+@Schema(title = "版本仓库-搜索元数据")
 data class SearchProps(
-    @ApiModelProperty("匹配文件列表(支持模糊匹配)", required = true)
+    @get:Schema(title = "匹配文件列表(支持模糊匹配)", required = true)
     val fileNames: List<String>?,
-    @ApiModelProperty("元数据列表", required = true)
-    val props: Map<String, String>
+    @get:Schema(title = "元数据列表", required = true)
+    val props: Map<String, String>,
+    @get:Schema(title = "查询元数据", required = false)
+    val qualityMetadata: List<Property> = emptyList()
 )

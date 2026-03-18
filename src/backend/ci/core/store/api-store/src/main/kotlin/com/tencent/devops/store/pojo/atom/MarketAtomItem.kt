@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,25 +27,24 @@
 
 package com.tencent.devops.store.pojo.atom
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("插件市场插件信息")
+@Schema(title = "插件市场插件信息")
 data class MarketAtomItem(
-    @ApiModelProperty("插件名称")
+    @get:Schema(title = "插件名称")
     val atomName: String,
-    @ApiModelProperty("插件标识")
+    @get:Schema(title = "插件标识")
     val atomCode: String,
-    @ApiModelProperty("logo链接")
+    @get:Schema(title = "logo链接")
     val logoUrl: String?,
-    @ApiModelProperty("发布者")
+    @get:Schema(title = "发布者")
     val publisher: String,
-    @ApiModelProperty("下载量")
+    @get:Schema(title = "下载量")
     val downloads: Int?,
-    @ApiModelProperty("评分")
+    @get:Schema(title = "评分")
     val score: Double?,
-    @ApiModelProperty("简介")
+    @get:Schema(title = "简介")
     val summary: String?,
-    @ApiModelProperty("是否可安装标识")
+    @get:Schema(title = "是否可安装标识")
     val flag: Boolean
 )

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,15 +28,14 @@
 package com.tencent.devops.store.pojo.common
 
 import com.tencent.devops.store.pojo.common.enums.StoreTypeEnum
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("研发商店错误码信息")
+@Schema(title = "研发商店错误码信息")
 data class StoreErrorCodeInfo(
-    @ApiModelProperty("store代码")
+    @get:Schema(title = "store代码")
     val storeCode: String?,
-    @ApiModelProperty("store组件类型")
+    @get:Schema(title = "store组件类型")
     val storeType: StoreTypeEnum?,
-    @ApiModelProperty("错误码集合")
+    @get:Schema(title = "错误码集合")
     val errorCodes: Set<Int>
 )

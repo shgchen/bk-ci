@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -31,43 +31,43 @@ import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.web.annotation.BkField
 import com.tencent.devops.common.web.constant.BkStyleEnum
 import com.tencent.devops.store.pojo.common.enums.StoreTypeEnum
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["BUILD_STORE_DOCKING_PLATFORM"], description = "BUILD-STORE-对接平台")
+@Tag(name = "BUILD_STORE_DOCKING_PLATFORM", description = "BUILD-STORE-对接平台")
 @Path("/build/store/docking/platforms")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface BuildStoreDockingPlatformResource {
 
-    @ApiOperation("添加store组件对接平台")
+    @Operation(summary = "添加store组件对接平台")
     @Path("/types/{storeType}/codes/{storeCode}/add")
     @POST
     fun addStoreDockingPlatforms(
-        @ApiParam("组件类型", required = true)
+        @Parameter(description = "组件类型", required = true)
         @PathParam("storeType")
         @BkField(patternStyle = BkStyleEnum.CODE_STYLE)
         storeType: StoreTypeEnum,
-        @ApiParam("组件标识", required = true)
+        @Parameter(description = "组件标识", required = true)
         @PathParam("storeCode")
         storeCode: String,
-        @ApiParam("平台列表集合")
+        @Parameter(description = "平台列表集合")
         platformCodes: Set<String>
     ): Result<Boolean>
 
-    @ApiOperation("判断平台Code是否已注册")
+    @Operation(summary = "判断平台Code是否已注册")
     @GET
     @Path("/codes/{platformCode}/validate")
     fun isPlatformCodeRegistered(
-        @ApiParam("标识", required = true)
+        @Parameter(description = "标识", required = true)
         @PathParam("platformCode")
         platformCode: String
     ): Result<Boolean>

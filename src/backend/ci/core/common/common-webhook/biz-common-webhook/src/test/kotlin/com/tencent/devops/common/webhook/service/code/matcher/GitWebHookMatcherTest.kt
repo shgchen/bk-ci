@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,6 +30,7 @@ package com.tencent.devops.common.webhook.service.code.matcher
 import com.tencent.devops.common.api.enums.RepositoryConfig
 import com.tencent.devops.common.api.enums.RepositoryType
 import com.tencent.devops.common.api.util.JsonUtil
+import com.tencent.devops.common.pipeline.pojo.element.trigger.CodeGitWebHookTriggerElement
 import com.tencent.devops.common.pipeline.pojo.element.trigger.enums.CodeEventType
 import com.tencent.devops.common.pipeline.pojo.element.trigger.enums.CodeType
 import com.tencent.devops.common.test.BkCiAbstractTest
@@ -51,6 +52,7 @@ import com.tencent.devops.common.webhook.service.code.handler.tgit.TGitTagPushTr
 import com.tencent.devops.common.webhook.service.code.loader.CodeWebhookHandlerRegistrar
 import com.tencent.devops.repository.pojo.CodeGitRepository
 import com.tencent.devops.repository.pojo.enums.RepoAuthType
+import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -88,8 +90,9 @@ class GitWebHookMatcherTest : BkCiAbstractTest() {
     fun setUp() {
         val gitScmService: GitScmService = mockk()
         val eventCacheService: EventCacheService = mockk()
+        every { gitScmService.getCredential(any(), null) } returns null
         CodeWebhookHandlerRegistrar.register(TGitPushTriggerHandler(eventCacheService, gitScmService))
-        CodeWebhookHandlerRegistrar.register(TGitTagPushTriggerHandler())
+        CodeWebhookHandlerRegistrar.register(TGitTagPushTriggerHandler(eventCacheService))
         CodeWebhookHandlerRegistrar.register(
             TGitMrTriggerHandler(
                 gitScmService = gitScmService,
@@ -204,7 +207,12 @@ class GitWebHookMatcherTest : BkCiAbstractTest() {
                 repositoryName = null
             ),
             eventType = CodeEventType.MERGE_REQUEST,
-            branchName = "master"
+            branchName = "master",
+            includeMrAction = listOf(
+                CodeGitWebHookTriggerElement.MERGE_ACTION_OPEN,
+                CodeGitWebHookTriggerElement.MERGE_ACTION_REOPEN,
+                CodeGitWebHookTriggerElement.MERGE_ACTION_PUSH_UPDATE
+            ).joinToString(",")
         )
         val matcher = GitWebHookMatcher(event = event)
 

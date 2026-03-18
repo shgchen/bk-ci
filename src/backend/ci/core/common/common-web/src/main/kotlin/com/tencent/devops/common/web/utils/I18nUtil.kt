@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -33,6 +33,7 @@ import com.tencent.devops.common.api.constant.DEFAULT_LOCALE_LANGUAGE
 import com.tencent.devops.common.api.constant.REQUEST_CHANNEL
 import com.tencent.devops.common.api.enums.RequestChannelTypeEnum
 import com.tencent.devops.common.api.enums.SystemModuleEnum
+import com.tencent.devops.common.api.pojo.I18Variable
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.api.util.LocaleUtil
 import com.tencent.devops.common.api.util.MessageUtil
@@ -42,10 +43,8 @@ import com.tencent.devops.common.service.config.CommonConfig
 import com.tencent.devops.common.service.utils.CookieUtil
 import com.tencent.devops.common.service.utils.SpringContextUtil
 import com.tencent.devops.common.web.service.ServiceLocaleResource
-import java.net.URLDecoder
 import org.slf4j.LoggerFactory
-import org.springframework.web.context.request.RequestContextHolder
-import org.springframework.web.context.request.ServletRequestAttributes
+import java.net.URLDecoder
 
 object I18nUtil {
 
@@ -96,13 +95,28 @@ object I18nUtil {
      * @return 渠道信息
      */
     fun getRequestChannel(): String? {
-        val attributes = RequestContextHolder.getRequestAttributes() as? ServletRequestAttributes
-        return if (null != attributes) {
-            val request = attributes.request
+        val request = BkApiUtil.getHttpServletRequest()
+        return if (null != request) {
             (request.getAttribute(REQUEST_CHANNEL) ?: request.getHeader(REQUEST_CHANNEL))?.toString()
         } else {
             null // 不是接口请求来源则返回null
         }
+    }
+
+    /**
+     * 获取蓝鲸标准的语言Header Key
+     */
+    fun getBKLanguageKey(): String {
+        return BK_LANGUAGE
+    }
+
+    /**
+     * 获取Http Cookie中用户携带的语言（蓝鲸标准）
+     * @return 语言,如果没有,则为空
+     */
+    fun getBKLanguageFromCookie(): String? {
+        val request = BkApiUtil.getHttpServletRequest()
+        return request?.let { CookieUtil.getCookieValue(request, BK_LANGUAGE) }
     }
 
     /**
@@ -111,8 +125,8 @@ object I18nUtil {
      */
     private fun getCookieLocale(): String? {
         // 从request请求中获取本地语言信息
-        val attributes = RequestContextHolder.getRequestAttributes() as? ServletRequestAttributes
-        return attributes?.let { bkLanguageTransMap[CookieUtil.getCookieValue(attributes.request, BK_LANGUAGE)] }
+        val request = BkApiUtil.getHttpServletRequest()
+        return request?.let { bkLanguageTransMap[CookieUtil.getCookieValue(request, BK_LANGUAGE)] }
     }
 
     // 蓝鲸专定义的语言头, 有差异,要定制转换
@@ -129,7 +143,12 @@ object I18nUtil {
         "zh-mo" to "zh_MO",
         "zh-MO" to "zh_MO",
         "zh-sg" to "zh_SG",
-        "zh-SG" to "zh_SG"
+        "zh-SG" to "zh_SG",
+        "ja_JP" to "ja_JP",
+        "ja-JP" to "ja_JP",
+        "ja-jp" to "ja_JP",
+        "ja" to "ja_JP",
+
     )
 
     /**
@@ -137,9 +156,8 @@ object I18nUtil {
      * @return 用户ID
      */
     fun getRequestUserId(): String? {
-        val attributes = RequestContextHolder.getRequestAttributes() as? ServletRequestAttributes
-        return if (null != attributes) {
-            val request = attributes.request
+        val request = BkApiUtil.getHttpServletRequest()
+        return if (null != request) {
             request.getHeader(AUTH_HEADER_USER_ID)?.toString()
         } else {
             null
@@ -221,6 +239,13 @@ object I18nUtil {
         }
     }
 
+    fun I18Variable.getCodeLanMessage(): String {
+        return getCodeLanMessage(
+            messageCode = code,
+            params = params?.toTypedArray()
+        )
+    }
+
     /**
      * 生成请求响应对象
      * @param messageCode 状态码
@@ -247,12 +272,11 @@ object I18nUtil {
 
     /**
      * 获取模块标识
-     * @param attributes 属性列表
      * @return 模块标识
      */
-    fun getModuleCode(attributes: ServletRequestAttributes?): String {
-        val moduleCode = if (null != attributes) {
-            val request = attributes.request
+    fun getModuleCode(): String {
+        val request = BkApiUtil.getHttpServletRequest()
+        val moduleCode = if (null != request) {
             // 从请求头中获取服务名称
             val serviceName = request.getHeader(AUTH_HEADER_DEVOPS_SERVICE_NAME) ?: SystemModuleEnum.COMMON.name
             try {

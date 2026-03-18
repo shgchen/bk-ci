@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -37,85 +37,85 @@ import com.tencent.devops.common.api.auth.AUTH_HEADER_USER_ID_DEFAULT_VALUE
 import com.tencent.devops.common.api.pojo.Page
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.web.annotation.BkField
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
 @Suppress("TooManyFunctions", "LongParameterList")
-@Api(tags = ["USER_ARTIFACTORY"], description = "版本仓库-仓库资源")
+@Tag(name = "USER_ARTIFACTORY", description = "版本仓库-仓库资源")
 @Path("/user/artifactories")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface UserArtifactoryResource {
 
-    @ApiOperation("根据元数据获取文件")
+    @Operation(summary = "根据元数据获取文件")
     @Path("/{projectId}/search")
     @POST
     fun search(
         @BkField(minLength = 1, maxLength = 128)
-        @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
         @BkField(minLength = 1, maxLength = 128)
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @PathParam("projectId")
         projectId: String,
-        @ApiParam("第几页", required = false, defaultValue = "1")
+        @Parameter(description = "第几页", required = false, example = "1")
         @QueryParam("page")
         page: Int?,
-        @ApiParam("每页多少条(不传默认全部返回)", required = false, defaultValue = "20")
+        @Parameter(description = "每页多少条(不传默认全部返回)", required = false, example = "20")
         @QueryParam("pageSize")
         pageSize: Int?,
-        @ApiParam("元数据", required = true)
+        @Parameter(description = "元数据", required = true)
         searchProps: SearchProps
     ): Result<Page<FileInfo>>
 
-    @ApiOperation("获取文件信息")
+    @Operation(summary = "获取文件信息")
     @Path("/{projectId}/{artifactoryType}/show")
     @GET
     fun show(
         @BkField(minLength = 1, maxLength = 128)
-        @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
         @BkField(minLength = 1, maxLength = 128)
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @PathParam("projectId")
         projectId: String,
-        @ApiParam("版本仓库类型", required = true)
+        @Parameter(description = "版本仓库类型", required = true)
         @PathParam("artifactoryType")
         artifactoryType: ArtifactoryType,
-        @ApiParam("路径", required = true)
+        @Parameter(description = "路径", required = true)
         @QueryParam("path")
         @BkField(minLength = 1)
         path: String
     ): Result<FileDetail>
 
-    @ApiOperation("创建下载链接")
+    @Operation(summary = "创建下载链接")
     @Path("/{projectId}/{artifactoryType}/downloadUrl")
     @POST
     fun downloadUrl(
         @BkField(minLength = 1, maxLength = 128)
-        @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
         @BkField(minLength = 1, maxLength = 128)
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @PathParam("projectId")
         projectId: String,
-        @ApiParam("版本仓库类型", required = true)
+        @Parameter(description = "版本仓库类型", required = true)
         @PathParam("artifactoryType")
         artifactoryType: ArtifactoryType,
-        @ApiParam("路径", required = true)
+        @Parameter(description = "路径", required = true)
         @QueryParam("path")
         @BkField(minLength = 1)
         path: String

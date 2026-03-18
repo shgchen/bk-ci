@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,18 +29,18 @@ package com.tencent.devops.project.api.service
 
 import com.tencent.devops.common.web.annotation.BkField
 import com.tencent.devops.project.pojo.Result
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["SERVICE_ALLOC_ID"], description = "ID分配")
+@Tag(name = "SERVICE_ALLOC_ID", description = "ID分配")
 @Path("/service/alloc/ids")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -48,9 +48,9 @@ interface ServiceAllocIdResource {
 
     @GET
     @Path("/types/segment/tags/{bizTag}/generate")
-    @ApiOperation("按号段模式生成Id")
+    @Operation(summary = "按号段模式生成Id")
     fun generateSegmentId(
-        @ApiParam("业务标签", required = true)
+        @Parameter(description = "业务标签", required = true)
         @PathParam("bizTag")
         @BkField(minLength = 1, maxLength = 128)
         bizTag: String
@@ -58,13 +58,13 @@ interface ServiceAllocIdResource {
 
     @GET
     @Path("/types/segment/tags/{bizTag}/batchGenerate")
-    @ApiOperation("按号段模式批量生成Id(本质是for循环实现,减少远程调用)")
+    @Operation(summary = "按号段模式批量生成Id(本质是for循环实现,减少远程调用)")
     fun batchGenerateSegmentId(
-        @ApiParam("业务标签", required = true)
+        @Parameter(description = "业务标签", required = true)
         @PathParam("bizTag")
         @BkField(minLength = 1, maxLength = 128)
         bizTag: String,
-        @ApiParam("个数", required = true)
+        @Parameter(description = "个数", required = true)
         @QueryParam("number")
         number: Int
     ): Result<List<Long?>>

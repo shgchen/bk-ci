@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -36,76 +36,76 @@ import com.tencent.devops.quality.api.v3.pojo.request.RuleCreateRequestV3
 import com.tencent.devops.quality.api.v3.pojo.response.RuleCreateResponseV3
 import com.tencent.devops.common.quality.pojo.RuleCheckResult
 import com.tencent.devops.quality.pojo.RuleInterceptHistory
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["SERVICE_RULE_V3"], description = "质量红线-规则v3")
+@Tag(name = "SERVICE_RULE_V3", description = "质量红线-规则v3")
 @Path("/service/rules/v3")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface ServiceQualityRuleResource {
 
-    @ApiOperation("检测是否通过控制点")
+    @Operation(summary = "检测是否通过控制点")
     @Path("/check")
     @POST
     fun check(
-        @ApiParam("构建检查参数", required = true)
+        @Parameter(description = "构建检查参数", required = true)
         buildCheckParams: BuildCheckParamsV3
     ): Result<RuleCheckResult>
 
-    @ApiOperation("创建拦截规则")
+    @Operation(summary = "创建拦截规则")
     @Path("/project/{projectId}/pipeline/{pipelineId}/create")
     @POST
     fun create(
-        @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @PathParam("projectId")
         projectId: String,
-        @ApiParam("流水线ID", required = true)
+        @Parameter(description = "流水线ID", required = true)
         @PathParam("pipelineId")
         pipelineId: String,
-        @ApiParam("规则内容", required = true)
+        @Parameter(description = "规则内容", required = true)
         ruleList: List<RuleCreateRequestV3>
     ): Result<List<RuleCreateResponseV3>>
 
-    @ApiOperation("获取Stream红线列表")
+    @Operation(summary = "获取Stream红线列表")
     @Path("/{projectId}/listRuleBuildHis")
     @GET
     fun listQualityRuleBuildHis(
-        @ApiParam("用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @PathParam("projectId")
         projectId: String,
-        @ApiParam("流水线ID", required = false)
+        @Parameter(description = "流水线ID", required = false)
         @QueryParam("pipelineId")
         pipelineId: String?,
-        @ApiParam("规则ID", required = false)
+        @Parameter(description = "规则ID", required = false)
         @QueryParam("ruleHashId")
         ruleHashId: String?,
-        @ApiParam("开始时间", required = false)
+        @Parameter(description = "开始时间", required = false)
         @QueryParam("startTime")
         startTime: Long?,
-        @ApiParam("截止时间", required = false)
+        @Parameter(description = "截止时间", required = false)
         @QueryParam("endTime")
         endTime: Long?,
-        @ApiParam("页号", required = false, defaultValue = "1")
+        @Parameter(description = "页号", required = false, example = "1")
         @QueryParam("page")
         page: Int?,
-        @ApiParam("页数", required = false, defaultValue = "20")
+        @Parameter(description = "页数", required = false, example = "20")
         @QueryParam("pageSize")
         pageSize: Int?
     ): Result<Page<RuleInterceptHistory>>

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -34,7 +34,7 @@ import org.jooq.Record1
 import org.jooq.Result
 import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
-import javax.ws.rs.NotFoundException
+import jakarta.ws.rs.NotFoundException
 
 @Repository
 @Suppress("ALL")
@@ -183,6 +183,7 @@ class QualityNotifyGroupDao {
 
     fun update(
         dslContext: DSLContext,
+        projectId: String,
         id: Long,
         name: String,
         innerUsers: String,
@@ -204,17 +205,20 @@ class QualityNotifyGroupDao {
                 .set(UPDATOR, updator)
                 .set(UPDATE_TIME, now)
                 .where(ID.eq(id))
+                .and(PROJECT_ID.eq(projectId))
                 .execute()
         }
     }
 
     fun delete(
         dslContext: DSLContext,
+        projectId: String,
         id: Long
     ) {
         with(TGroup.T_GROUP) {
             dslContext.deleteFrom(this)
                 .where(ID.eq(id))
+                .and(PROJECT_ID.eq(projectId))
                 .execute()
         }
     }

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -35,11 +35,13 @@ import com.tencent.devops.common.log.pojo.enums.LogType
  */
 data class LogMessageWithLineNo(
     val tag: String,
-    val jobId: String = "",
+    val containerHashId: String = "",
     val subTag: String? = null,
     val message: String,
     var timestamp: Long = 0,
     val logType: LogType = LogType.LOG,
     var lineNo: Long = 0,
-    var executeCount: Int? = 1
+    var executeCount: Int? = 1,
+    val jobId: String?,
+    val stepId: String?
 )

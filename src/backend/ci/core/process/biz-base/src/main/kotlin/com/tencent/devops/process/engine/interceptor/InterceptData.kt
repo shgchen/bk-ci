@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,9 +29,9 @@ package com.tencent.devops.process.engine.interceptor
 
 import com.tencent.devops.common.pipeline.Model
 import com.tencent.devops.common.pipeline.enums.StartType
+import com.tencent.devops.common.pipeline.pojo.setting.PipelineRunLockType
 import com.tencent.devops.process.engine.pojo.PipelineInfo
-import com.tencent.devops.process.pojo.setting.PipelineRunLockType
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
 /**
  *
@@ -43,16 +43,22 @@ data class InterceptData(
     val model: Model?,
     val startType: StartType,
     val buildId: String,
-    @ApiModelProperty("Lock 类型", required = false)
+    @get:Schema(title = "Lock 类型", required = false)
     val runLockType: PipelineRunLockType,
-    @ApiModelProperty("最大排队时长", required = false)
+    @get:Schema(title = "最大排队时长", required = false)
     val waitQueueTimeMinute: Int,
-    @ApiModelProperty("最大排队数量", required = false)
+    @get:Schema(title = "最大排队数量", required = false)
     val maxQueueSize: Int,
-    @ApiModelProperty("并发时,设定的group", required = false)
+    @get:Schema(title = "并发时,设定的group", required = false)
     var concurrencyGroup: String?,
-    @ApiModelProperty("并发时,是否相同group取消正在执行的流水线", required = false)
+    @get:Schema(title = "并发时,是否相同group取消正在执行的流水线", required = false)
     val concurrencyCancelInProgress: Boolean = false,
-    @ApiModelProperty("并发构建数量限制", required = false)
-    val maxConRunningQueueSize: Int? // MULTIPLE类型时，并发构建数量限制
+    @get:Schema(title = "并发构建数量限制", required = false)
+    val maxConRunningQueueSize: Int, // MULTIPLE类型时，并发构建数量限制
+    @get:Schema(title = "是否为重试操作", required = false)
+    val retry: Boolean? = false,
+    @get:Schema(title = "是否为运行中重试", required = true)
+    val retryOnRunningBuild: Boolean = false,
+    @get:Schema(title = "是否允许cancel处理", required = true)
+    val cancelAllowed: Boolean = true
 )

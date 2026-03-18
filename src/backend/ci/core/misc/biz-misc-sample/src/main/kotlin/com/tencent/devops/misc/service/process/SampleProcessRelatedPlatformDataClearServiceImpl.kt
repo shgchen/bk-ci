@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -31,7 +31,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class SampleProcessRelatedPlatformDataClearServiceImpl : ProcessRelatedPlatformDataClearService {
-    override fun cleanBuildData(projectId: String, pipelineId: String, buildIds: List<String>) {
+    override fun cleanBuildData(projectId: String, pipelineId: String, buildIds: List<String>?) {
         // 开源版无需额外清理数据
     }
 }

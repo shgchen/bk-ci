@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -26,18 +26,17 @@
  */
 package com.tencent.devops.project.pojo.service
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
 @Suppress("ALL")
-@ApiModel("灰度测试-显示模型")
+@Schema(title = "灰度测试-显示模型")
 data class GrayTestInfo(
-    @ApiModelProperty("id")
+    @get:Schema(title = "id")
     val id: Long,
-    @ApiModelProperty("服务器ID")
+    @get:Schema(title = "服务器ID")
     val server_id: Long,
-    @ApiModelProperty("用户名称")
+    @get:Schema(title = "用户名称")
     val userName: String,
-    @ApiModelProperty("状态")
+    @get:Schema(title = "状态")
     val status: String
 )

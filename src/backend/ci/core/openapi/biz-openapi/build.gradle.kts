@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C)) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C)) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,6 +30,8 @@ dependencies {
     api(project(":core:openapi:api-openapi"))
     api(project(":core:common:common-db"))
     api(project(":core:common:common-pipeline"))
+    api(project(":core:common:common-es"))
+    api(project(":core:common:common-stream"))
     api(project(":core:repository:api-repository"))
     api(project(":core:environment:api-environment"))
     api(project(":core:artifactory:api-artifactory"))
@@ -38,4 +40,5 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson")
     api("org.springframework.boot:spring-boot-starter-aop")
+    api("org.bouncycastle:bcpkix-jdk18on")
 }

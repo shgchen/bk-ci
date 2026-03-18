@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,15 +27,14 @@
 
 package com.tencent.devops.store.pojo.atom
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("插件版本替换信息")
+@Schema(title = "插件版本替换信息")
 data class AtomVersionReplaceInfo(
-    @ApiModelProperty("被替换插件版本", required = true)
+    @get:Schema(title = "被替换插件版本", required = true)
     val fromAtomVersion: String,
-    @ApiModelProperty("替换插件版本", required = true)
+    @get:Schema(title = "替换插件版本", required = true)
     val toAtomVersion: String,
-    @ApiModelProperty("插件参数替换信息", required = false)
+    @get:Schema(title = "插件参数替换信息", required = false)
     val paramReplaceInfoList: List<AtomParamReplaceInfo>? = null
 )

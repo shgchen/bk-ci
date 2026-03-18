@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,21 +29,21 @@ package com.tencent.devops.quality.api.v2
 
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.quality.api.v2.pojo.request.MetadataCallback
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import javax.ws.rs.Consumes
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["EXTERNAL_METADATA"], description = "质量红线-外部")
+@Tag(name = "EXTERNAL_METADATA", description = "质量红线-外部")
 @Path("/external/metadata")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface ExternalQualityResource {
-    @ApiOperation("元数据回调")
+    @Operation(summary = "元数据回调")
     @Path("/project/{projectId}/pipeline/{pipelineId}/build/{buildId}/metadata/callback")
     @POST
     fun metadataCallback(

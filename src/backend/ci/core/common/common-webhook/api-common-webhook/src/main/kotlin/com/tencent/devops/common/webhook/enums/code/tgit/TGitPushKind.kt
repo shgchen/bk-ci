@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -72,7 +72,21 @@ enum class TGitPushActionKind(val value: String) {
     SQUASH_AND_MERGE("squash and merge"),
     REBASE_AND_MERGE("rebase and merge"),
     CHERRY_PICK("cherry-pick"),
-    REVERT("revert")
+    REVERT("revert");
+
+    companion object {
+        /**
+         * 将webhook中的动作类型转换成触发器JSON配置中的动作类型
+         */
+        fun convertActionType(value: String): TGitPushActionType {
+            // webhook动作类型
+            val pushActionKind = TGitPushActionKind.values().firstOrNull { it.value == value }
+            return when (pushActionKind) {
+                CREATE_BRANCH -> TGitPushActionType.NEW_BRANCH
+                else -> TGitPushActionType.PUSH_FILE
+            }
+        }
+    }
 }
 
 enum class TGitPushActionType(val value: String) {

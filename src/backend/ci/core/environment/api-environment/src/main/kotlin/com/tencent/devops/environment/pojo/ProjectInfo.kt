@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,25 +27,24 @@
 
 package com.tencent.devops.environment.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("VM虚拟机配额")
+@Schema(title = "VM虚拟机配额")
 data class ProjectInfo(
-    @ApiModelProperty("允许使用BCS虚拟机功能", required = true)
+    @get:Schema(title = "允许使用BCS虚拟机功能", required = true)
     val bcsVmEnabled: Boolean,
-    @ApiModelProperty("BCS虚拟机配额", required = true)
+    @get:Schema(title = "BCS虚拟机配额", required = true)
     val bcsVmQuota: Int,
-    @ApiModelProperty("BCS虚拟机已用数量", required = true)
+    @get:Schema(title = "BCS虚拟机已用数量", required = true)
     val bcsVmUsedCount: Int,
-    @ApiModelProperty("BCS虚拟机可用数量", required = true)
+    @get:Schema(title = "BCS虚拟机可用数量", required = true)
     val bcsVmRestCount: Int,
-    @ApiModelProperty("导入服务器配额", required = true)
+    @get:Schema(title = "导入服务器配额", required = true)
     val importQuota: Int,
-    @ApiModelProperty("允许使用DevCloud虚拟机功能", required = true)
+    @get:Schema(title = "允许使用DevCloud虚拟机功能", required = true)
     val devCloudVmEnabled: Boolean,
-    @ApiModelProperty("DevCloud虚拟机配额", required = true)
+    @get:Schema(title = "DevCloud虚拟机配额", required = true)
     val devCloudVmQuota: Int,
-    @ApiModelProperty("DevCloud虚拟机已用数量", required = true)
+    @get:Schema(title = "DevCloud虚拟机已用数量", required = true)
     val devCloudVmUsedCount: Int
 )

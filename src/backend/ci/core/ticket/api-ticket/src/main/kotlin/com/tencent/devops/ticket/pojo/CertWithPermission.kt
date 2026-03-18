@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,29 +27,28 @@
 
 package com.tencent.devops.ticket.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("证书-证书详细和权限")
+@Schema(title = "证书-证书详细和权限")
 data class CertWithPermission(
-    @ApiModelProperty("证书ID", required = true)
+    @get:Schema(title = "证书ID", required = true)
     val certId: String,
-    @ApiModelProperty("证书类型", required = true)
+    @get:Schema(title = "证书类型", required = true)
     val certType: String,
-    @ApiModelProperty("创建者", required = true)
+    @get:Schema(title = "创建者", required = true)
     val creator: String,
-    @ApiModelProperty("证书描述", required = true)
+    @get:Schema(title = "证书描述", required = true)
     val certRemark: String,
-    @ApiModelProperty("创建时间", required = true)
+    @get:Schema(title = "创建时间", required = true)
     val createTime: Long,
-    @ApiModelProperty("过期时间", required = true)
+    @get:Schema(title = "过期时间", required = true)
     val expireTime: Long,
-    @ApiModelProperty("凭据ID", required = true)
+    @get:Schema(title = "凭据ID", required = true)
     val credentialId: String,
-    @ApiModelProperty("别名", required = true)
+    @get:Schema(title = "别名", required = true)
     val alias: String,
-    @ApiModelProperty("别名凭据ID", required = true)
+    @get:Schema(title = "别名凭据ID", required = true)
     val aliasCredentialId: String,
-    @ApiModelProperty("权限", required = true)
+    @get:Schema(title = "权限", required = true)
     val permissions: CertPermissions
 )

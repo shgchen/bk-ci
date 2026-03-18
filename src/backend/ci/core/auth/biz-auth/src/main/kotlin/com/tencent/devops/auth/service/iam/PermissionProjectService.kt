@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,6 +27,7 @@
 
 package com.tencent.devops.auth.service.iam
 
+import com.tencent.devops.auth.pojo.vo.ProjectPermissionInfoVO
 import com.tencent.devops.common.auth.api.pojo.BKAuthProjectRolesResources
 import com.tencent.devops.common.auth.api.pojo.BkAuthGroup
 import com.tencent.devops.common.auth.api.pojo.BkAuthGroupAndUserList
@@ -39,9 +40,29 @@ interface PermissionProjectService {
 
     fun getUserProjects(userId: String): List<String>
 
-    fun getUserProjectsByPermission(userId: String, action: String): List<String>
+    fun getUserProjectsByPermission(
+        userId: String,
+        action: String,
+        resourceType: String? = null
+    ): List<String>
 
+    /**
+     * 是否有项目访问权限
+     * */
     fun isProjectUser(userId: String, projectCode: String, group: BkAuthGroup?): Boolean
+
+    /**
+     * 是否是项目成员，即加入了项目
+     * */
+    fun isProjectMember(userId: String, projectCode: String): Boolean
+
+    /**
+     * 是否加入项目级的组
+     * */
+    fun checkUserInProjectLevelGroup(
+        userId: String,
+        projectCode: String
+    ): Boolean
 
     fun checkProjectManager(userId: String, projectCode: String): Boolean
 
@@ -55,4 +76,6 @@ interface PermissionProjectService {
     ): Boolean
 
     fun getProjectRoles(projectCode: String, projectId: String): List<BKAuthProjectRolesResources>
+
+    fun getProjectPermissionInfo(projectCode: String): ProjectPermissionInfoVO
 }

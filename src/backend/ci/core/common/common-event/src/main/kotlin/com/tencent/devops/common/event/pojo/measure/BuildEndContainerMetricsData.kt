@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,19 +27,18 @@
 
 package com.tencent.devops.common.event.pojo.measure
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("构建结束后container指标数据")
+@Schema(title = "构建结束后container指标数据")
 data class BuildEndContainerMetricsData(
-    @ApiModelProperty("containerId", required = true)
+    @get:Schema(title = "containerId", required = true)
     val containerId: String,
-    @ApiModelProperty("是否执行成功", required = true)
+    @get:Schema(title = "是否执行成功", required = true)
     val successFlag: Boolean,
-    @ApiModelProperty("container构建耗时", required = true)
+    @get:Schema(title = "container构建耗时", required = true)
     val costTime: Long,
-    @ApiModelProperty("插件标识列表", required = true)
+    @get:Schema(title = "插件标识列表", required = true)
     val atomCodes: List<String>,
-    @ApiModelProperty("task指标数据列表", required = true)
+    @get:Schema(title = "task指标数据列表", required = true)
     val tasks: List<BuildEndTaskMetricsData>
 )

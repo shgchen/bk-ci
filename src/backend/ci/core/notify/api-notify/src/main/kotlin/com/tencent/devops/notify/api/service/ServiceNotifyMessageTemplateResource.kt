@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,34 +30,34 @@ import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.notify.pojo.NotifyContext
 import com.tencent.devops.notify.pojo.NotifyMessageContextRequest
 import com.tencent.devops.notify.pojo.SendNotifyMessageTemplateRequest
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["SERVICE_NOTIFY_MESSAGE_TEMPLATE"], description = "通知模板")
+@Tag(name = "SERVICE_NOTIFY_MESSAGE_TEMPLATE", description = "通知模板")
 @Path("/service/notify/message/template")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface ServiceNotifyMessageTemplateResource {
 
-    @ApiOperation("使用模板发送消息通知")
+    @Operation(summary = "使用模板发送消息通知")
     @POST
     @Path("/send")
     fun sendNotifyMessageByTemplate(
-        @ApiParam("使用模板发送消息通知请求报文体", required = true)
+        @Parameter(description = "使用模板发送消息通知请求报文体", required = true)
         request: SendNotifyMessageTemplateRequest
     ): Result<Boolean>
 
-    @ApiOperation("获取模板填充后消息内容")
+    @Operation(summary = "获取模板填充后消息内容")
     @POST
     @Path("/getContext")
     fun getNotifyMessageByTemplate(
-        @ApiParam("使用模板获取消息内容请求", required = true)
+        @Parameter(description = "使用模板获取消息内容请求", required = true)
         request: NotifyMessageContextRequest
     ): Result<NotifyContext?>
 
@@ -65,11 +65,11 @@ interface ServiceNotifyMessageTemplateResource {
      * 使用模板取消消息通知
      * @param request 使用模板发送消息通知请求报文体
      */
-    @ApiOperation("使用模板发送消息取消通知")
+    @Operation(summary = "使用模板发送消息取消通知")
     @POST
     @Path("/complete")
     fun completeNotifyMessageByTemplate(
-        @ApiParam("使用模板获取消息内容请求", required = true)
+        @Parameter(description = "使用模板获取消息内容请求", required = true)
         request: SendNotifyMessageTemplateRequest
     ): Result<Boolean>
 }

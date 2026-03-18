@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,6 +28,8 @@
 package com.tencent.devops.worker.common.api.docker
 
 import com.tencent.devops.common.api.pojo.Result
+import com.tencent.devops.image.pojo.CheckDockerImageRequest
+import com.tencent.devops.image.pojo.CheckDockerImageResponse
 import com.tencent.devops.store.pojo.image.request.ImageBaseInfoUpdateRequest
 import com.tencent.devops.worker.common.api.WorkerRestApiSDK
 
@@ -43,4 +45,12 @@ interface DockerSDKApi : WorkerRestApiSDK {
         version: String,
         imageBaseInfoUpdateRequest: ImageBaseInfoUpdateRequest
     ): Result<Boolean>
+
+    /**
+     * 检查镜像信息
+     */
+    fun checkDockerImage(
+        userId: String,
+        vararg checkDockerImageRequestList: CheckDockerImageRequest
+    ): Result<List<CheckDockerImageResponse>>
 }

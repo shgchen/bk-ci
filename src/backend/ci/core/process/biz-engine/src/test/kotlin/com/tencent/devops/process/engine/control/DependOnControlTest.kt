@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -43,7 +43,7 @@ import org.junit.jupiter.api.Test
 class DependOnControlTest {
     private val pipelineContainerService: PipelineContainerService = mockk()
     private val client: Client = mockk()
-    private val buildLogPrinter: BuildLogPrinter = BuildLogPrinter(client)
+    private val buildLogPrinter: BuildLogPrinter = BuildLogPrinter(client, mockk())
     private val dependOnControl = DependOnControl(
         pipelineContainerService = pipelineContainerService,
         buildLogPrinter = buildLogPrinter
@@ -52,7 +52,16 @@ class DependOnControlTest {
     @BeforeEach
     fun setUp() {
         justRun {
-            buildLogPrinter.addLine(buildId = "", message = "", tag = "", jobId = "", executeCount = 1, subTag = "")
+            buildLogPrinter.addLine(
+                buildId = "",
+                message = "",
+                tag = "",
+                containerHashId = "",
+                executeCount = 1,
+                subTag = "",
+                jobId = "",
+                stepId = ""
+            )
         }
     }
 
@@ -145,11 +154,11 @@ class DependOnControlTest {
                 TestTool.stageId
             )
         } returns (
-                listOf(
-                    TestTool.genVmBuildContainer(vmSeqId = dependContainerId).copy(status = BuildStatus.RUNNING),
-                    TestTool.genVmBuildContainer(vmSeqId = dependContainerId3).copy(status = BuildStatus.SUCCEED)
-                )
-                )
+            listOf(
+                TestTool.genVmBuildContainer(vmSeqId = dependContainerId).copy(status = BuildStatus.RUNNING),
+                TestTool.genVmBuildContainer(vmSeqId = dependContainerId3).copy(status = BuildStatus.SUCCEED)
+            )
+            )
         Assertions.assertEquals(BuildStatus.RUNNING, dependOnControl.dependOnJobStatus(container = mockJob))
 
         every {
@@ -159,11 +168,11 @@ class DependOnControlTest {
                 TestTool.stageId
             )
         } returns (
-                listOf(
-                    TestTool.genVmBuildContainer(vmSeqId = dependContainerId).copy(status = BuildStatus.SUCCEED),
-                    TestTool.genVmBuildContainer(vmSeqId = dependContainerId3).copy(status = BuildStatus.SUCCEED)
-                )
-                )
+            listOf(
+                TestTool.genVmBuildContainer(vmSeqId = dependContainerId).copy(status = BuildStatus.SUCCEED),
+                TestTool.genVmBuildContainer(vmSeqId = dependContainerId3).copy(status = BuildStatus.SUCCEED)
+            )
+            )
         Assertions.assertEquals(BuildStatus.SUCCEED, dependOnControl.dependOnJobStatus(container = mockJob))
 
         // when fail
@@ -174,11 +183,11 @@ class DependOnControlTest {
                 TestTool.stageId
             )
         } returns (
-                listOf(
-                    TestTool.genVmBuildContainer(vmSeqId = dependContainerId).copy(status = BuildStatus.RUNNING),
-                    TestTool.genVmBuildContainer(vmSeqId = dependContainerId3).copy(status = BuildStatus.FAILED)
-                )
-                )
+            listOf(
+                TestTool.genVmBuildContainer(vmSeqId = dependContainerId).copy(status = BuildStatus.RUNNING),
+                TestTool.genVmBuildContainer(vmSeqId = dependContainerId3).copy(status = BuildStatus.FAILED)
+            )
+            )
         Assertions.assertEquals(BuildStatus.FAILED, dependOnControl.dependOnJobStatus(container = mockJob))
     }
 }

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,21 +27,20 @@
 
 package com.tencent.devops.dispatch.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("VM-专机信息")
+@Schema(title = "VM-专机信息")
 data class VMWithPrivateProject(
-    @ApiModelProperty("VM ID", required = true)
+    @get:Schema(title = "VM ID", required = true)
     val id: Long,
-    @ApiModelProperty("VM 对应母机ID", required = true)
+    @get:Schema(title = "VM 对应母机ID", required = true)
     val machineId: Int,
-    @ApiModelProperty("VM 类型ID", required = true)
+    @get:Schema(title = "VM 类型ID", required = true)
     val typeId: Int,
-    @ApiModelProperty("VM IP地址", required = true)
+    @get:Schema(title = "VM IP地址", required = true)
     val ip: String,
-    @ApiModelProperty("VM 名称", required = true)
+    @get:Schema(title = "VM 名称", required = true)
     val name: String,
-    @ApiModelProperty("工程ID", required = true)
+    @get:Schema(title = "工程ID", required = true)
     val projectId: String
 )

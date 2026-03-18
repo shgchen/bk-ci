@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -31,52 +31,61 @@ import com.tencent.devops.auth.pojo.vo.DeptInfoVo
 import com.tencent.devops.auth.pojo.vo.UserAndDeptInfoVo
 import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_USER_ID
 import com.tencent.devops.common.api.pojo.Result
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["SERVICE_DEPT"], description = "权限校验--组织相关")
+@Tag(name = "SERVICE_DEPT", description = "权限校验--组织相关")
 @Path("/service/dept")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface ServiceDeptResource {
     @GET
     @Path("/parents")
-    @ApiOperation("获取组织父级")
+    @Operation(summary = "获取组织父级")
     fun getParentDept(
         @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
-        @ApiParam("用户ID", required = true)
+        @Parameter(description = "用户ID", required = true)
         userId: String
     ): Result<Int>
 
     @GET
     @Path("/get/byName")
-    @ApiOperation("根据组织名称获取组织id")
+    @Operation(summary = "根据组织名称获取组织id")
     fun getDeptByName(
         @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
-        @ApiParam("用户ID", required = true)
+        @Parameter(description = "用户ID", required = true)
         userId: String,
         @QueryParam("deptName")
-        @ApiParam("组织名称", required = true)
+        @Parameter(description = "组织名称", required = true)
         deptName: String
     ): Result<DeptInfoVo?>
 
     @GET
     @Path("/getUserInfo")
-    @ApiOperation("获取单个用户信息")
+    @Operation(summary = "获取单个用户信息")
     fun getUserInfo(
         @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
-        @ApiParam("用户ID", required = true)
+        @Parameter(description = "用户ID", required = true)
         userId: String,
         @QueryParam("name")
-        @ApiParam("用户名称", required = true)
+        @Parameter(description = "用户名称", required = true)
         name: String
     ): Result<UserAndDeptInfoVo?>
+
+    @GET
+    @Path("/checkUserDeparted")
+    @Operation(summary = "检查用户是否离职")
+    fun checkUserDeparted(
+        @QueryParam("name")
+        @Parameter(description = "用户名称", required = true)
+        name: String
+    ): Result<Boolean>
 }

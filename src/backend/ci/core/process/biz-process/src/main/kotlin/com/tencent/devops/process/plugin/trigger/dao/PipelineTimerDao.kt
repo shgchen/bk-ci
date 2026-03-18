@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,9 +27,11 @@
 
 package com.tencent.devops.process.plugin.trigger.dao
 
+import com.tencent.devops.common.db.utils.skipCheck
 import com.tencent.devops.common.pipeline.enums.ChannelCode
 import com.tencent.devops.model.process.Tables.T_PIPELINE_TIMER
 import com.tencent.devops.model.process.tables.records.TPipelineTimerRecord
+import org.jooq.Condition
 import org.jooq.DSLContext
 import org.jooq.Result
 import org.springframework.stereotype.Repository
@@ -45,7 +47,12 @@ open class PipelineTimerDao {
         pipelineId: String,
         userId: String,
         crontabExpression: String,
-        channelCode: ChannelCode
+        channelCode: ChannelCode,
+        repoHashId: String?,
+        branchs: String?,
+        noScm: Boolean?,
+        startParam: String?,
+        taskId: String
     ): Int {
         return with(T_PIPELINE_TIMER) {
             dslContext.insertInto(
@@ -55,21 +62,57 @@ open class PipelineTimerDao {
                 CREATE_TIME,
                 CREATOR,
                 CRONTAB,
-                CHANNEL
-            ).values(projectId, pipelineId, LocalDateTime.now(), userId, crontabExpression, channelCode.name)
+                CHANNEL,
+                REPO_HASH_ID,
+                BRANCHS,
+                NO_SCM,
+                START_PARAM,
+                TASK_ID
+            ).values(
+                projectId,
+                pipelineId,
+                LocalDateTime.now(),
+                userId,
+                crontabExpression,
+                channelCode.name,
+                repoHashId,
+                branchs,
+                noScm,
+                startParam,
+                taskId
+            )
                 .onDuplicateKeyUpdate()
+                .set(TASK_ID, taskId)
                 .set(CREATE_TIME, LocalDateTime.now())
                 .set(CREATOR, userId)
                 .set(CRONTAB, crontabExpression)
                 .set(CHANNEL, channelCode.name)
+                .set(REPO_HASH_ID, repoHashId)
+                .set(BRANCHS, branchs)
+                .set(NO_SCM, noScm)
+                .set(START_PARAM, startParam)
                 .execute()
         }
     }
 
-    open fun get(dslContext: DSLContext, projectId: String, pipelineId: String): TPipelineTimerRecord? {
+    fun get(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String
+    ): Result<TPipelineTimerRecord> {
+        return with(T_PIPELINE_TIMER) {
+            val conditions = mutableListOf(PROJECT_ID.eq(projectId), PIPELINE_ID.eq(pipelineId))
+            dslContext.selectFrom(this)
+                    .where(conditions)
+                    .orderBy(CREATE_TIME)
+                    .fetch()
+        }
+    }
+
+    open fun get(dslContext: DSLContext, projectId: String, pipelineId: String, taskId: String): TPipelineTimerRecord? {
         return with(T_PIPELINE_TIMER) {
             dslContext.selectFrom(this)
-                .where(PIPELINE_ID.eq(pipelineId).and(PROJECT_ID.eq(projectId)))
+                .where(PIPELINE_ID.eq(pipelineId).and(PROJECT_ID.eq(projectId).and(TASK_ID.eq(taskId))))
                 .fetchAny()
         }
     }
@@ -82,9 +125,75 @@ open class PipelineTimerDao {
         }
     }
 
+    open fun delete(dslContext: DSLContext, projectId: String, pipelineId: String, taskId: String): Int {
+        return with(T_PIPELINE_TIMER) {
+            dslContext.delete(this)
+                .where(PIPELINE_ID.eq(pipelineId).and(PROJECT_ID.eq(projectId).and(TASK_ID.eq(taskId))))
+                .execute()
+        }
+    }
+
     open fun list(dslContext: DSLContext, offset: Int, limit: Int): Result<TPipelineTimerRecord> {
         return with(T_PIPELINE_TIMER) {
-            dslContext.selectFrom(this).limit(offset, limit).fetch()
+            dslContext.selectFrom(this).limit(offset, limit).skipCheck().fetch()
+        }
+    }
+
+    fun list(dslContext: DSLContext, projectId: String, pipelineId: String): Result<TPipelineTimerRecord> {
+        return with(T_PIPELINE_TIMER) {
+            dslContext.selectFrom(this).where(
+                PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId))
+            ).fetch()
+        }
+    }
+
+    fun listPipeline(
+        dslContext: DSLContext,
+        projectId: String?,
+        pipelineId: String?,
+        offset: Int,
+        limit: Int
+    ): List<Pair<String, String>> {
+        return with(T_PIPELINE_TIMER) {
+            val conditions = mutableListOf<Condition>()
+            if (!projectId.isNullOrBlank()) {
+                conditions.add(PROJECT_ID.eq(projectId))
+            }
+            if (!pipelineId.isNullOrBlank()) {
+                conditions.add(PIPELINE_ID.eq(pipelineId))
+            }
+            dslContext.select(PROJECT_ID, PIPELINE_ID)
+                .from(this)
+                .where(conditions)
+                .groupBy(PROJECT_ID, PIPELINE_ID)
+                .orderBy(PROJECT_ID, PIPELINE_ID)
+                .limit(offset, limit)
+                .skipCheck()
+                .fetch()
+                .map {
+                    it.value1() to it.value2()
+                }
+        }
+    }
+
+    fun update(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String,
+        taskId: String,
+        startParam: String?
+    ): Int {
+        return with(T_PIPELINE_TIMER) {
+            dslContext.update(this)
+                .set(TASK_ID, taskId)
+                .let {
+                    if (!startParam.isNullOrBlank()) {
+                        it.set(START_PARAM, startParam)
+                    }
+                    it
+                }
+                .where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
+                .execute()
         }
     }
 }

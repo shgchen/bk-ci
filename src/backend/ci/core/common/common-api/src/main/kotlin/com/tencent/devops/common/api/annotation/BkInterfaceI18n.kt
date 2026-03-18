@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,12 +27,13 @@
 
 package com.tencent.devops.common.api.annotation
 
-import javax.ws.rs.NameBinding
+import jakarta.ws.rs.NameBinding
 
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)
 @NameBinding
 annotation class BkInterfaceI18n(
     // 字段前缀名称数组（支持二种方式，1、常量名称：xxx写法 2、动态名称：{xxx}写法，值会根据花括号中的xxx去实体对象获取）
-    val keyPrefixNames: Array<String> = []
+    val keyPrefixNames: Array<String> = [],
+    val responseDataCacheFlag: Boolean = false // 接口响应数据是否从缓存中获取，如果从缓存中获取拦截器一定会做国际化替换
 )

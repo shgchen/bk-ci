@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,20 +28,19 @@
 package com.tencent.devops.common.log.pojo.enums
 
 import com.fasterxml.jackson.annotation.JsonValue
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("日志状态")
+@Schema(title = "日志状态")
 enum class LogStatus(val status: Int) {
-    @ApiModelProperty("查询成功")
+    @Schema(title = "查询成功")
     SUCCEED(0),
-    @ApiModelProperty("日志为空")
+    @Schema(title = "日志为空")
     EMPTY(1),
-    @ApiModelProperty("日志已过期")
+    @Schema(title = "日志已过期")
     CLEAN(2),
-    @ApiModelProperty("日志已清理")
+    @Schema(title = "日志已清理")
     CLOSED(3),
-    @ApiModelProperty("查询异常")
+    @Schema(title = "查询异常")
     FAIL(999);
 
     @JsonValue

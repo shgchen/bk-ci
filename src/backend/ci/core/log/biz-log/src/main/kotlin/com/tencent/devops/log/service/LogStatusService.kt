@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -47,10 +47,12 @@ class LogStatusService @Autowired constructor(
         buildId: String,
         tag: String?,
         subTag: String?,
-        jobId: String?,
+        containerHashId: String?,
         executeCount: Int?,
         logStorageMode: LogStorageMode?,
-        finish: Boolean
+        finish: Boolean,
+        jobId: String?,
+        stepId: String?
     ) {
         JooqUtils.retryWhenDeadLock {
             logStatusDao.finish(
@@ -59,10 +61,12 @@ class LogStatusService @Autowired constructor(
                 // #8804 将db中保存字段兜底为空字符串，方便唯一键冲突判断
                 tag = tag ?: "",
                 subTags = subTag ?: "",
-                jobId = jobId ?: "",
+                containerHashId = containerHashId ?: "",
                 executeCount = executeCount ?: 1,
-                logStorageMode = logStorageMode ?: LogStorageMode.UPLOAD,
-                finish = finish
+                logStorageMode = logStorageMode,
+                finish = finish,
+                jobId = jobId,
+                stepId = stepId
             )
         }
     }
@@ -84,14 +88,16 @@ class LogStatusService @Autowired constructor(
 
     fun getStorageMode(
         buildId: String,
-        tag: String,
-        executeCount: Int
+        tag: String?,
+        executeCount: Int,
+        stepId: String?
     ): QueryLogStatus {
         val record = logStatusDao.getStorageMode(
             dslContext = dslContext,
             buildId = buildId,
             tag = tag,
-            executeCount = executeCount
+            executeCount = executeCount,
+            stepId = stepId
         )
         return if (record != null) {
             QueryLogStatus(buildId, record.finished, LogStorageMode.parse(record.mode))
@@ -104,15 +110,19 @@ class LogStatusService @Autowired constructor(
         buildId: String,
         tag: String?,
         subTag: String?,
+        containerHashId: String?,
+        executeCount: Int?,
         jobId: String?,
-        executeCount: Int?
+        stepId: String?
     ) = logStatusDao.isFinish(
         dslContext = dslContext,
         buildId = buildId,
         // #8804 将db中保存字段兜底为空字符串，方便唯一键冲突判断
-        jobId = jobId,
+        containerHashId = containerHashId,
         tag = tag ?: "",
         subTags = subTag ?: "",
-        executeCount = executeCount ?: 1
+        executeCount = executeCount ?: 1,
+        jobId = jobId,
+        stepId = stepId
     )
 }

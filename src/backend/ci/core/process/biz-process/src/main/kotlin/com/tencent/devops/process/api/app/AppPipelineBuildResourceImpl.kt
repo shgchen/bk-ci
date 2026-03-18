@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,14 +27,18 @@
 
 package com.tencent.devops.process.api.app
 
+import com.tencent.bk.audit.annotations.AuditEntry
 import com.tencent.devops.common.api.exception.ParamBlankException
 import com.tencent.devops.common.api.pojo.BuildHistoryPage
 import com.tencent.devops.common.api.pojo.Result
+import com.tencent.devops.common.auth.api.ActionId
 import com.tencent.devops.common.pipeline.enums.BuildStatus
 import com.tencent.devops.common.pipeline.enums.ChannelCode
 import com.tencent.devops.common.pipeline.enums.ManualReviewAction
 import com.tencent.devops.common.pipeline.enums.StartType
+import com.tencent.devops.common.pipeline.pojo.BuildParameters
 import com.tencent.devops.common.pipeline.pojo.StageReviewRequest
+import com.tencent.devops.common.pipeline.pojo.cascade.BuildCascadeProps
 import com.tencent.devops.common.quality.pojo.request.QualityReviewRequest
 import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.process.engine.service.PipelineBuildQualityService
@@ -111,7 +115,8 @@ class AppPipelineBuildResourceImpl @Autowired constructor(
             elementId = elementId,
             params = params,
             channelCode = ChannelCode.BS,
-            checkPermission = ChannelCode.isNeedAuth(channelCode)
+            checkPermission = ChannelCode.isNeedAuth(channelCode),
+            stepId = null
         )
         return Result(true)
     }
@@ -194,9 +199,13 @@ class AppPipelineBuildResourceImpl @Autowired constructor(
         remark: String?,
         buildNoStart: Int?,
         buildNoEnd: Int?,
-        buildMsg: String?
+        buildMsg: String?,
+        debug: Boolean?,
+        triggerAlias: List<String>?,
+        triggerBranch: List<String>?,
+        triggerUser: List<String>?
     ): Result<BuildHistoryPage<BuildHistory>> {
-        checkParam(userId, projectId, pipelineId)
+        checkParam(userId, projectId, pipelineId, pageSize)
         val result = pipelineBuildFacadeService.getHistoryBuild(
             userId = userId,
             projectId = projectId,
@@ -221,9 +230,35 @@ class AppPipelineBuildResourceImpl @Autowired constructor(
             remark = remark,
             buildNoStart = buildNoStart,
             buildNoEnd = buildNoEnd,
-            buildMsg = buildMsg
+            buildMsg = buildMsg,
+            debug = debug,
+            triggerAlias = triggerAlias,
+            triggerBranch = triggerBranch,
+            triggerUser = triggerUser
         )
         return Result(result)
+    }
+
+    override fun getBuildParameters(
+        userId: String,
+        projectId: String,
+        pipelineId: String,
+        buildId: String,
+        archiveFlag: Boolean?
+    ): Result<List<BuildParameters>> {
+        checkParam(userId, projectId, pipelineId)
+        if (buildId.isBlank()) {
+            throw ParamBlankException("Invalid buildId")
+        }
+        return Result(
+            pipelineBuildFacadeService.getBuildParameters(
+                userId = userId,
+                projectId = projectId,
+                pipelineId = pipelineId,
+                buildId = buildId,
+                archiveFlag = archiveFlag
+            )
+        )
     }
 
     override fun goToReview(
@@ -255,7 +290,8 @@ class AppPipelineBuildResourceImpl @Autowired constructor(
     override fun manualStartupInfo(
         userId: String,
         projectId: String,
-        pipelineId: String
+        pipelineId: String,
+        version: Int?
     ): Result<BuildManualStartupInfo> {
         checkParam(userId, projectId, pipelineId)
 
@@ -266,16 +302,46 @@ class AppPipelineBuildResourceImpl @Autowired constructor(
                 userId = userId,
                 projectId = projectId,
                 pipelineId = pipelineId,
+                version = version,
                 channelCode = channelCode
-            )
+            ).apply {
+                // TODO app暂时无法同步特性，临时方案为buildNo覆盖为currentBuildNo
+                buildNo?.currentBuildNo?.let { buildNo?.buildNo = it }
+                // 分支接口要改为app接口
+                properties.forEach {
+                    it.searchUrl?.let { searchUrl ->
+                        if (searchUrl.contains("/api/user/buildParam")) {
+                            it.searchUrl =
+                                searchUrl.replace("/api/user/buildParam", "/api/app/pipelineBuild/buildParam")
+                        }
+                    }
+                    replaceBuildCascadePropsSearchUrl(it.cascadeProps)
+                }
+            }
         )
     }
 
+    // 替换BuildCascadeProps以及子节点的的searchUrl
+    private fun replaceBuildCascadePropsSearchUrl(buildCascadeProps: BuildCascadeProps?) {
+        if (buildCascadeProps == null) {
+            return
+        }
+        buildCascadeProps.searchUrl?.let { searchUrl ->
+            if (searchUrl.contains("/api/user/buildParam")) {
+                buildCascadeProps.searchUrl =
+                    searchUrl.replace("/api/user/buildParam", "/api/app/pipelineBuild/buildParam")
+            }
+        }
+        replaceBuildCascadePropsSearchUrl(buildCascadeProps.children)
+    }
+
+    @AuditEntry(actionId = ActionId.PIPELINE_EXECUTE)
     override fun manualStartup(
         userId: String,
         projectId: String,
         pipelineId: String,
-        values: Map<String, String>
+        values: Map<String, String>,
+        version: Int?
     ): Result<BuildId> {
         checkParam(userId, projectId, pipelineId)
 
@@ -289,6 +355,7 @@ class AppPipelineBuildResourceImpl @Autowired constructor(
                 startType = StartType.MANUAL,
                 projectId = projectId,
                 pipelineId = pipelineId,
+                version = version,
                 values = values.filter { it.key != "buildNo" },
                 channelCode = channelCode,
                 buildNo = buildNo
@@ -320,6 +387,7 @@ class AppPipelineBuildResourceImpl @Autowired constructor(
         return Result(true)
     }
 
+    @AuditEntry(actionId = ActionId.PIPELINE_EXECUTE)
     override fun retry(
         userId: String,
         projectId: String,
@@ -350,7 +418,7 @@ class AppPipelineBuildResourceImpl @Autowired constructor(
         )
     }
 
-    private fun checkParam(userId: String, projectId: String, pipelineId: String) {
+    private fun checkParam(userId: String, projectId: String, pipelineId: String, pageSize: Int? = null) {
         if (userId.isBlank()) {
             throw ParamBlankException("Invalid userId")
         }
@@ -359,6 +427,9 @@ class AppPipelineBuildResourceImpl @Autowired constructor(
         }
         if (projectId.isBlank()) {
             throw ParamBlankException("Invalid projectId")
+        }
+        if (pageSize != null && pageSize > 1000) {
+            throw ParamBlankException("PageSize could not be greater than 1000")
         }
     }
 }

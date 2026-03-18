@@ -3,7 +3,6 @@
         <draggable
             :class="{
                 'container-atom-list': true,
-                'trigger-container': stageIndex === 0,
                 readonly: !reactiveData.editable
             }"
             :data-baseos="container.baseOS || container.classType"
@@ -25,6 +24,7 @@
                 :is-waiting="isWaiting"
                 :is-last-atom="index === atomList.length - 1 && !hasHookAtom"
                 :prev-atom="index > 0 ? atomList[index - 1] : null"
+                @insert-after="handleInsertAfter"
                 @[COPY_EVENT_NAME]="handleCopy"
                 @[DELETE_EVENT_NAME]="handleDelete"
             />
@@ -37,7 +37,10 @@
                 <i class="add-plus-icon" />
                 <template v-if="atomList.length === 0">
                     <span class="add-atom-label">{{ t("addAtom") }}</span>
-                    <Logo class="atom-invalid-icon" name="exclamation-triangle-shape" />
+                    <Logo
+                        class="atom-invalid-icon"
+                        name="exclamation-triangle-shape"
+                    />
                 </template>
             </span>
             <span
@@ -51,7 +54,11 @@
                 @click.stop="togglePostAction"
                 v-bk-tooltips="hookToggleTips"
             >
-                <logo class="toggle-post-action-icon" size="6" name="angle-down"></logo>
+                <logo
+                    class="toggle-post-action-icon"
+                    size="6"
+                    name="angle-down"
+                ></logo>
             </span>
         </draggable>
     </section>
@@ -61,16 +68,16 @@
     import draggable from 'vuedraggable'
     import Atom from './Atom'
     import Logo from './Logo'
-    import { eventBus } from './util'
-    import { localeMixins } from './locale'
     import {
-        DELETE_EVENT_NAME,
-        COPY_EVENT_NAME,
         ATOM_ADD_EVENT_NAME,
-        STATUS_MAP,
+        COPY_EVENT_NAME,
+        DELETE_EVENT_NAME,
         QUALITY_IN_ATOM_CODE,
-        QUALITY_OUT_ATOM_CODE
+        QUALITY_OUT_ATOM_CODE,
+        STATUS_MAP
     } from './constants'
+    import { localeMixins } from './locale'
+    import { eventBus } from './util'
     export default {
         name: 'atom-list',
         components: {
@@ -78,7 +85,7 @@
             Logo,
             Atom
         },
-        inject: ['reactiveData'],
+        inject: ['reactiveData', 'emitPipelineChange'],
         mixins: [localeMixins],
         props: {
             stage: {
@@ -149,11 +156,6 @@
                     return this.container.elements
                         .filter((atom) => !this.isHookAtom(atom) || this.showPostAction)
                         .map((atom) => {
-                            atom.isReviewing = atom.status === STATUS_MAP.REVIEWING
-                            if (atom.isReviewing) {
-                                const atomReviewer = this.getReviewUser(atom)
-                                atom.computedReviewers = atomReviewer
-                            }
                             if (!atom.atomCode) {
                                 atom.atomCode = atom['@type']
                             }
@@ -212,9 +214,14 @@
             },
             handleCopy ({ elementIndex, element }) {
                 this.container.elements.splice(elementIndex + 1, 0, element)
+                this.emitPipelineChange()
+            },
+            handleInsertAfter ({ elementIndex }) {
+                this.editAtom(elementIndex, true)
             },
             handleDelete ({ elementIndex }) {
                 this.container.elements.splice(elementIndex, 1)
+                this.emitPipelineChange()
             },
             checkMove (event) {
                 const dragContext = event.draggedContext || {}
@@ -237,22 +244,6 @@
                             && os.length <= 0
                             && element.buildLessRunFlag))
                 )
-            },
-
-            getReviewUser (atom) {
-                try {
-                    const list
-                        = atom.reviewUsers || (atom.data && atom.data.input && atom.data.input.reviewers)
-                    const reviewUsers = list
-                        .map((user) => user.split(';').map((val) => val.trim()))
-                        .reduce((prev, curr) => {
-                            return prev.concat(curr)
-                        }, [])
-                    return reviewUsers
-                } catch (error) {
-                    console.error(error)
-                    return []
-                }
             },
             editAtom (atomIndex, isAdd) {
                 const { stageIndex, containerIndex, container } = this
@@ -289,8 +280,7 @@
   .add-atom-entry {
     position: absolute;
     bottom: -10px;
-    left: 111px;
-    background-color: white;
+    left: calc(50% - 9px);
     cursor: pointer;
     z-index: 3;
     .add-plus-icon {

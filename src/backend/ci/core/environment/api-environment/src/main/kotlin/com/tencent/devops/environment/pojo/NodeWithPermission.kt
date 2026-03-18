@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,57 +27,79 @@
 
 package com.tencent.devops.environment.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import com.tencent.devops.environment.pojo.thirdpartyagent.AgentBuildDetail
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("NodeWithPermission-节点信息(权限)")
+@Schema(title = "NodeWithPermission-节点信息(权限)")
 data class NodeWithPermission(
-    @ApiModelProperty("环境 HashId", required = true)
+    @get:Schema(title = "环境 HashId", required = true)
     val nodeHashId: String,
-    @ApiModelProperty("节点 Id", required = true)
+    @get:Schema(title = "节点 Id", required = true)
     val nodeId: String,
-    @ApiModelProperty("节点名称", required = true)
+    @get:Schema(title = "节点名称", required = true)
     val name: String,
-    @ApiModelProperty("IP", required = true)
+    @get:Schema(title = "IP", required = true)
     val ip: String,
-    @ApiModelProperty("节点状态", required = true)
+    @get:Schema(title = "节点状态", required = true)
     val nodeStatus: String,
-    @ApiModelProperty("agent状态", required = true)
-    val agentStatus: Boolean,
-    @ApiModelProperty("节点类型", required = true)
+    @get:Schema(title = "节点类型", required = true)
     val nodeType: String,
-    @ApiModelProperty("操作系统", required = false)
+    @get:Schema(title = "操作系统", required = false)
     val osName: String?,
-    @ApiModelProperty("创建人", required = true)
+    @get:Schema(title = "创建人", required = true)
     val createdUser: String,
-    @ApiModelProperty("责任人", required = false)
+    @get:Schema(title = "责任人", required = false)
     val operator: String?,
-    @ApiModelProperty("备份责任人", required = false)
+    @get:Schema(title = "备份责任人", required = false)
     val bakOperator: String?,
-    @ApiModelProperty("是否可以使用", required = false)
+    @get:Schema(title = "是否可以使用", required = false)
     val canUse: Boolean?,
-    @ApiModelProperty("是否可以编辑", required = false)
+    @get:Schema(title = "是否可以编辑", required = false)
     val canEdit: Boolean?,
-    @ApiModelProperty("是否可以删除", required = false)
+    @get:Schema(title = "是否可以删除", required = false)
     val canDelete: Boolean?,
-    @ApiModelProperty("是否可以查看", required = false)
+    @get:Schema(title = "是否可以查看", required = false)
     val canView: Boolean? = true,
-    @ApiModelProperty("网关地域", required = false)
+    @get:Schema(title = "网关地域", required = false)
     val gateway: String?,
-    @ApiModelProperty("显示名称", required = false)
+    @get:Schema(title = "显示名称", required = false)
     val displayName: String?,
-    @ApiModelProperty("创建/导入时间", required = false)
+    @get:Schema(title = "创建/导入时间", required = false)
     val createTime: String?,
-    @ApiModelProperty("最后修改时间", required = false)
+    @get:Schema(title = "最后修改时间", required = false)
     val lastModifyTime: String?,
-    @ApiModelProperty("最后修改人", required = false)
+    @get:Schema(title = "最后修改人", required = false)
     val lastModifyUser: String?,
-    @ApiModelProperty("所属业务, 默认-1表示没有绑定业务")
+    @get:Schema(title = "所属业务, 默认-1表示没有绑定业务")
     val bizId: Long? = -1,
-    @ApiModelProperty("流水线Job引用数")
+    @get:Schema(title = "流水线Job引用数")
     val pipelineRefCount: Int? = 0,
-    @ApiModelProperty("流水线Job引用数")
+    @get:Schema(title = "流水线Job引用数")
     val lastBuildTime: String? = "",
-    @ApiModelProperty("agent hash id")
-    val agentHashId: String? = ""
+    @get:Schema(title = "agent状态", required = true)
+    val agentStatus: Boolean,
+    @get:Schema(title = "agent版本")
+    val agentVersion: String?,
+    @get:Schema(title = "agent hash id")
+    val agentHashId: String? = "",
+    @get:Schema(title = "云区域ID")
+    val cloudAreaId: Long?,
+    @get:Schema(title = "操作系统类型")
+    val osType: String?,
+    @get:Schema(title = "hostID")
+    val bkHostId: Long? = null,
+    @get:Schema(title = "job任务ID")
+    val taskId: Long?,
+    @get:Schema(title = "主机serverId")
+    val serverId: Long?,
+    @get:Schema(title = "机型")
+    val size: String? = null,
+    @get:Schema(title = "该节点所属环境名")
+    val envNames: List<String>? = null,
+    @get:Schema(title = "最近构建信息")
+    var latestBuildDetail: AgentBuildDetail? = null,
+    @get:Schema(title = "节点标签信息")
+    val tags: List<NodeTag>? = null,
+    @get:Schema(title = "当前环境是否启用这个 node")
+    val envEnableNode: Boolean?
 )

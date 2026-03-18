@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -32,10 +32,11 @@ import com.tencent.devops.common.client.Client
 import com.tencent.devops.common.pipeline.enums.ChannelCode
 import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.openapi.api.apigw.v3.ApigwAtomResourceV3
+import com.tencent.devops.openapi.utils.ApigwParamUtil
 import com.tencent.devops.store.api.atom.ServiceMarketAtomResource
 import com.tencent.devops.store.api.common.ServiceStoreStatisticResource
 import com.tencent.devops.store.pojo.atom.AtomPipeline
-import com.tencent.devops.store.pojo.common.StoreStatistic
+import com.tencent.devops.store.pojo.common.statistic.StoreStatistic
 import com.tencent.devops.store.pojo.atom.AtomVersion
 import com.tencent.devops.store.pojo.atom.InstallAtomReq
 import com.tencent.devops.store.pojo.common.enums.StoreTypeEnum
@@ -82,7 +83,7 @@ class ApigwAtomResourceV3Impl @Autowired constructor(private val client: Client)
             atomCode = atomCode,
             username = userId,
             page = page ?: 1,
-            pageSize = pageSize ?: 20
+            pageSize = ApigwParamUtil.standardSize(pageSize) ?: 20
         )
     }
 

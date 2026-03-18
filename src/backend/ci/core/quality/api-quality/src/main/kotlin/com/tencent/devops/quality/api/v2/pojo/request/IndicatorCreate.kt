@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,10 +28,10 @@
 package com.tencent.devops.quality.api.v2.pojo.request
 
 import com.tencent.devops.quality.api.v2.pojo.enums.QualityDataType
-import io.swagger.annotations.ApiModel
+import io.swagger.v3.oas.annotations.media.Schema
 import com.tencent.devops.common.quality.pojo.enums.QualityOperation
 
-@ApiModel("创建指标请求")
+@Schema(title = "创建指标请求")
 data class IndicatorCreate(
     val name: String,
     val cnName: String,
@@ -39,5 +39,6 @@ data class IndicatorCreate(
     val dataType: QualityDataType,
     val operation: List<QualityOperation>,
     val threshold: String,
-    val elementType: String
+    val elementType: String,
+    val logPrompt: String? = ""
 )

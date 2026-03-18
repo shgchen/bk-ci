@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -53,7 +53,10 @@ import com.tencent.devops.process.engine.common.Timeout
 import com.tencent.devops.process.engine.pojo.PipelineBuildContainer
 import com.tencent.devops.process.engine.pojo.PipelineBuildContainerControlOption
 import com.tencent.devops.process.engine.pojo.PipelineBuildTask
+import org.json.JSONObject
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import java.time.LocalDateTime
 
 open class TestBase : BkCiAbstractTest() {
@@ -81,6 +84,20 @@ open class TestBase : BkCiAbstractTest() {
     @BeforeEach
     open fun setUp() {
         variables.clear()
+    }
+
+    @Test
+    fun diffModel() {
+        val model1 = genModel(3, 2, 4, true)
+        val model2 = genModel(3, 2, 5, true)
+        val model3 = genModel(3, 2, 5, true)
+        val j1 = JSONObject(model1)
+        val j2 = JSONObject(model2)
+        val j3 = JSONObject(model3)
+        Assertions.assertFalse(j1.similar(j2))
+        Assertions.assertFalse(j3.similar(j2))
+        val model4 = genModel(0, 2, 5, false)
+        println(model4.stages.slice(1 until model4.stages.size))
     }
 
     fun genModel(stageSize: Int, jobSize: Int, elementSize: Int, needFinally: Boolean = false): Model {
@@ -304,6 +321,7 @@ open class TestBase : BkCiAbstractTest() {
             stageId = stageId,
             containerId = id?.toString() ?: firstContainerId,
             containerHashId = containerHashId,
+            jobId = "job-123",
             seq = id ?: firstContainerIdInt,
             containerType = vmContainerType,
             status = status,
@@ -316,6 +334,7 @@ open class TestBase : BkCiAbstractTest() {
                 mutexGroup = null
             ),
             cost = containerCost,
+            containPostTaskFlag = null,
             matrixGroupId = null,
             matrixGroupFlag = null
         )

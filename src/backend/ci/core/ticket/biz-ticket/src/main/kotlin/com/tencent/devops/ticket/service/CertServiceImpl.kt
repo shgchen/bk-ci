@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,6 +27,10 @@
 
 package com.tencent.devops.ticket.service
 
+import com.tencent.bk.audit.annotations.ActionAuditRecord
+import com.tencent.bk.audit.annotations.AuditAttribute
+import com.tencent.bk.audit.annotations.AuditEntry
+import com.tencent.bk.audit.annotations.AuditInstanceRecord
 import com.tencent.devops.common.api.exception.OperationException
 import com.tencent.devops.common.api.exception.RemoteServiceException
 import com.tencent.devops.common.api.model.SQLPage
@@ -34,7 +38,10 @@ import com.tencent.devops.common.api.util.DHUtil
 import com.tencent.devops.common.api.util.MessageUtil
 import com.tencent.devops.common.api.util.ShaUtils
 import com.tencent.devops.common.api.util.timestamp
+import com.tencent.devops.common.audit.ActionAuditContent
+import com.tencent.devops.common.auth.api.ActionId
 import com.tencent.devops.common.auth.api.AuthPermission
+import com.tencent.devops.common.auth.api.ResourceTypeId
 import com.tencent.devops.common.client.Client
 import com.tencent.devops.common.web.utils.I18nUtil
 import com.tencent.devops.process.api.service.ServiceBuildResource
@@ -68,17 +75,17 @@ import com.tencent.devops.ticket.pojo.CertWithPermission
 import com.tencent.devops.ticket.pojo.enums.CertAndroidType
 import com.tencent.devops.ticket.pojo.enums.CertType
 import com.tencent.devops.ticket.util.MobileProvisionUtil
-import java.io.ByteArrayOutputStream
-import java.io.InputStream
-import java.nio.charset.Charset
-import java.time.LocalDateTime
-import java.util.Base64
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
+import java.nio.charset.Charset
+import java.time.LocalDateTime
+import java.util.Base64
 
 @Suppress("ALL")
 @Service
@@ -95,6 +102,17 @@ class CertServiceImpl @Autowired constructor(
     private val certMaxSize = 64 * 1024
     private val certIdMaxSize = 32
 
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_CREATE,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_CREATE_CONTENT
+    )
     override fun uploadIos(
         userId: String,
         projectId: String,
@@ -122,7 +140,6 @@ class CertServiceImpl @Autowired constructor(
                 )
             )
         )
-
         if (certCredentialId != null) {
             val use = AuthPermission.USE
             certPermissionService.validatePermission(
@@ -152,11 +169,11 @@ class CertServiceImpl @Autowired constructor(
         val mpFileContent = read(mpInputStream)
         if (p12FileContent.size > certMaxSize) {
             throw OperationException(
-                    MessageUtil.getMessageByLocale(
-                        FILE_SIZE_CANT_EXCEED,
-                        I18nUtil.getLanguage(userId),
-                        arrayOf("p12", "64k")
-                    )
+                MessageUtil.getMessageByLocale(
+                    FILE_SIZE_CANT_EXCEED,
+                    I18nUtil.getLanguage(userId),
+                    arrayOf("p12", "64k")
+                )
             )
         }
         if (mpFileContent.size > certMaxSize) {
@@ -222,6 +239,17 @@ class CertServiceImpl @Autowired constructor(
         )
     }
 
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_EDIT,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_EDIT_CONTENT
+    )
     override fun updateIos(
         userId: String,
         projectId: String,
@@ -346,6 +374,17 @@ class CertServiceImpl @Autowired constructor(
         )
     }
 
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_CREATE,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_CREATE_CONTENT
+    )
     override fun uploadEnterprise(
         userId: String,
         projectId: String,
@@ -457,6 +496,17 @@ class CertServiceImpl @Autowired constructor(
         }
     }
 
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_EDIT,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_EDIT_CONTENT
+    )
     override fun updateEnterprise(
         userId: String,
         projectId: String,
@@ -482,6 +532,7 @@ class CertServiceImpl @Autowired constructor(
                 )
             )
         )
+
         if (!certDao.has(dslContext, projectId, certId)) {
             throw OperationException(
                 MessageUtil.getMessageByLocale(NAME_ALREADY_EXISTS, I18nUtil.getLanguage(userId), arrayOf(certId))
@@ -559,6 +610,17 @@ class CertServiceImpl @Autowired constructor(
         }
     }
 
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_CREATE,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_CREATE_CONTENT
+    )
     override fun uploadAndroid(
         userId: String,
         projectId: String,
@@ -689,6 +751,17 @@ class CertServiceImpl @Autowired constructor(
         )
     }
 
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_EDIT,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_EDIT_CONTENT
+    )
     override fun updateAndroid(
         userId: String,
         projectId: String,
@@ -717,7 +790,6 @@ class CertServiceImpl @Autowired constructor(
                 )
             )
         )
-
         val certRecord = certDao.getOrNull(dslContext, projectId, certId)
             ?: throw OperationException(
                 MessageUtil.getMessageByLocale(CERT_NOT_FOUND, I18nUtil.getLanguage(userId), arrayOf(certId))
@@ -822,6 +894,17 @@ class CertServiceImpl @Autowired constructor(
         )
     }
 
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_CREATE,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_CREATE_CONTENT
+    )
     override fun uploadTls(
         userId: String,
         projectId: String,
@@ -852,6 +935,7 @@ class CertServiceImpl @Autowired constructor(
                 )
             )
         )
+
         if (certDao.has(dslContext, projectId, certId)) {
             throw OperationException(
                 MessageUtil.getMessageByLocale(CERT_USED_BY_OTHERS, I18nUtil.getLanguage(userId), arrayOf(certId))
@@ -962,6 +1046,17 @@ class CertServiceImpl @Autowired constructor(
         }
     }
 
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_EDIT,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_EDIT_CONTENT
+    )
     override fun updateTls(
         userId: String,
         projectId: String,
@@ -993,6 +1088,7 @@ class CertServiceImpl @Autowired constructor(
                 )
             )
         )
+
         if (!certDao.has(dslContext, projectId, certId)) {
             throw OperationException(
                 MessageUtil.getMessageByLocale(CERT_NOT_FOUND, I18nUtil.getLanguage(userId), arrayOf(certId))
@@ -1108,6 +1204,18 @@ class CertServiceImpl @Autowired constructor(
         }
     }
 
+    @AuditEntry(actionId = ActionId.CERT_DELETE)
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_DELETE,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_DELETE_CONTENT
+    )
     override fun delete(userId: String, projectId: String, certId: String) {
         val delete = AuthPermission.DELETE
         certPermissionService.validatePermission(
@@ -1126,7 +1234,6 @@ class CertServiceImpl @Autowired constructor(
                 )
             )
         )
-
         certPermissionService.deleteResource(projectId, certId)
         dslContext.transaction { configuration ->
             val transactionContext = DSL.using(configuration)
@@ -1232,6 +1339,17 @@ class CertServiceImpl @Autowired constructor(
         return SQLPage(count, certList)
     }
 
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_VIEW,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_VIEW_CONTENT
+    )
     override fun getIos(userId: String, projectId: String, certId: String): CertIOSInfo {
         certPermissionService.validatePermission(
             userId = userId,
@@ -1253,6 +1371,17 @@ class CertServiceImpl @Autowired constructor(
         )
     }
 
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_VIEW,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_VIEW_CONTENT
+    )
     override fun getEnterprise(projectId: String, certId: String): CertEnterpriseInfo {
         val certRecord = certDao.get(dslContext, projectId, certId)
         return CertEnterpriseInfo(
@@ -1262,6 +1391,17 @@ class CertServiceImpl @Autowired constructor(
         )
     }
 
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_VIEW,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_VIEW_CONTENT
+    )
     override fun getAndroid(userId: String, projectId: String, certId: String): CertAndroidInfo {
         certPermissionService.validatePermission(
             userId = userId,
@@ -1273,6 +1413,7 @@ class CertServiceImpl @Autowired constructor(
                 params = arrayOf(userId, projectId, certId, AuthPermission.VIEW.getI18n(I18nUtil.getLanguage(userId)))
             )
         )
+
         val certRecord = certDao.get(dslContext, projectId, certId)
         return CertAndroidInfo(
             certId = certId,
@@ -1284,6 +1425,17 @@ class CertServiceImpl @Autowired constructor(
         )
     }
 
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_VIEW,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_VIEW_CONTENT
+    )
     override fun getTls(projectId: String, certId: String): CertTlsInfo {
         val certRecord = certDao.get(dslContext, projectId, certId)
         val certTlsRecord = certTlsDao.get(dslContext, projectId, certId)
@@ -1297,7 +1449,24 @@ class CertServiceImpl @Autowired constructor(
         )
     }
 
-    override fun queryIos(projectId: String, buildId: String, certId: String, publicKey: String): CertIOS {
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_VIEW,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_VIEW_CONTENT
+    )
+    override fun queryIos(
+        projectId: String,
+        buildId: String,
+        certId: String,
+        publicKey: String,
+        padding: Boolean
+    ): CertIOS {
         val buildBasicInfoResult = client.get(ServiceBuildResource::class).serviceBasic(projectId, buildId)
         if (buildBasicInfoResult.isNotOk()) {
             throw RemoteServiceException("Failed to build the basic information based on the buildId")
@@ -1314,11 +1483,11 @@ class CertServiceImpl @Autowired constructor(
 
         val p12FileName = certRecord.certP12FileName
         val p12FileContent = certHelper.decryptBytes(certRecord.certP12FileContent)!!
-        val p12Base64Content = encryptCert(p12FileContent, publicKeyByteArray, serverPrivateKeyByteArray)
+        val p12Base64Content = encryptCert(p12FileContent, publicKeyByteArray, serverPrivateKeyByteArray, padding)
 
         val mpFileName = certRecord.certMpFileName
         val mpFileContent = certHelper.decryptBytes(certRecord.certMpFileContent)!!
-        val mpBase64Content = encryptCert(mpFileContent, publicKeyByteArray, serverPrivateKeyByteArray)
+        val mpBase64Content = encryptCert(mpFileContent, publicKeyByteArray, serverPrivateKeyByteArray, padding)
 
         val credentialId = certRecord.credentialId
 
@@ -1329,7 +1498,8 @@ class CertServiceImpl @Autowired constructor(
         projectId: String,
         buildId: String,
         certId: String,
-        publicKey: String
+        publicKey: String,
+        padding: Boolean
     ): CertEnterprise {
         val buildBasicInfoResult = client.get(ServiceBuildResource::class).serviceBasic(projectId, buildId)
         if (buildBasicInfoResult.isNotOk()) {
@@ -1349,13 +1519,29 @@ class CertServiceImpl @Autowired constructor(
         // 加密内容
         val mpFileName = certRecord.certMpFileName
         val mpFileContent = certHelper.decryptBytes(certRecord.certMpFileContent)!!
-        val mpBase64Content = encryptCert(mpFileContent, publicKeyByteArray, serverPrivateKeyByteArray)
+        val mpBase64Content = encryptCert(mpFileContent, publicKeyByteArray, serverPrivateKeyByteArray, padding)
         val mpFileSha1 = ShaUtils.sha1(mpFileContent)
 
         return CertEnterprise(serverBase64PublicKey, mpFileName, mpBase64Content, mpFileSha1)
     }
 
-    override fun queryEnterpriseByProject(projectId: String, certId: String, publicKey: String): CertEnterprise {
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_VIEW,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_VIEW_CONTENT
+    )
+    override fun queryEnterpriseByProject(
+        projectId: String,
+        certId: String,
+        publicKey: String,
+        padding: Boolean
+    ): CertEnterprise {
         val certRecord = certDao.get(dslContext, projectId, certId)
         // 生成公钥和密钥
         val publicKeyByteArray = Base64.getDecoder().decode(publicKey)
@@ -1367,13 +1553,30 @@ class CertServiceImpl @Autowired constructor(
         // 加密内容
         val mpFileName = certRecord.certMpFileName
         val mpFileContent = certHelper.decryptBytes(certRecord.certMpFileContent)!!
-        val mpBase64Content = encryptCert(mpFileContent, publicKeyByteArray, serverPrivateKeyByteArray)
+        val mpBase64Content = encryptCert(mpFileContent, publicKeyByteArray, serverPrivateKeyByteArray, padding)
         val mpFileSha1 = ShaUtils.sha1(mpFileContent)
 
         return CertEnterprise(serverBase64PublicKey, mpFileName, mpBase64Content, mpFileSha1)
     }
 
-    override fun queryAndroid(projectId: String, buildId: String, certId: String, publicKey: String): CertAndroid {
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_VIEW,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_VIEW_CONTENT
+    )
+    override fun queryAndroid(
+        projectId: String,
+        buildId: String,
+        certId: String,
+        publicKey: String,
+        padding: Boolean
+    ): CertAndroid {
         val buildBasicInfoResult = client.get(ServiceBuildResource::class).serviceBasic(projectId, buildId)
         if (buildBasicInfoResult.isNotOk()) {
             throw RemoteServiceException("Failed to build the basic information based on the buildId")
@@ -1390,7 +1593,7 @@ class CertServiceImpl @Autowired constructor(
 
         val jksFileName = certRecord.certJksFileName
         val jksFileContent = certHelper.decryptBytes(certRecord.certJksFileContent)!!
-        val jksBase64Content = encryptCert(jksFileContent, publicKeyByteArray, serverPrivateKeyByteArray)
+        val jksBase64Content = encryptCert(jksFileContent, publicKeyByteArray, serverPrivateKeyByteArray, padding)
 
         val credentialId = certRecord.credentialId
         val alias = certRecord.certJksAlias
@@ -1409,10 +1612,22 @@ class CertServiceImpl @Autowired constructor(
         )
     }
 
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_VIEW,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_VIEW_CONTENT
+    )
     override fun queryAndroidByProject(
         projectId: String,
         certId: String,
-        publicKey: String
+        publicKey: String,
+        padding: Boolean
     ): CertAndroidWithCredential {
         val certRecord = certDao.get(dslContext, projectId, certId)
         val publicKeyByteArray = Base64.getDecoder().decode(publicKey)
@@ -1423,7 +1638,7 @@ class CertServiceImpl @Autowired constructor(
 
         val jksFileName = certRecord.certJksFileName
         val jksFileContent = certHelper.decryptBytes(certRecord.certJksFileContent)!!
-        val jksBase64Content = encryptCert(jksFileContent, publicKeyByteArray, serverPrivateKeyByteArray)
+        val jksBase64Content = encryptCert(jksFileContent, publicKeyByteArray, serverPrivateKeyByteArray, padding)
         val jksFileSha1 = ShaUtils.sha1(jksFileContent)
 
         val credentialId = certRecord.credentialId
@@ -1465,7 +1680,18 @@ class CertServiceImpl @Autowired constructor(
         )
     }
 
-    override fun queryTlsByProject(projectId: String, certId: String, publicKey: String): CertTls {
+    @ActionAuditRecord(
+        actionId = ActionId.CERT_VIEW,
+        instance = AuditInstanceRecord(
+            resourceType = ResourceTypeId.CERT,
+            instanceIds = "#certId",
+            instanceNames = "#certId"
+        ),
+        attributes = [AuditAttribute(name = ActionAuditContent.PROJECT_CODE_TEMPLATE, value = "#projectId")],
+        scopeId = "#projectId",
+        content = ActionAuditContent.CERT_VIEW_CONTENT
+    )
+    override fun queryTlsByProject(projectId: String, certId: String, publicKey: String, padding: Boolean): CertTls {
         val certTlsRecord = certTlsDao.get(dslContext, projectId, certId)
         val publicKeyByteArray = Base64.getDecoder().decode(publicKey)
         val serverDHKeyPair = DHUtil.initKey(publicKeyByteArray)
@@ -1475,12 +1701,12 @@ class CertServiceImpl @Autowired constructor(
 
         val serverCrtFileName = certTlsRecord.certServerCrtFileName
         val serverCrtFile = certHelper.decryptBytes(certTlsRecord.certServerCrtFile)!!
-        val serverBase64CrtFile = encryptCert(serverCrtFile, publicKeyByteArray, serverPrivateKeyByteArray)
+        val serverBase64CrtFile = encryptCert(serverCrtFile, publicKeyByteArray, serverPrivateKeyByteArray, padding)
         val serverCrtSha1 = ShaUtils.sha1(serverCrtFile)
 
         val serverKeyFileName = certTlsRecord.certServerKeyFileName
         val serverKeyFile = certHelper.decryptBytes(certTlsRecord.certServerKeyFile)!!
-        val serverBase64KeyFile = encryptCert(serverKeyFile, publicKeyByteArray, serverPrivateKeyByteArray)
+        val serverBase64KeyFile = encryptCert(serverKeyFile, publicKeyByteArray, serverPrivateKeyByteArray, padding)
         val serverKeySha1 = ShaUtils.sha1(serverKeyFile)
 
         var clientCrtFileName: String? = null
@@ -1489,7 +1715,7 @@ class CertServiceImpl @Autowired constructor(
         if (certTlsRecord.certClientCrtFile != null && certTlsRecord.certClientCrtFileName != null) {
             clientCrtFileName = certTlsRecord.certClientCrtFileName
             val clientCrtFile = certHelper.decryptBytes(certTlsRecord.certClientCrtFile)!!
-            clientBase64CrtFile = encryptCert(clientCrtFile, publicKeyByteArray, serverPrivateKeyByteArray)
+            clientBase64CrtFile = encryptCert(clientCrtFile, publicKeyByteArray, serverPrivateKeyByteArray, padding)
             clientCrtSha1 = ShaUtils.sha1(clientCrtFile)
         }
 
@@ -1499,7 +1725,7 @@ class CertServiceImpl @Autowired constructor(
         if (certTlsRecord.certClientKeyFile != null && certTlsRecord.certClientKeyFileName != null) {
             clientKeyFileName = certTlsRecord.certClientKeyFileName
             val clientKeyFile = certHelper.decryptBytes(certTlsRecord.certClientKeyFile)!!
-            clientBase64KeyFile = encryptCert(clientKeyFile, publicKeyByteArray, serverPrivateKeyByteArray)
+            clientBase64KeyFile = encryptCert(clientKeyFile, publicKeyByteArray, serverPrivateKeyByteArray, padding)
             clientKeySha1 = ShaUtils.sha1(clientKeyFile)
         }
 
@@ -1579,9 +1805,10 @@ class CertServiceImpl @Autowired constructor(
     private fun encryptCert(
         cert: ByteArray,
         publicKeyByteArray: ByteArray,
-        serverPrivateKeyByteArray: ByteArray
+        serverPrivateKeyByteArray: ByteArray,
+        padding: Boolean
     ): String {
-        val certEncryptedContent = DHUtil.encrypt(cert, publicKeyByteArray, serverPrivateKeyByteArray)
+        val certEncryptedContent = DHUtil.encrypt(cert, publicKeyByteArray, serverPrivateKeyByteArray, padding)
         return String(Base64.getEncoder().encode(certEncryptedContent))
     }
 

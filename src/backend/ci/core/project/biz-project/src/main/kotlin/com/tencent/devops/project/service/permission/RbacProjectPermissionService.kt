@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -65,7 +65,7 @@ class RbacProjectPermissionService(
     @Value("\${auth.project.approval:#{false}}")
     private val authProjectApproval: Boolean = false
 
-    override fun verifyUserProjectPermission(accessToken: String?, projectCode: String, userId: String): Boolean {
+    override fun verifyUserProjectPermission(projectCode: String, userId: String): Boolean {
         return authProjectApi.checkProjectUser(
             user = userId,
             serviceCode = projectAuthServiceCode,
@@ -74,7 +74,6 @@ class RbacProjectPermissionService(
     }
 
     override fun verifyUserProjectPermission(
-        accessToken: String?,
         projectCode: String,
         userId: String,
         permission: AuthPermission
@@ -107,14 +106,6 @@ class RbacProjectPermissionService(
                 subjectScopes = subjectScopes,
                 tipsStatus = tipsStatus
             )
-            if (approvalStatus == ProjectApproveStatus.APPROVED.status) {
-                // 创建兼容的权限中心项目
-                authProjectId = projectExtService.createOldAuthProject(
-                    userId = userId,
-                    accessToken = accessToken,
-                    projectCreateInfo = projectCreateInfo
-                ) ?: ""
-            }
         }
         authResourceApi.createResource(
             user = authProjectCreateInfo.userId,
@@ -238,12 +229,17 @@ class RbacProjectPermissionService(
 
     override fun isShowUserManageIcon(): Boolean = true
 
-    override fun filterProjects(userId: String, permission: AuthPermission): List<String>? {
+    override fun filterProjects(
+        userId: String,
+        permission: AuthPermission,
+        resourceType: String?
+    ): List<String>? {
         return authProjectApi.getUserProjectsByPermission(
             serviceCode = projectAuthServiceCode,
             userId = userId,
             permission = permission,
-            supplier = null
+            supplier = null,
+            resourceType = resourceType
         )
     }
 

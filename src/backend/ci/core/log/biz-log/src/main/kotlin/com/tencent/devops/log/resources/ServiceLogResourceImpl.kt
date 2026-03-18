@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -36,7 +36,7 @@ import com.tencent.devops.common.log.pojo.QueryLogs
 import com.tencent.devops.common.log.pojo.enums.LogType
 import com.tencent.devops.log.service.BuildLogQueryService
 import org.springframework.beans.factory.annotation.Autowired
-import javax.ws.rs.core.Response
+import jakarta.ws.rs.core.Response
 
 /**
  *
@@ -59,8 +59,14 @@ class ServiceLogResourceImpl @Autowired constructor(
         debug: Boolean?,
         logType: LogType?,
         tag: String?,
+        containerHashId: String?,
+        executeCount: Int?,
+        subTag: String?,
         jobId: String?,
-        executeCount: Int?
+        stepId: String?,
+        archiveFlag: Boolean?,
+        checkPermissionFlag: Boolean,
+        reverse: Boolean?
     ): Result<QueryLogs> {
         return buildLogQueryService.getInitLogs(
             userId = userId,
@@ -70,8 +76,14 @@ class ServiceLogResourceImpl @Autowired constructor(
             debug = debug,
             logType = logType,
             tag = tag,
+            containerHashId = containerHashId,
+            executeCount = executeCount,
+            subTag = subTag,
             jobId = jobId,
-            executeCount = executeCount
+            stepId = stepId,
+            archiveFlag = archiveFlag,
+            reverse = reverse ?: false,
+            checkPermissionFlag = checkPermissionFlag
         )
     }
 
@@ -87,8 +99,12 @@ class ServiceLogResourceImpl @Autowired constructor(
         start: Long,
         end: Long,
         tag: String?,
+        containerHashId: String?,
+        executeCount: Int?,
         jobId: String?,
-        executeCount: Int?
+        stepId: String?,
+        archiveFlag: Boolean?,
+        checkPermissionFlag: Boolean
     ): Result<QueryLogs> {
         return buildLogQueryService.getMoreLogs(
             userId = userId,
@@ -102,8 +118,12 @@ class ServiceLogResourceImpl @Autowired constructor(
             start = start,
             end = end,
             tag = tag,
+            containerHashId = containerHashId,
+            executeCount = executeCount,
             jobId = jobId,
-            executeCount = executeCount
+            stepId = stepId,
+            archiveFlag = archiveFlag,
+            checkPermissionFlag = checkPermissionFlag
         )
     }
 
@@ -116,8 +136,12 @@ class ServiceLogResourceImpl @Autowired constructor(
         debug: Boolean?,
         logType: LogType?,
         tag: String?,
+        containerHashId: String?,
+        executeCount: Int?,
         jobId: String?,
-        executeCount: Int?
+        stepId: String?,
+        archiveFlag: Boolean?,
+        checkPermissionFlag: Boolean
     ): Result<QueryLogs> {
         return buildLogQueryService.getAfterLogs(
             userId = userId,
@@ -128,8 +152,12 @@ class ServiceLogResourceImpl @Autowired constructor(
             debug = debug,
             logType = logType,
             tag = tag,
+            containerHashId = containerHashId,
+            executeCount = executeCount,
             jobId = jobId,
-            executeCount = executeCount
+            stepId = stepId,
+            archiveFlag = archiveFlag,
+            checkPermissionFlag = checkPermissionFlag
         )
     }
 
@@ -139,8 +167,11 @@ class ServiceLogResourceImpl @Autowired constructor(
         pipelineId: String,
         buildId: String,
         tag: String?,
+        containerHashId: String?,
+        executeCount: Int?,
         jobId: String?,
-        executeCount: Int?
+        stepId: String?,
+        archiveFlag: Boolean?
     ): Response {
         return buildLogQueryService.downloadLogs(
             userId = userId,
@@ -148,9 +179,12 @@ class ServiceLogResourceImpl @Autowired constructor(
             pipelineId = pipelineId,
             buildId = buildId,
             tag = tag,
-            jobId = jobId,
+            containerHashId = containerHashId,
             executeCount = executeCount,
-            fileName = null
+            fileName = null,
+            jobId = jobId,
+            stepId = stepId,
+            archiveFlag = archiveFlag
         )
     }
 
@@ -159,8 +193,10 @@ class ServiceLogResourceImpl @Autowired constructor(
         projectId: String,
         pipelineId: String,
         buildId: String,
-        tag: String,
-        executeCount: Int?
+        tag: String?,
+        executeCount: Int?,
+        stepId: String?,
+        archiveFlag: Boolean?
     ): Result<QueryLogStatus> {
         return buildLogQueryService.getLogMode(
             userId = userId,
@@ -168,7 +204,9 @@ class ServiceLogResourceImpl @Autowired constructor(
             pipelineId = pipelineId,
             buildId = buildId,
             tag = tag,
-            executeCount = executeCount
+            executeCount = executeCount,
+            stepId = stepId,
+            archiveFlag = archiveFlag
         )
     }
 
@@ -176,13 +214,15 @@ class ServiceLogResourceImpl @Autowired constructor(
         userId: String,
         projectId: String,
         pipelineId: String,
-        buildId: String
+        buildId: String,
+        archiveFlag: Boolean?
     ): Result<QueryLogLineNum> {
         return buildLogQueryService.getLastLineNum(
             userId = userId,
             projectId = projectId,
             pipelineId = pipelineId,
-            buildId = buildId
+            buildId = buildId,
+            archiveFlag = archiveFlag
         )
     }
 }

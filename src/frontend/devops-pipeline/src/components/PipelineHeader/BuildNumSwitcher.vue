@@ -1,5 +1,6 @@
 <template>
     <div class="build-num-switcher">
+        <span>{{ $t(isDebug ? 'draftExecDetail' : 'pipelinesDetail') }}</span>
         <span>#{{ currentBuildNum }}</span>
         <p>
             <i
@@ -20,12 +21,17 @@
     import { mapActions } from 'vuex'
     export default {
         props: {
+            isDebug: Boolean,
             latestBuildNum: {
-                type: Object,
+                type: [String, Number],
                 required: true
             },
             currentBuildNum: {
-                type: Object,
+                type: [String, Number],
+                required: true
+            },
+            version: {
+                type: [String, Number],
                 required: true
             }
         },
@@ -53,7 +59,9 @@
                     this.isLoading = true
                     const response = await this.requestPipelineExecDetailByBuildNum({
                         buildNum: nextBuildNum,
-                        ...this.$route.params
+                        ...this.$route.params,
+                        version: this.version,
+                        archiveFlag: this.$route.query.archiveFlag
                     })
                     this.$router.push({
                         name: 'pipelinesDetail',
@@ -62,10 +70,17 @@
                             ...this.$route.params,
                             buildNo: response.data.id,
                             executeCount: undefined
+                        },
+                        query: {
+                            archiveFlag: this.$route.query.archiveFlag
                         }
                     })
                 } catch (error) {
                     // TODO: //
+                    this.$bkMessage({
+                        theme: 'error',
+                        message: error.message
+                    })
                 } finally {
                     this.isLoading = false
                 }
@@ -81,6 +96,8 @@
   align-items: center;
   grid-auto-flow: column;
   grid-gap: 6px;
+  color: #63656e;
+
   > p {
     display: flex;
     flex-direction: column;

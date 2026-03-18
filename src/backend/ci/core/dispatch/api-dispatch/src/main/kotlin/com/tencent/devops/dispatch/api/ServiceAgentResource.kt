@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,41 +28,56 @@
 package com.tencent.devops.dispatch.api
 
 import com.tencent.devops.common.api.pojo.Page
-import com.tencent.devops.dispatch.pojo.thirdPartyAgent.AgentBuildInfo
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
 import com.tencent.devops.common.api.pojo.Result
+import com.tencent.devops.dispatch.pojo.thirdpartyagent.AgentBuildInfo
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["SERVICE_AGENT"], description = "服务-Agent")
+@Tag(name = "SERVICE_AGENT", description = "服务-Agent")
 @Path("/service/agents")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface ServiceAgentResource {
 
-    @ApiOperation("获取agent构建信息")
+    @Operation(summary = "获取agent构建信息")
     @GET
     @Path("/{agentId}/listBuilds")
     fun listAgentBuild(
-        @ApiParam("agent Hash ID", required = true)
+        @Parameter(description = "agent Hash ID", required = true)
         @PathParam("agentId")
         agentId: String,
-        @ApiParam("第几页", required = false)
+        @Parameter(description = "筛选此状态，支持4种输入(QUEUE,RUNNING,DONE,FAILURE)", required = false)
+        @QueryParam("status")
+        status: String?,
+        @Parameter(description = "筛选此pipelineId", required = false)
+        @QueryParam("pipelineId")
+        pipelineId: String?,
+        @Parameter(description = "第几页", required = false)
         @QueryParam("page")
         page: Int?,
-        @ApiParam("每页条数", required = false)
+        @Parameter(description = "每页条数", required = false)
         @QueryParam("pageSize")
         pageSize: Int?
     ): Page<AgentBuildInfo>
 
-    @ApiOperation("获取agent登录调试url")
+    @Operation(summary = "批量获取构建机最近执行记录")
+    @GET
+    @Path("listLatestBuildPipelines")
+    fun listLatestBuildPipelines(
+        @Parameter(description = "agent Hash ID", required = true)
+        @QueryParam("agentIds")
+        agentIds: List<String>
+    ): List<AgentBuildInfo>
+
+    @Operation(summary = "获取agent登录调试url")
     @GET
     @Path("/docker/debug/url")
     fun getDockerDebugUrl(

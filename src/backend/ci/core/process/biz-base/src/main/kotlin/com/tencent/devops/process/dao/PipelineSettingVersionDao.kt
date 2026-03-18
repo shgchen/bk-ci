@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,66 +27,28 @@
 
 package com.tencent.devops.process.dao
 
-import com.tencent.devops.common.notify.enums.NotifyType
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.module.kotlin.readValue
+import com.tencent.devops.common.api.pojo.PipelineAsCodeSettings
+import com.tencent.devops.common.api.util.DateTimeUtil
+import com.tencent.devops.common.api.util.JsonUtil
+import com.tencent.devops.common.pipeline.pojo.setting.BuildCancelPolicy
+import com.tencent.devops.common.pipeline.pojo.setting.PipelineRunLockType
+import com.tencent.devops.common.pipeline.pojo.setting.PipelineSetting
+import com.tencent.devops.common.pipeline.pojo.setting.Subscription
 import com.tencent.devops.model.process.tables.TPipelineSettingVersion
 import com.tencent.devops.model.process.tables.records.TPipelineSettingVersionRecord
-import com.tencent.devops.process.pojo.setting.PipelineSetting
-import com.tencent.devops.process.util.NotifyTemplateUtils
-import com.tencent.devops.process.utils.PIPELINE_START_USER_NAME
+import com.tencent.devops.process.pojo.setting.PipelineSettingVersion
 import org.jooq.DSLContext
-import org.jooq.Result
+import org.jooq.RecordMapper
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 
 @Suppress("LongParameterList")
 @Repository
 class PipelineSettingVersionDao {
 
-    // 新流水线创建的时候，设置默认的通知配置。
-    fun insertNewSetting(
-        dslContext: DSLContext,
-        projectId: String,
-        pipelineId: String,
-        version: Int = 1,
-        isTemplate: Boolean = false,
-        successNotifyTypes: String = "",
-        failNotifyTypes: String = "${NotifyType.EMAIL.name},${NotifyType.RTX.name}",
-        id: Long? = null
-    ): Int {
-        with(TPipelineSettingVersion.T_PIPELINE_SETTING_VERSION) {
-            return dslContext.insertInto(
-                this,
-                PROJECT_ID,
-                PIPELINE_ID,
-                SUCCESS_RECEIVER,
-                FAIL_RECEIVER,
-                SUCCESS_GROUP,
-                FAIL_GROUP,
-                SUCCESS_TYPE,
-                FAIL_TYPE,
-                SUCCESS_CONTENT,
-                FAIL_CONTENT,
-                IS_TEMPLATE,
-                VERSION,
-                ID
-            )
-                .values(
-                    projectId,
-                    pipelineId,
-                    "\${$PIPELINE_START_USER_NAME}",
-                    "\${$PIPELINE_START_USER_NAME}",
-                    "",
-                    "",
-                    successNotifyTypes,
-                    failNotifyTypes,
-                    NotifyTemplateUtils.getCommonShutdownSuccessContent(),
-                    NotifyTemplateUtils.getCommonShutdownFailureContent(),
-                    isTemplate,
-                    version,
-                    id
-                )
-                .execute()
-        }
-    }
+    private val logger = LoggerFactory.getLogger(PipelineSettingVersionDao::class.java)
 
     fun saveSetting(
         dslContext: DSLContext,
@@ -95,82 +57,159 @@ class PipelineSettingVersionDao {
         isTemplate: Boolean = false,
         id: Long? = null
     ): Int {
+        val successSubscriptionList = setting.successSubscriptionList ?: emptyList()
+        val failSubscriptionList = setting.failSubscriptionList ?: emptyList()
         with(TPipelineSettingVersion.T_PIPELINE_SETTING_VERSION) {
             return dslContext.insertInto(
                 this,
+                ID,
                 PROJECT_ID,
                 PIPELINE_ID,
-                SUCCESS_RECEIVER,
-                FAIL_RECEIVER,
-                SUCCESS_GROUP,
-                FAIL_GROUP,
-                SUCCESS_TYPE,
-                FAIL_TYPE,
-                FAIL_WECHAT_GROUP_FLAG,
-                FAIL_WECHAT_GROUP,
-                SUCCESS_WECHAT_GROUP_FLAG,
-                SUCCESS_WECHAT_GROUP,
-                SUCCESS_DETAIL_FLAG,
-                FAIL_DETAIL_FLAG,
-                SUCCESS_CONTENT,
-                FAIL_CONTENT,
+                NAME,
+                DESC,
+                LABELS,
+                RUN_LOCK_TYPE,
+                WAIT_QUEUE_TIME_SECOND,
+                MAX_QUEUE_SIZE,
                 IS_TEMPLATE,
+                BUILD_NUM_RULE,
+                CONCURRENCY_GROUP,
+                CONCURRENCY_CANCEL_IN_PROGRESS,
+                SUCCESS_SUBSCRIPTION,
+                FAILURE_SUBSCRIPTION,
+                PIPELINE_AS_CODE_SETTINGS,
                 VERSION,
-                ID
-            )
-                .values(
-                    setting.projectId,
-                    setting.pipelineId,
-                    setting.successSubscription.users,
-                    setting.failSubscription.users,
-                    setting.successSubscription.groups.joinToString(","),
-                    setting.failSubscription.groups.joinToString(","),
-                    setting.successSubscription.types.joinToString(",") { it.name },
-                    setting.failSubscription.types.joinToString(",") { it.name },
-                    setting.failSubscription.wechatGroupFlag,
-                    setting.failSubscription.wechatGroup,
-                    setting.successSubscription.wechatGroupFlag,
-                    setting.successSubscription.wechatGroup,
-                    setting.successSubscription.detailFlag,
-                    setting.failSubscription.detailFlag,
-                    setting.successSubscription.content,
-                    setting.failSubscription.content,
-                    isTemplate,
-                    version,
-                    id
-                )
+                MAX_CON_RUNNING_QUEUE_SIZE,
+                FAIL_IF_VARIABLE_INVALID,
+                BUILD_CANCEL_POLICY
+            ).values(
+                id,
+                setting.projectId,
+                setting.pipelineId,
+                setting.pipelineName,
+                setting.desc,
+                setting.labels.let { self ->
+                    JsonUtil.toJson(self, false)
+                },
+                PipelineRunLockType.toValue(setting.runLockType),
+                DateTimeUtil.minuteToSecond(setting.waitQueueTimeMinute),
+                setting.maxQueueSize,
+                isTemplate,
+                setting.buildNumRule,
+                setting.concurrencyGroup,
+                setting.concurrencyCancelInProgress,
+                JsonUtil.toJson(successSubscriptionList, false),
+                JsonUtil.toJson(failSubscriptionList, false),
+                setting.pipelineAsCodeSettings?.let { self ->
+                    JsonUtil.toJson(self, false)
+                },
+                version,
+                setting.maxConRunningQueueSize ?: -1,
+                setting.failIfVariableInvalid,
+                setting.buildCancelPolicy.value
+            ).onDuplicateKeyUpdate()
+                .set(NAME, setting.pipelineName)
+                .set(DESC, setting.desc)
+                .set(LABELS, setting.labels.let { self -> JsonUtil.toJson(self, false) })
+                .set(RUN_LOCK_TYPE, PipelineRunLockType.toValue(setting.runLockType))
+                .set(WAIT_QUEUE_TIME_SECOND, DateTimeUtil.minuteToSecond(setting.waitQueueTimeMinute))
+                .set(MAX_QUEUE_SIZE, setting.maxQueueSize)
+                .set(BUILD_NUM_RULE, setting.buildNumRule)
+                .set(CONCURRENCY_GROUP, setting.concurrencyGroup)
+                .set(CONCURRENCY_CANCEL_IN_PROGRESS, setting.concurrencyCancelInProgress)
+                .set(SUCCESS_SUBSCRIPTION, JsonUtil.toJson(successSubscriptionList, false))
+                .set(FAILURE_SUBSCRIPTION, JsonUtil.toJson(failSubscriptionList, false))
+                .set(MAX_CON_RUNNING_QUEUE_SIZE, setting.maxConRunningQueueSize ?: -1)
+                .set(PIPELINE_AS_CODE_SETTINGS, setting.pipelineAsCodeSettings?.let { self ->
+                    JsonUtil.toJson(self, false)
+                })
+                .set(FAIL_IF_VARIABLE_INVALID, setting.failIfVariableInvalid)
+                .set(BUILD_CANCEL_POLICY, setting.buildCancelPolicy.value)
                 .execute()
         }
     }
 
-    fun getSetting(
+    fun update(
+        dslContext: DSLContext,
+        setting: PipelineSetting
+    ) {
+        val successSubscriptionList = setting.successSubscriptionList ?: emptyList()
+        val failSubscriptionList = setting.failSubscriptionList ?: emptyList()
+        with(TPipelineSettingVersion.T_PIPELINE_SETTING_VERSION) {
+            dslContext.update(this)
+                .set(NAME, setting.pipelineName)
+                .set(DESC, setting.desc)
+                .set(LABELS, setting.labels.let { self -> JsonUtil.toJson(self, false) })
+                .set(RUN_LOCK_TYPE, PipelineRunLockType.toValue(setting.runLockType))
+                .set(WAIT_QUEUE_TIME_SECOND, DateTimeUtil.minuteToSecond(setting.waitQueueTimeMinute))
+                .set(MAX_QUEUE_SIZE, setting.maxQueueSize)
+                .set(BUILD_NUM_RULE, setting.buildNumRule)
+                .set(CONCURRENCY_GROUP, setting.concurrencyGroup)
+                .set(CONCURRENCY_CANCEL_IN_PROGRESS, setting.concurrencyCancelInProgress)
+                .set(SUCCESS_SUBSCRIPTION, JsonUtil.toJson(successSubscriptionList, false))
+                .set(FAILURE_SUBSCRIPTION, JsonUtil.toJson(failSubscriptionList, false))
+                .set(MAX_CON_RUNNING_QUEUE_SIZE, setting.maxConRunningQueueSize ?: -1)
+                .set(PIPELINE_AS_CODE_SETTINGS, setting.pipelineAsCodeSettings?.let { self ->
+                    JsonUtil.toJson(self, false)
+                })
+                .set(FAIL_IF_VARIABLE_INVALID, setting.failIfVariableInvalid)
+                .where(PROJECT_ID.eq(setting.projectId))
+                .and(PIPELINE_ID.eq(setting.pipelineId))
+                .and(VERSION.eq(setting.version))
+                .execute()
+        }
+    }
+
+    fun getSettingVersion(
         dslContext: DSLContext,
         projectId: String,
         pipelineId: String,
         version: Int
-    ): TPipelineSettingVersionRecord? {
+    ): PipelineSettingVersion? {
         with(TPipelineSettingVersion.T_PIPELINE_SETTING_VERSION) {
             return dslContext.selectFrom(this)
                 .where(PIPELINE_ID.eq(pipelineId))
                 .and(VERSION.eq(version))
                 .and(PROJECT_ID.eq(projectId))
-                .fetchOne()
+                .fetchOne(mapper)
         }
     }
 
-    fun getSettingByPipelineIds(
+    fun getLatestSettingVersion(
         dslContext: DSLContext,
-        pipelineIds: List<String>
-    ): Result<TPipelineSettingVersionRecord> {
+        projectId: String,
+        pipelineId: String
+    ): PipelineSettingVersion? {
         with(TPipelineSettingVersion.T_PIPELINE_SETTING_VERSION) {
             return dslContext.selectFrom(this)
-                .where(PIPELINE_ID.`in`(pipelineIds))
-                .fetch()
+                .where(PIPELINE_ID.eq(pipelineId))
+                .and(PROJECT_ID.eq(projectId))
+                .orderBy(VERSION.desc()).limit(1)
+                .fetchOne(mapper)
         }
     }
 
     fun batchUpdate(dslContext: DSLContext, tPipelineSettingVersionRecords: List<TPipelineSettingVersionRecord>) {
         dslContext.batchUpdate(tPipelineSettingVersionRecords).execute()
+    }
+
+    fun updateSetting(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String,
+        version: Int,
+        name: String,
+        desc: String
+    ) {
+        with(TPipelineSettingVersion.T_PIPELINE_SETTING_VERSION) {
+            dslContext.update(this)
+                .set(NAME, name)
+                .set(DESC, desc)
+                .where(PIPELINE_ID.eq(pipelineId))
+                .and(PROJECT_ID.eq(projectId))
+                .and(VERSION.eq(version))
+                .execute()
+        }
     }
 
     fun deleteAllVersion(dslContext: DSLContext, projectId: String, pipelineId: String): Int {
@@ -206,5 +245,46 @@ class PipelineSettingVersionDao {
                 .and(PROJECT_ID.eq(projectId))
                 .execute()
         }
+    }
+
+    class PipelineSettingVersionJooqMapper : RecordMapper<TPipelineSettingVersionRecord, PipelineSettingVersion> {
+        override fun map(record: TPipelineSettingVersionRecord?): PipelineSettingVersion? {
+            return record?.let { t ->
+                PipelineSettingVersion(
+                    projectId = t.projectId,
+                    pipelineId = t.pipelineId,
+                    pipelineName = t.name,
+                    desc = t.desc,
+                    runLockType = t.runLockType?.let { PipelineRunLockType.valueOf(it) },
+                    successSubscriptionList = t.successSubscription?.let {
+                        JsonUtil.to(it, object : TypeReference<List<Subscription>>() {})
+                            .map { s -> s.fixWeworkGroupType() }
+                    },
+                    failSubscriptionList = t.failureSubscription?.let {
+                        JsonUtil.to(it, object : TypeReference<List<Subscription>>() {})
+                            .map { s -> s.fixWeworkGroupType() }
+                    },
+                    version = t.version,
+                    labels = t.labels?.let { self ->
+                        JsonUtil.getObjectMapper().readValue(self) as List<String>
+                    },
+                    waitQueueTimeMinute = DateTimeUtil.secondToMinute(t.waitQueueTimeSecond ?: 600000),
+                    maxQueueSize = t.maxQueueSize,
+                    buildNumRule = t.buildNumRule,
+                    concurrencyCancelInProgress = t.concurrencyCancelInProgress,
+                    concurrencyGroup = t.concurrencyGroup,
+                    maxConRunningQueueSize = t.maxConRunningQueueSize,
+                    pipelineAsCodeSettings = t.pipelineAsCodeSettings?.let { self ->
+                        JsonUtil.to(self, PipelineAsCodeSettings::class.java)
+                    },
+                    failIfVariableInvalid = t.failIfVariableInvalid,
+                    buildCancelPolicy = BuildCancelPolicy.parse(t.buildCancelPolicy)
+                )
+            }
+        }
+    }
+
+    companion object {
+        private val mapper = PipelineSettingVersionJooqMapper()
     }
 }

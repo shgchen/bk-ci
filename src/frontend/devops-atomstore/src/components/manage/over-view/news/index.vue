@@ -1,5 +1,8 @@
 <template>
-    <section class="over-view-news" v-bkloading="{ isLoading }">
+    <section
+        class="over-view-news"
+        v-bkloading="{ isLoading }"
+    >
         <bk-timeline :list="list"></bk-timeline>
     </section>
 </template>
@@ -36,11 +39,16 @@
 
         methods: {
             initData () {
-                this.isLoadingMore = true
+                
                 const methodGenerator = {
                     atom: this.getAtomData
                 }
 
+                if (!Object.prototype.hasOwnProperty.call(methodGenerator, this.type) || typeof methodGenerator[this.type] !== 'function') {
+                    this.$bkMessage({ message: this.$t('store.typeError'), theme: 'error' })
+                    return
+                }
+                this.isLoadingMore = true
                 const currentMethod = methodGenerator[this.type]
                 currentMethod().then(() => {
                     this.current += 1

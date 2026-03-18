@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,19 +28,18 @@
 package com.tencent.devops.environment.pojo
 
 import com.tencent.devops.common.api.pojo.Zone
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("DevCloud虚拟机参数")
+@Schema(title = "DevCloud虚拟机参数")
 data class DevCloudVmParam(
-    @ApiModelProperty("镜像Id", required = true)
+    @get:Schema(title = "镜像Id", required = true)
     val imageId: String,
-    @ApiModelProperty("机型", required = true)
+    @get:Schema(title = "机型", required = true)
     val modelId: String,
-    @ApiModelProperty("数量", required = true)
+    @get:Schema(title = "数量", required = true)
     val instanceCount: Int,
-    @ApiModelProperty("区域", required = true)
+    @get:Schema(title = "区域", required = true)
     val zone: Zone,
-    @ApiModelProperty("有效期", required = true)
+    @get:Schema(title = "有效期", required = true)
     val validity: Int?
 )

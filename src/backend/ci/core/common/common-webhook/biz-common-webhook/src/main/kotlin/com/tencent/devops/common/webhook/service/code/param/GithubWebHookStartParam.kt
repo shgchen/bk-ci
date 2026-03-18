@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -35,6 +35,7 @@ import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_EXCLUDE_U
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_INCLUDE_BRANCHS
 import com.tencent.devops.common.webhook.pojo.code.WebHookParams
 import com.tencent.devops.common.webhook.service.code.matcher.ScmWebhookMatcher
+import com.tencent.devops.common.webhook.service.code.pojo.WebhookMatchResult
 import com.tencent.devops.repository.pojo.Repository
 import org.springframework.stereotype.Service
 
@@ -49,18 +50,20 @@ class GithubWebHookStartParam : ScmWebhookStartParams<CodeGithubWebHookTriggerEl
         projectId: String,
         element: CodeGithubWebHookTriggerElement,
         repo: Repository,
-        matcher: ScmWebhookMatcher,
+        matcher: ScmWebhookMatcher?,
         variables: Map<String, String>,
         params: WebHookParams,
-        matchResult: ScmWebhookMatcher.MatchResult
+        matchResult: WebhookMatchResult
     ): Map<String, Any> {
         val startParams = mutableMapOf<String, Any>()
-        startParams[BK_REPO_GIT_WEBHOOK_COMMIT_ID] = matcher.getRevision()
         startParams[BK_REPO_GIT_WEBHOOK_EVENT_TYPE] = params.eventType ?: ""
         startParams[BK_REPO_GIT_WEBHOOK_INCLUDE_BRANCHS] = element.branchName ?: ""
         startParams[BK_REPO_GIT_WEBHOOK_EXCLUDE_BRANCHS] = element.excludeBranchName ?: ""
         startParams[BK_REPO_GIT_WEBHOOK_EXCLUDE_USERS] = element.excludeUsers ?: ""
-        startParams.putAll(matcher.retrieveParams())
+        matcher?.let {
+            startParams[BK_REPO_GIT_WEBHOOK_COMMIT_ID] = matcher.getRevision()
+            startParams.putAll(matcher.retrieveParams(projectId = projectId, repository = repo))
+        }
         return startParams
     }
 }

@@ -1,23 +1,114 @@
 <template>
-    <div class="biz-container bkdevops-history-subpage pipeline-subpages">
-        <div class="pipeline-subpages-header">
-            <router-view name="header"></router-view>
-        </div>
-        <router-view class="biz-content" v-bkloading="{ isLoading }"></router-view>
+    <div
+        class="biz-container bkdevops-history-subpage pipeline-subpages"
+        v-bkloading="{ isLoading }"
+    >
+        <template v-if="isInfoReady">
+            <div class="pipeline-subpages-header">
+                <router-view
+                    name="header"
+                    :is-switch-pipeline="isLoading"
+                ></router-view>
+            </div>
+            <router-view class="biz-content"></router-view>
+        </template>
         <portal-target name="artifactory-popup"></portal-target>
     </div>
 </template>
 
 <script>
+    import { SET_PIPELINE_INFO } from '@/store/modules/atom/constants'
+    import { RESOURCE_ACTION, PROJECT_RESOURCE_ACTION } from '@/utils/permission'
+    import { mapActions, mapState } from 'vuex'
+    import { SET_PROJECT_PERM } from '@/store/modules/common/constants'
+
     export default {
-        created () {
+        data () {
+            return {
+                isLoading: false
+            }
+        },
+        computed: {
+            ...mapState('atom', ['pipelineInfo']),
+            isInfoReady () {
+                return this.pipelineInfo && this.pipelineInfo.pipelineId === this.$route.params?.pipelineId
+            }
+        },
+        watch: {
+            '$route.params.pipelineId': {
+                handler () {
+                    this.$nextTick(this.fetchPipelineInfo)
+                },
+                immediate: true
+            }
+        },
+        async created () {
             this.$store.dispatch('requestProjectDetail', {
                 projectId: this.$route.params.projectId
             })
+            try {
+                const { data } = await this.$store.dispatch('common/validatePermission', {
+                    projectId: this.$route.params.projectId,
+                    resourceType: 'project',
+                    resourceCode: this.$route.params.pipelineId,
+                    actionList: [PROJECT_RESOURCE_ACTION.ARCHIVED]
+                })
+                this.$store.commit(`common/${SET_PROJECT_PERM}`, data[PROJECT_RESOURCE_ACTION.ARCHIVED])
+            } catch (error) {
+                console.log(error)
+            }
         },
         beforeDestroy () {
-            this.$store.commit('pipelines/updateCurPipeline', {})
-            this.$store.commit('pipelines/updatePipelineList', [])
+            this.resetPipeline()
+        },
+        methods: {
+            ...mapActions('atom', [
+                'setPipeline',
+                'setPipelineYaml',
+                'selectPipelineVersion',
+                'setPipelineWithoutTrigger',
+                'requestPipelineSummary',
+                'resetAtomModalMap'
+            ]),
+            /**
+             * 重置流水线相关数据
+             * 用于组件销毁或切换流水线时清空旧数据
+             */
+            resetPipeline () {
+                this.setPipeline(null)
+                this.setPipelineWithoutTrigger(null)
+                this.setPipelineYaml('')
+                this.selectPipelineVersion(null)
+                this.$store.commit('atom/resetPipelineSetting', null)
+                this.$store.commit(`atom/${SET_PIPELINE_INFO}`, null)
+            },
+            async fetchPipelineInfo () {
+                try {
+                    this.isLoading = true
+                    // 切换流水线时，先清空旧的 pipeline 数据，避免旧数据残留
+                    this.resetPipeline()
+                    
+                    const params = {
+                        ...this.$route.params,
+                        ...this.$route.query
+                    }
+                    await this.requestPipelineSummary(params)
+                } catch (error) {
+                    this.handleError(error, {
+                        projectId: this.$route.params.projectId,
+                        resourceCode: this.$route.params.pipelineId,
+                        action: RESOURCE_ACTION.VIEW
+                    })
+                    if (error?.code !== 403) {
+                        this.$router.replace({
+                            name: 'PipelineManageList'
+                        })
+                    }
+                    return false
+                } finally {
+                    this.isLoading = false
+                }
+            }
         }
     }
 </script>
@@ -27,9 +118,7 @@
 .bkdevops-history-subpage {
   min-height: 100%;
   flex-direction: column;
-  .bk-exception {
-    position: absolute;
-  }
+  background: #F5F7FA;
   .pipeline-subpages-header {
     display: flex;
     align-items: center;
@@ -37,6 +126,7 @@
     background-color: white;
     width: 100%;
     box-shadow: 0 2px 5px 0 rgba(51, 60, 72, 0.03);
+    border-bottom: 1px solid #DCDEE5;
   }
 }
 

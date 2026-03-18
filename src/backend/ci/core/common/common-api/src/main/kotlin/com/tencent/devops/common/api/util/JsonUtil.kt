@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -32,9 +32,11 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.core.json.JsonReadFeature
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.MapperFeature
 import com.fasterxml.jackson.databind.Module
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.databind.json.JsonMapper
 import com.fasterxml.jackson.databind.ser.FilterProvider
 import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider
@@ -48,6 +50,7 @@ import com.fasterxml.jackson.datatype.jsr310.ser.LocalTimeSerializer
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.tencent.devops.common.api.annotation.SkipLogField
+import java.lang.reflect.Type
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -119,25 +122,44 @@ object JsonUtil {
 
     private val objectMapper = objectMapper()
 
+    private val jsonMapper = jsonMapper()
+
     private fun objectMapper(): ObjectMapper {
         return ObjectMapper().apply {
-            registerModule(javaTimeModule())
-            registerModule(KotlinModule())
-            enable(SerializationFeature.INDENT_OUTPUT)
-            enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT)
-            enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature())
-            setSerializationInclusion(JsonInclude.Include.NON_NULL)
-            disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-            disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
-            jsonModules.forEach { jsonModule ->
-                registerModule(jsonModule)
-            }
+            objectMapperInit()
         }
+    }
+
+    private fun ObjectMapper.objectMapperInit() {
+
+        registerModule(javaTimeModule())
+        registerModule(KotlinModule.Builder().build())
+        enable(SerializationFeature.INDENT_OUTPUT)
+        enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT)
+        enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature())
+        setSerializationInclusion(JsonInclude.Include.NON_NULL)
+        disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+        jsonModules.forEach { jsonModule ->
+            registerModule(jsonModule)
+        }
+    }
+
+    private fun jsonMapper(): JsonMapper {
+        return JsonMapper.builder()
+            /* 使得POJO反序列化有序，对性能会有略微影响
+            *  https://github.com/FasterXML/jackson-databind/issues/3900
+            * */
+            .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
+            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+            .disable(MapperFeature.SORT_CREATOR_PROPERTIES_FIRST).build().apply {
+                objectMapperInit()
+            }
     }
 
     private val skipEmptyObjectMapper = ObjectMapper().apply {
         registerModule(javaTimeModule())
-        registerModule(KotlinModule())
+        registerModule(KotlinModule.Builder().build())
         enable(SerializationFeature.INDENT_OUTPUT)
         enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT)
         enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS.mappedFeature())
@@ -178,6 +200,7 @@ object JsonUtil {
         }
         subModules.forEach { subModule ->
             objectMapper.registerModule(subModule)
+            jsonMapper.registerModule(subModule)
             skipEmptyObjectMapper.registerModule(subModule)
             unformattedObjectMapper.registerModule(subModule)
         }
@@ -191,6 +214,13 @@ object JsonUtil {
             return bean.toString()
         }
         return getObjectMapper(formatted).writeValueAsString(bean)!!
+    }
+
+    fun toSortJson(bean: Any): String {
+        if (ReflectUtil.isNativeType(bean) || bean is String) {
+            return bean.toString()
+        }
+        return jsonMapper.writeValueAsString(bean)!!
     }
 
     /**
@@ -248,6 +278,19 @@ object JsonUtil {
 
     fun <T> to(json: String, type: Class<T>): T = getObjectMapper().readValue(json, type)
 
+    fun <T> toForType(json: String, type: Type): T {
+        val javaType = getObjectMapper().constructType(type)
+        return getObjectMapper().readValue(json, javaType)
+    }
+
+    fun toJsonForType(bean: Any, type: Type, formatted: Boolean = true): String {
+        if (ReflectUtil.isNativeType(bean) || bean is String) {
+            return bean.toString()
+        }
+        val javaType = getObjectMapper().constructType(type)
+        return getObjectMapper(formatted).writerFor(javaType).writeValueAsString(bean)!!
+    }
+
     fun <T> toOrNull(json: String?, type: Class<T>): T? {
         return json?.let { self ->
             if (self.isBlank()) {
@@ -281,6 +324,12 @@ object JsonUtil {
     fun <T> anyTo(any: Any?, typeReference: TypeReference<T>): T = getObjectMapper().readValue(
         getObjectMapper().writeValueAsString(any), typeReference
     )
+
+    fun <T> anyToOrNull(any: Any?, typeReference: TypeReference<T>): T? = try {
+        anyTo(any, typeReference)
+    } catch (e: Exception) {
+        null
+    }
 
     @Suppress("UNCHECKED_CAST")
     fun <T> Any.deepCopy(): T {

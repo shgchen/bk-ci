@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,25 +27,31 @@
 
 package com.tencent.devops.repository.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import com.tencent.devops.common.api.enums.ScmType
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("代码库模型-Code平台P4")
+@Schema(title = "代码库模型-Code平台P4")
 data class CodeP4Repository(
-    @ApiModelProperty("代码库别名", required = true)
+    @get:Schema(title = "代码库别名", required = true)
     override val aliasName: String,
-    @ApiModelProperty("URL", required = true)
+    @get:Schema(title = "URL", required = true)
     override val url: String,
-    @ApiModelProperty("凭据id", required = true)
+    @get:Schema(title = "凭据id", required = true)
     override val credentialId: String,
-    @ApiModelProperty("项目名称(与aliasName相同)", required = true)
+    @get:Schema(title = "项目名称(与aliasName相同)", required = true)
     override val projectName: String,
-    @ApiModelProperty("用户名", required = true)
+    @get:Schema(title = "用户名", required = true)
     override var userName: String,
-    @ApiModelProperty("项目id", required = true)
+    @get:Schema(title = "项目id", required = true)
     override var projectId: String?,
-    @ApiModelProperty("仓库hash id", required = false)
-    override val repoHashId: String?
+    @get:Schema(title = "仓库hash id", required = false)
+    override val repoHashId: String?,
+    @get:Schema(title = "仓库是否开启pac", required = false)
+    override val enablePac: Boolean? = false,
+    @get:Schema(title = "yaml同步状态", required = false)
+    override val yamlSyncStatus: String? = null,
+    @get:Schema(title = "代码库标识", required = false)
+    override val scmCode: String = ScmType.CODE_P4.name
 ) : Repository {
 
     companion object {
@@ -59,4 +65,8 @@ data class CodeP4Repository(
     override fun isLegal(): Boolean {
         return true
     }
+
+    override fun getScmType() = ScmType.CODE_P4
+
+    override fun getExternalId(): String = projectName
 }

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,14 +30,12 @@ package com.tencent.devops.common.webhook.service.code.filter
 /**
  * webhook过滤器返回结果
  */
-class WebhookFilterResponse {
-    private val params = mutableMapOf<String, String>()
-
+data class WebhookFilterResponse(
+    val params: MutableMap<String, String> = mutableMapOf(),
+    // 过滤失败原因
+    var failedReason: String? = null
+) {
     fun addParam(key: String, value: String) {
         params[key] = value
-    }
-
-    fun getParam(): Map<String, String> {
-        return params
     }
 }

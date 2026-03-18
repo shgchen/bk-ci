@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -31,15 +31,15 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.tencent.devops.common.api.util.EnvUtils
 import com.tencent.devops.common.pipeline.type.BuildType
 import com.tencent.devops.common.pipeline.type.DispatchType
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
 data class ThirdPartyDevCloudDispatchType(
     @JsonProperty("value")
-    @ApiModelProperty("展示名称", required = false)
+    @get:Schema(title = "展示名称", required = false)
     var displayName: String,
-    @ApiModelProperty("工作空间", required = false)
+    @get:Schema(title = "工作空间", required = false)
     var workspace: String?,
-    @ApiModelProperty("agent类型", required = false)
+    @get:Schema(title = "agent类型", required = false)
     val agentType: AgentType = AgentType.NAME
 ) : DispatchType(
     displayName

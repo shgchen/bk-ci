@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,10 +28,13 @@
 package com.tencent.devops.common.webhook.service.code.param
 
 import com.tencent.devops.common.api.util.EnvUtils
+import com.tencent.devops.common.pipeline.pojo.element.trigger.CodeGitWebHookTriggerElement
 import com.tencent.devops.common.pipeline.pojo.element.trigger.CodeGitlabWebHookTriggerElement
+import com.tencent.devops.common.pipeline.pojo.element.trigger.enums.CodeEventType
 import com.tencent.devops.common.pipeline.pojo.element.trigger.enums.CodeType
 import com.tencent.devops.common.pipeline.utils.RepositoryConfigUtils
 import com.tencent.devops.common.webhook.pojo.code.WebHookParams
+import com.tencent.devops.common.webhook.util.WebhookUtils
 import org.springframework.stereotype.Service
 
 @Service
@@ -47,10 +50,10 @@ class GitlabWebhookElementParams : ScmWebhookElementParams<CodeGitlabWebHookTrig
         variables: Map<String, String>
     ): WebHookParams? {
         val params = WebHookParams(
-            repositoryConfig = RepositoryConfigUtils.replaceCodeProp(
-                repositoryConfig = RepositoryConfigUtils.buildConfig(element),
+            repositoryConfig = RepositoryConfigUtils.buildWebhookConfig(
+                element = element,
                 variables = variables
-            )
+            ).third
         )
         params.includeUsers = if (element.includeUsers == null || element.includeUsers!!.isEmpty()) {
             ""
@@ -62,10 +65,42 @@ class GitlabWebhookElementParams : ScmWebhookElementParams<CodeGitlabWebHookTrig
         } else {
             EnvUtils.parseEnv(element.excludeUsers!!.joinToString(","), variables)
         }
-        if (element.branchName == null) {
-            return null
+        params.version = element.version
+        when {
+            // action上线后【流水线配置层面】兼容存量merge_request_accept和push事件
+            element.eventType == CodeEventType.MERGE_REQUEST_ACCEPT -> {
+                params.includeMrAction = CodeGitWebHookTriggerElement.MERGE_ACTION_MERGE
+            }
+
+            element.eventType == CodeEventType.MERGE_REQUEST &&
+                    !WebhookUtils.isActionGitTriggerVersion(element.version) &&
+                    element.includeMrAction == null -> {
+                params.includeMrAction = WebhookUtils.joinToString(
+                    listOf(
+                        CodeGitWebHookTriggerElement.MERGE_ACTION_OPEN,
+                        CodeGitWebHookTriggerElement.MERGE_ACTION_REOPEN,
+                        CodeGitWebHookTriggerElement.MERGE_ACTION_PUSH_UPDATE
+                    )
+                )
+            }
+
+            element.eventType == CodeEventType.PUSH &&
+                    !WebhookUtils.isActionGitTriggerVersion(element.version) &&
+                    element.includePushAction == null -> {
+                params.includePushAction = WebhookUtils.joinToString(
+                    listOf(
+                        CodeGitWebHookTriggerElement.PUSH_ACTION_CREATE_BRANCH,
+                        CodeGitWebHookTriggerElement.PUSH_ACTION_PUSH_FILE
+                    )
+                )
+            }
+
+            else -> {
+                params.includeMrAction = WebhookUtils.joinToString(element.includeMrAction)
+                params.includePushAction = WebhookUtils.joinToString(element.includePushAction)
+            }
         }
-        params.branchName = EnvUtils.parseEnv(element.branchName!!, variables)
+        params.branchName = EnvUtils.parseEnv(element.branchName ?: "", variables)
         params.codeType = CodeType.GITLAB
         params.eventType = element.eventType
         params.block = element.block ?: false

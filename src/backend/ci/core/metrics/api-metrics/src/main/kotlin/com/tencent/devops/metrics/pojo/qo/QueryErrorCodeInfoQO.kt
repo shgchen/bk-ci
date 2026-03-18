@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,19 +27,18 @@
 
 package com.tencent.devops.metrics.pojo.qo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("查询错误码信息查询条件对象")
+@Schema(title = "查询错误码信息查询条件对象")
 data class QueryErrorCodeInfoQO(
-    @ApiModelProperty("插件代码")
+    @get:Schema(title = "插件代码")
     val atomCode: String,
-    @ApiModelProperty("错误类型")
+    @get:Schema(title = "错误类型")
     val errorTypes: List<Int>?,
-    @ApiModelProperty("搜索关键字")
+    @get:Schema(title = "搜索关键字")
     val keyword: String?,
-    @ApiModelProperty("页码")
+    @get:Schema(title = "页码")
     val page: Int = 1,
-    @ApiModelProperty("页数")
+    @get:Schema(title = "页数")
     val pageSize: Int = 10
 )

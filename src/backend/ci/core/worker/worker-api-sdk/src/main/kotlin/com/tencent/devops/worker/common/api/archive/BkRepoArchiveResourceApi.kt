@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,6 +29,7 @@ package com.tencent.devops.worker.common.api.archive
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.tencent.bkrepo.repository.pojo.token.TokenType
 import com.tencent.devops.artifactory.constant.REALM_BK_REPO
 import com.tencent.devops.artifactory.pojo.enums.FileTypeEnum
 import com.tencent.devops.common.api.exception.RemoteServiceException
@@ -37,6 +38,7 @@ import com.tencent.devops.common.api.pojo.ErrorCode
 import com.tencent.devops.common.api.pojo.ErrorType
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.api.util.MessageUtil
+import com.tencent.devops.common.util.HttpRetryUtils
 import com.tencent.devops.process.pojo.BuildVariables
 import com.tencent.devops.worker.common.api.AbstractBuildResourceApi
 import com.tencent.devops.worker.common.api.ApiPriority
@@ -101,13 +103,18 @@ class BkRepoArchiveResourceApi : AbstractBuildResourceApi(), ArchiveSDKApi {
         ).map { it.fullPath }
     }
 
-    private fun uploadBkRepoCustomize(file: File, destPath: String, buildVariables: BuildVariables) {
+    private fun uploadBkRepoCustomize(
+        file: File,
+        destPath: String,
+        buildVariables: BuildVariables,
+        metadata: Map<String, String>
+    ) {
         val bkRepoPath = destPath.removeSuffix("/") + "/" + file.name
         val url = "/bkrepo/api/build/generic/${buildVariables.projectId}/custom/$bkRepoPath"
         val request = buildPut(
             url,
             file.asRequestBody("application/octet-stream".toMediaTypeOrNull()),
-            bkrepoResourceApi.getUploadHeader(file, buildVariables, true)
+            bkrepoResourceApi.getUploadHeader(file, buildVariables, true, customMetadata = metadata)
         )
         val message = MessageUtil.getMessageByLocale(
             UPLOAD_CUSTOM_FILE_FAILED,
@@ -127,7 +134,13 @@ class BkRepoArchiveResourceApi : AbstractBuildResourceApi(), ArchiveSDKApi {
         }
     }
 
-    override fun uploadCustomize(file: File, destPath: String, buildVariables: BuildVariables, token: String?) {
+    override fun uploadCustomize(
+        file: File,
+        destPath: String,
+        buildVariables: BuildVariables,
+        token: String?,
+        metadata: Map<String, String>
+    ) {
         if (!token.isNullOrBlank()) {
             val relativePath = destPath.removePrefix("/").removePrefix("./").removeSuffix("/")
             val destFullPath = "/$relativePath/${file.name}"
@@ -138,14 +151,20 @@ class BkRepoArchiveResourceApi : AbstractBuildResourceApi(), ArchiveSDKApi {
                 destFullPath = destFullPath,
                 token = token,
                 buildVariables = buildVariables,
-                parseAppMetadata = true
+                parseAppMetadata = true,
+                metadata = metadata
             )
         } else {
-            uploadBkRepoCustomize(file, destPath, buildVariables)
+            uploadBkRepoCustomize(file, destPath, buildVariables, metadata)
         }
     }
 
-    override fun uploadPipeline(file: File, buildVariables: BuildVariables, token: String?) {
+    override fun uploadPipeline(
+        file: File,
+        buildVariables: BuildVariables,
+        token: String?,
+        metadata: Map<String, String>
+    ) {
         if (!token.isNullOrBlank()) {
             val destFullPath = "/${buildVariables.pipelineId}/${buildVariables.buildId}/${file.name}"
             bkrepoResourceApi.uploadFileByToken(
@@ -155,22 +174,23 @@ class BkRepoArchiveResourceApi : AbstractBuildResourceApi(), ArchiveSDKApi {
                 destFullPath = destFullPath,
                 token = token,
                 buildVariables = buildVariables,
-                parseAppMetadata = true
+                parseAppMetadata = true,
+                metadata = metadata
             )
         } else {
-            uploadBkRepoPipeline(file, buildVariables)
+            uploadBkRepoPipeline(file, buildVariables, metadata)
         }
         bkrepoResourceApi.setPipelineMetadata("pipeline", buildVariables)
     }
 
-    private fun uploadBkRepoPipeline(file: File, buildVariables: BuildVariables) {
+    private fun uploadBkRepoPipeline(file: File, buildVariables: BuildVariables, metadata: Map<String, String>) {
         logger.info("upload file >>> ${file.name}")
         val url = "/bkrepo/api/build/generic/${buildVariables.projectId}/pipeline/${buildVariables.pipelineId}/" +
             "${buildVariables.buildId}/${file.name}"
         val request = buildPut(
             url,
             file.asRequestBody("application/octet-stream".toMediaTypeOrNull()),
-            bkrepoResourceApi.getUploadHeader(file, buildVariables, true)
+            bkrepoResourceApi.getUploadHeader(file, buildVariables, true, customMetadata = metadata)
         )
         val message = MessageUtil.getMessageByLocale(
             UPLOAD_PIPELINE_FILE_FAILED,
@@ -307,5 +327,29 @@ class BkRepoArchiveResourceApi : AbstractBuildResourceApi(), ArchiveSDKApi {
         )
         val responseContent = request(request, "upload file[$fileName] failed")
         return objectMapper.readValue(responseContent)
+    }
+
+    override fun getRepoToken(
+        userId: String,
+        projectId: String,
+        repoName: String,
+        path: String,
+        type: TokenType,
+        expireSeconds: Long
+    ): String? {
+        return if (bkrepoResourceApi.tokenAccess()) {
+            HttpRetryUtils.retry(retryTime = 3, retryPeriodMills = 1000) {
+                bkrepoResourceApi.createBkRepoTemporaryToken(
+                    userId = userId,
+                    projectId = projectId,
+                    repoName = repoName,
+                    path = path,
+                    type = type,
+                    expireSeconds = expireSeconds
+                )
+            }
+        } else {
+            null
+        }
     }
 }

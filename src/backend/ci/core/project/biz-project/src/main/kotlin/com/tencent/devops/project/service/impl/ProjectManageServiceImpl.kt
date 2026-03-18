@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -37,13 +37,21 @@ import org.springframework.stereotype.Service
 class ProjectManageServiceImpl @Autowired constructor(
     private val redisOperation: RedisOperation
 ) : ProjectManageService {
-    override fun lockProjectPipelineBuildPermission(userId: String, projectId: String): Boolean {
-        redisOperation.addSetValue(BkApiUtil.getApiAccessLimitProjectsKey(), projectId)
+    override fun lockProjectPipelineBuildPermission(userId: String, projectId: String, pipelineId: String?): Boolean {
+        if (pipelineId.isNullOrBlank()) {
+            redisOperation.addSetValue(BkApiUtil.getApiAccessLimitProjectsKey(), projectId)
+        } else {
+            redisOperation.addSetValue(BkApiUtil.getApiAccessLimitPipelinesKey(), pipelineId)
+        }
         return true
     }
 
-    override fun unlockProjectPipelineBuildPermission(userId: String, projectId: String): Boolean {
-        redisOperation.removeSetMember(BkApiUtil.getApiAccessLimitProjectsKey(), projectId)
+    override fun unlockProjectPipelineBuildPermission(userId: String, projectId: String, pipelineId: String?): Boolean {
+        if (pipelineId.isNullOrBlank()) {
+            redisOperation.removeSetMember(BkApiUtil.getApiAccessLimitProjectsKey(), projectId)
+        } else {
+            redisOperation.removeSetMember(BkApiUtil.getApiAccessLimitPipelinesKey(), pipelineId)
+        }
         return true
     }
 }

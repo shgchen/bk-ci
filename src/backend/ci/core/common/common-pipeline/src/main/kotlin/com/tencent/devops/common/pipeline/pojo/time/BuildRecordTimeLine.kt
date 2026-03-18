@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,23 +27,22 @@
 
 package com.tencent.devops.common.pipeline.pojo.time
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("各项执行耗时时刻")
+@Schema(title = "各项执行耗时时刻")
 data class BuildRecordTimeLine(
-    @ApiModelProperty("执行耗时时刻，计算结果需成对", required = false)
+    @get:Schema(title = "执行耗时时刻，计算结果需成对", required = false)
     var executeCostMoments: MutableList<Moment> = mutableListOf(),
-    @ApiModelProperty("等待耗时时刻，计算结果需成对", required = false)
+    @get:Schema(title = "等待耗时时刻，计算结果需成对", required = false)
     var waitCostMoments: MutableList<Moment> = mutableListOf(),
-    @ApiModelProperty("排队耗时（流水线并发和Job互斥）时刻，计算结果需成对", required = false)
+    @get:Schema(title = "排队耗时（流水线并发和Job互斥）时刻，计算结果需成对", required = false)
     var queueCostMoments: MutableList<Moment> = mutableListOf()
 ) {
-    @ApiModel("时间戳对")
+    @Schema(title = "时间戳对")
     data class Moment(
-        @ApiModelProperty("开始时间")
+        @get:Schema(title = "开始时间")
         val startTime: Long,
-        @ApiModelProperty("结束时间")
+        @get:Schema(title = "结束时间")
         val endTime: Long
     )
 }

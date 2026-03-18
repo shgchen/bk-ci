@@ -24,6 +24,7 @@ bk-ci提供了流水线、代码检查、代码库、凭证管理、环境管理
 - **研发商店**：由流水线插件和流水线模板组成，插件用于对接企业内部的各种第三方服务，模板助力企业内部的研发流程规范化
 - **编译加速**：基于蓝鲸自研加速引擎，支持C/C++编译、UE4 代码编译、UE4 Shader 编译等多场景下的加速，让构建任务飞起来
 - **制品库**：基于分布式存储，可无限扩展，数据持久化使用对象存储，支持COS、S3。功能包含制品扫描、分发、晋级、代理、包管理等，提供多种依赖源仓库，如generic(二进制文件)、maven、npm、pypi、oci、docker、helm、composer、nuget
+- **云桌面**：基于视频流技术的云端虚拟桌面服务，提供高性能图形化界面访问能力，支持远程使用图形化编译工具进行代码开发和编译
 
 ## Overview
 - [架构设计](docs/overview/architecture.md)
@@ -59,6 +60,8 @@ bk-ci提供了流水线、代码检查、代码库、凭证管理、环境管理
 - [BK-JOB](https://github.com/Tencent/bk-job)：蓝鲸作业平台(Job)是一套运维脚本管理系统，具备海量任务并发处理能力。
 - [BK-PaaS](https://github.com/Tencent/bk-PaaS)：蓝鲸PaaS平台是一个开放式的开发平台，让开发者可以方便快捷地创建、开发、部署和管理SaaS应用。
 - [BK-SOPS](https://github.com/Tencent/bk-sops)：蓝鲸标准运维（SOPS）是通过可视化的图形界面进行任务流程编排和执行的系统，是蓝鲸体系中一款轻量级的调度编排类SaaS产品。
+- [BK-Repo](https://github.com/Tencentblueking/bk-repo)：蓝鲸制品库平台是一套为企业提供各种类型制品包存储、代理、分发、晋级、扫描、依赖包管理的持续交付平台。
+- [BK-Turbo](https://github.com/Tencentblueking/bk-turbo): 蓝鲸编译加速平台为CI场景下提供UE、C/C++等多种语言的编译加速服务能力
 
 ## Contributing
 - 关于 bk-ci 分支管理、issue 以及 pr 规范，请阅读 [Contributing](CONTRIBUTING.md)

@@ -7,6 +7,7 @@ import io.mockk.MockKMatcherScope
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
+import java.lang.reflect.InvocationTargetException
 import org.apache.commons.lang3.reflect.MethodUtils
 import org.jooq.DSLContext
 import org.jooq.Record
@@ -19,8 +20,7 @@ import org.jooq.tools.jdbc.MockConnection
 import org.junit.jupiter.api.BeforeAll
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.springframework.data.redis.core.RedisCallback
-import java.lang.reflect.InvocationTargetException
+import org.springframework.data.redis.core.script.RedisScript
 import kotlin.reflect.KClass
 
 open class BkCiAbstractTest {
@@ -95,14 +95,24 @@ open class BkCiAbstractTest {
         @BeforeAll
         @SuppressWarnings("TooGenericExceptionThrown")
         fun mockRedisOperation() {
-            every { redisOperation.execute(any<RedisCallback<*>>()) } answers {
-                val argStr = args[0]!!::class.toString()
-                if (argStr.contains("RedisLock")) {
-                    return@answers true
-                } else {
-                    throw Exception("redisOperation.execute must mock by self")
-                }
+            every {
+                redisOperation.setNxEx(
+                    key = any(),
+                    value = any(),
+                    expiredInSecond = any(),
+                    isRedisLock = any()
+                )
+            } answers {
+                true
             }
+            every {
+                redisOperation.execute(
+                    script = any<RedisScript<Long>>(),
+                    keys = any(),
+                    args = anyVararg(),
+                    isRedisLock = any()
+                )
+            } returns 1L
         }
     }
 }

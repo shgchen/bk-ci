@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -25,6 +25,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 import nu.studer.gradle.jooq.JooqGenerate
+import utils.DatabaseUtil
+import utils.ModuleUtil
 
 plugins {
     id("nu.studer.jooq")
@@ -34,43 +36,17 @@ val jooqGenerator by configurations
 val api by configurations
 
 dependencies {
-    jooqGenerator("mysql:mysql-connector-java:8.0.28")
+    jooqGenerator("com.mysql:mysql-connector-j")
     api("org.jooq:jooq")
 }
 
-var moduleNames = when (val moduleName = name.split("-")[1]) {
-    "misc" -> {
-        listOf("process", "project", "repository", "dispatch", "plugin", "quality", "artifactory", "environment")
-    }
-
-    "statistics" -> {
-        listOf("process", "project", "openapi")
-    }
-
-    "lambda" -> {
-        listOf("process", "project", "lambda", "store")
-    }
-
-    else -> listOf(moduleName)
-}
-
-if (name == "model-dispatch-kubernetes") {
-    moduleNames = listOf("dispatch_kubernetes")
-} else if (name == "model-dispatch-devcloud-tencent") {
-    moduleNames = listOf("dispatch_devcloud", "dispatch_macos", "dispatch_windows")
-}
-
-val mysqlPrefix: String? = System.getProperty("mysqlPrefix") ?: System.getenv("mysqlPrefix")
+val bkModuleName = ModuleUtil.getBkModuleName(project.name, project.findProperty("i18n.module.name")?.toString())
+val moduleNames = ModuleUtil.getBkActualModuleNames(bkModuleName)
 
 jooq {
     configurations {
         moduleNames.forEach { moduleName ->
-            val databaseName = if (mysqlPrefix != null && mysqlPrefix != "") {
-                logger.debug("jooq build env : $mysqlPrefix")
-                mysqlPrefix + moduleName
-            } else {
-                "${project.extra["DB_PREFIX"]}$moduleName"
-            }
+            val databaseName = DatabaseUtil.getDatabaseName(moduleName, project.extra["DB_PREFIX"].toString())
 
             val specialModule = moduleNames.size != 1
             val taskName = if (specialModule) "${moduleName}Genenrate" else "genenrate"
@@ -82,33 +58,20 @@ jooq {
             create(taskName) {
                 jooqConfiguration.apply {
                     jdbc.apply {
-                        var mysqlURL = System.getProperty("${moduleName}MysqlURL") ?: System.getProperty("mysqlURL")
-                        var mysqlUser = System.getProperty("${moduleName}MysqlUser") ?: System.getProperty("mysqlUser")
-                        var mysqlPasswd =
-                            System.getProperty("${moduleName}MysqlPasswd") ?: System.getProperty("mysqlPasswd")
+                        var (mysqlURL, mysqlUser, mysqlPasswd) = DatabaseUtil.getMysqlInfo(
+                            moduleName = moduleName,
+                            defaultMysqlURL = project.extra["DB_HOST"]?.toString(),
+                            defaultMysqlUser = project.extra["DB_USERNAME"]?.toString(),
+                            defaultMysqlPasswd = project.extra["DB_PASSWORD"]?.toString()
+                        )
 
-                        if (mysqlURL == null) {
-                            mysqlURL = System.getenv("${moduleName}MysqlURL") ?: System.getenv("mysqlURL")
-                            mysqlUser =
-                                System.getenv("${moduleName}MysqlUser") ?: System.getenv("mysqlUser")
-                            mysqlPasswd =
-                                System.getenv("${moduleName}MysqlPasswd") ?: System.getenv("mysqlPasswd")
-                        }
-
-                        if (mysqlURL == null) {
-                            logger.debug("use default properties.")
-                            mysqlURL = project.extra["DB_HOST"]?.toString()
-                            mysqlUser = project.extra["DB_USERNAME"]?.toString()
-                            mysqlPasswd = project.extra["DB_PASSWORD"]?.toString()
-                        }
-
-                        logger.debug("moduleName : $moduleName")
-                        logger.debug("mysqlURL : $mysqlURL")
-                        logger.debug("mysqlUser : $mysqlUser")
-                        logger.debug("mysqlPasswd : ${mysqlPasswd?.substring(0, 3)}****")
-
+                        println("moduleName : $moduleName")
+                        println("mysqlURL : $mysqlURL")
+                        println("mysqlUser : $mysqlUser")
+                        println("mysqlPasswd : ${mysqlPasswd.substring(0, 3)}****")
+                        val connectionMysqlURL = mysqlURL.split(",")[0]
                         driver = "com.mysql.cj.jdbc.Driver"
-                        url = "jdbc:mysql://$mysqlURL/$databaseName?useSSL=false"
+                        url = "jdbc:mysql://$connectionMysqlURL/$databaseName?useSSL=false"
                         user = mysqlUser
                         password = mysqlPasswd
                     }
@@ -117,6 +80,7 @@ jooq {
                         database.apply {
                             name = "org.jooq.meta.mysql.MySQLDatabase"
                             inputSchema = databaseName
+                            isUnsignedTypes = false
                             withIncludeRoutines(false) // 兼容"denied to user for table 'proc'"错误
                         }
 
@@ -140,7 +104,7 @@ jooq {
     }
 }
 
-tasks.getByName<AbstractCompile>("compileKotlin") {
+tasks.getByName("compileKotlin") {
     tasks.matching { it is JooqGenerate }.forEach {
         dependsOn(it.name)
     }

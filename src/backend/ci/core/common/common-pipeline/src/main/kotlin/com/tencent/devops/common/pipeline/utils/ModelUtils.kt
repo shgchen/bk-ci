@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -41,6 +41,10 @@ import com.tencent.devops.common.pipeline.pojo.element.Element
 import com.tencent.devops.common.pipeline.pojo.element.RunCondition
 import com.tencent.devops.common.pipeline.pojo.element.trigger.ManualTriggerElement
 import com.tencent.devops.common.pipeline.pojo.element.trigger.RemoteTriggerElement
+import com.tencent.devops.common.pipeline.template.ITemplateModel
+import com.tencent.devops.common.pipeline.template.JobTemplateModel
+import com.tencent.devops.common.pipeline.template.StageTemplateModel
+import com.tencent.devops.common.pipeline.template.StepTemplateModel
 
 @Suppress("ComplexMethod")
 object ModelUtils {
@@ -83,7 +87,7 @@ object ModelUtils {
 
     fun canManualStartup(triggerContainer: TriggerContainer): Boolean {
         triggerContainer.elements.forEach {
-            if (it is ManualTriggerElement && it.isElementEnable()) {
+            if (it is ManualTriggerElement && it.elementEnabled()) {
                 return true
             }
         }
@@ -92,7 +96,7 @@ object ModelUtils {
 
     fun canRemoteStartup(triggerContainer: TriggerContainer): Boolean {
         triggerContainer.elements.forEach {
-            if (it is RemoteTriggerElement && it.isElementEnable()) {
+            if (it is RemoteTriggerElement && it.elementEnabled()) {
                 return true
             }
         }
@@ -101,7 +105,7 @@ object ModelUtils {
 
     fun stageNeedPause(triggerContainer: TriggerContainer): Boolean {
         triggerContainer.elements.forEach {
-            if (it is RemoteTriggerElement && it.isElementEnable()) {
+            if (it is RemoteTriggerElement && it.elementEnabled()) {
                 return true
             }
         }
@@ -109,6 +113,9 @@ object ModelUtils {
     }
 
     fun refreshCanRetry(model: Model) {
+        // #11143 如果最后一个stage是finally stage，则在finally stage运行时不显示前序的重试/跳过按钮
+        val lastStage = model.stages.last()
+        if (lastStage.finally && BuildStatus.parse(lastStage.status).isRunning()) return
         model.stages.forEach { s ->
             val stageStatus = BuildStatus.parse(s.status)
             s.canRetry = stageStatus.isFailure() || stageStatus.isCancel()
@@ -265,5 +272,38 @@ object ModelUtils {
                 }
             }
         }
+    }
+
+    /**
+     * 获取模型下的插件列表
+     * @param model 模型
+     * @return 插件列表
+     */
+    fun getModelAtoms(
+        model: Model
+    ): MutableSet<String> {
+        val atomCodes = mutableSetOf<String>()
+        model.stages.forEach { stage ->
+            stage.containers.forEach { container ->
+                container.elements.forEach { element ->
+                    atomCodes.add(element.getAtomCode())
+                }
+            }
+        }
+        return atomCodes
+    }
+
+    fun getTemplateModelAtoms(templateModel: ITemplateModel): MutableSet<String> = when (templateModel) {
+        is Model -> getModelAtoms(templateModel)
+        is StageTemplateModel -> templateModel.stages
+            .flatMap { it.containers }
+            .flatMap { it.elements }
+            .mapTo(mutableSetOf()) { it.getAtomCode() }
+        is JobTemplateModel -> templateModel.containers
+            .flatMap { it.elements }
+            .mapTo(mutableSetOf()) { it.getAtomCode() }
+        is StepTemplateModel -> templateModel.container.elements
+            .mapTo(mutableSetOf()) { it.getAtomCode() }
+        else -> mutableSetOf()
     }
 }

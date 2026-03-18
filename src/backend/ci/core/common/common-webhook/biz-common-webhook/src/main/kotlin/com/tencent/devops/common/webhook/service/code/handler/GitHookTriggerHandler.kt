@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,12 +29,9 @@ package com.tencent.devops.common.webhook.service.code.handler
 
 import com.tencent.devops.common.webhook.pojo.code.CodeWebhookEvent
 import com.tencent.devops.common.webhook.pojo.code.WebHookParams
-import com.tencent.devops.common.webhook.service.code.filter.BranchFilter
 import com.tencent.devops.common.webhook.service.code.filter.EventTypeFilter
 import com.tencent.devops.common.webhook.service.code.filter.GitUrlFilter
-import com.tencent.devops.common.webhook.service.code.filter.UserFilter
 import com.tencent.devops.common.webhook.service.code.filter.WebhookFilter
-import com.tencent.devops.common.webhook.util.WebhookUtils
 import com.tencent.devops.repository.pojo.Repository
 
 interface GitHookTriggerHandler<T : CodeWebhookEvent> : CodeWebhookTriggerHandler<T> {
@@ -93,22 +90,9 @@ interface GitHookTriggerHandler<T : CodeWebhookEvent> : CodeWebhookTriggerHandle
             val eventTypeFilter = EventTypeFilter(
                 pipelineId = pipelineId,
                 triggerOnEventType = getEventType(),
-                eventType = eventType,
-                action = getAction(event)
+                eventType = eventType
             )
-            val userFilter = UserFilter(
-                pipelineId = pipelineId,
-                triggerOnUser = getUsername(event),
-                includedUsers = WebhookUtils.convert(includeUsers),
-                excludedUsers = WebhookUtils.convert(excludeUsers)
-            )
-            val branchFilter = BranchFilter(
-                pipelineId = pipelineId,
-                triggerOnBranchName = getBranchName(event),
-                includedBranches = WebhookUtils.convert(branchName),
-                excludedBranches = WebhookUtils.convert(excludeBranchName)
-            )
-            return listOf(urlFilter, eventTypeFilter, userFilter, branchFilter)
+            return listOf(urlFilter, eventTypeFilter)
         }
     }
 }

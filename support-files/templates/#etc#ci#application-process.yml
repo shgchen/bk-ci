@@ -4,7 +4,12 @@ spring:
     # 数据源配置（勿随便变更配置项的顺序）
     dataSourceConfigs:
       - index: 0
-        url: jdbc:mysql://__BK_CI_MYSQL_ADDR__/devops_ci_process?useSSL=false&autoReconnect=true&serverTimezone=GMT%2B8&useUnicode=true&characterEncoding=utf8&allowMultiQueries=true&sessionVariables=sql_mode=%27STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION%27
+        url: jdbc:mysql://__BK_CI_MYSQL_ADDR__/devops_ci_process?useSSL=false&autoReconnect=true&serverTimezone=GMT%2B8&useUnicode=true&characterEncoding=utf8&allowMultiQueries=true&sessionVariables=sql_mode=%27STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION%27
+        username: __BK_CI_MYSQL_USER__
+        password: __BK_CI_MYSQL_PASSWORD__
+    archiveDataSourceConfigs:
+      - index: 0
+        url: jdbc:mysql://__BK_CI_MYSQL_ADDR__/devops_ci_archive_process?useSSL=false&autoReconnect=true&serverTimezone=GMT%2B8&useUnicode=true&characterEncoding=utf8&allowMultiQueries=true&sessionVariables=sql_mode=%27STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION%27
         username: __BK_CI_MYSQL_USER__
         password: __BK_CI_MYSQL_PASSWORD__
 
@@ -89,7 +94,12 @@ scm:
 sharding:
   databaseShardingStrategy:
     algorithmClassName: "com.tencent.devops.process.sharding.BkProcessDatabaseShardingAlgorithm"
+    archiveAlgorithmClassName: "com.tencent.devops.process.sharding.BkProcessArchiveDatabaseShardingAlgorithm"
     shardingField: PROJECT_ID
+  tableShardingStrategy:
+    archiveAlgorithmClassName: "com.tencent.devops.process.sharding.BkProcessArchiveTableShardingAlgorithm"
+    shardingField: PROJECT_ID
+  archiveFlag: Y
 
 stream:
   scmType: __BK_CI_STREAM_SCM_TYPE__
@@ -98,3 +108,7 @@ api:
   project:
     permission:
       switch: true
+
+project:
+  callback:
+    black-ports: 21,22,23,25,69,135,137,138,139,161,162,389,465,514,587,636,873,1099,2181,2375,2376,3306,3389,4848,5432,5900,5901,6379,7001,7002,9200,9300,10050,10051,10250,10255,11211,27017,36000,50070,50075,56000

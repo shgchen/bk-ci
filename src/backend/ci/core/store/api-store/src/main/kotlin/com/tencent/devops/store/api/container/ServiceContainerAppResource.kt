@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,51 +30,51 @@ package com.tencent.devops.store.api.container
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.store.pojo.app.BuildEnv
 import com.tencent.devops.store.pojo.app.ContainerAppWithVersion
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["SERVICE_CONTAINER_APP"], description = "服务-容器-app")
+@Tag(name = "SERVICE_CONTAINER_APP", description = "服务-容器-app")
 @Path("/service/containers")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface ServiceContainerAppResource {
 
-    @ApiOperation("获取container对应的所有APP")
+    @Operation(summary = "获取container对应的所有APP")
     @GET
     @Path("/apps")
     fun listApp(
-        @ApiParam("系统", required = true)
+        @Parameter(description = "系统", required = true)
         @QueryParam("os")
         os: String
     ): Result<List<ContainerAppWithVersion>>
 
-    @ApiOperation("获取container对应的APP")
+    @Operation(summary = "获取container对应的APP")
     @GET
     @Path("/getApps")
     fun getApp(
-        @ApiParam("系统", required = true)
+        @Parameter(description = "系统", required = true)
         @QueryParam("os")
         os: String
     ): Result<List<BuildEnv>>
 
-    @ApiOperation("构建机环境变量")
+    @Operation(summary = "构建机环境变量")
     @GET
     @Path("/getBuildEnv")
     fun getBuildEnv(
-        @ApiParam("环境变量名称", required = true)
+        @Parameter(description = "环境变量名称", required = true)
         @QueryParam("name")
         name: String,
-        @ApiParam("环境变量版本", required = true)
+        @Parameter(description = "环境变量版本", required = true)
         @QueryParam("version")
         version: String,
-        @ApiParam("操作系统名称", required = true)
+        @Parameter(description = "操作系统名称", required = true)
         @QueryParam("os")
         os: String
     ): Result<BuildEnv?>

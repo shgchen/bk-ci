@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -53,6 +53,9 @@ data class StageContext(
     var concurrency: Int = 0,
     val maxConcurrency: Int = 20, // #5109 并发控制埋点准备
     val pipelineAsCodeEnabled: Boolean? = null, // YAML流水线功能开关
+    // Agent复用互斥的最后一波job，如果是不为空且为0就可以解锁互斥锁
+    var agentReuseMutexEndJob: MutableMap<String, Int>? = null,
+    val debug: Boolean, // 是否为调试构建
     override var cmdFlowSeq: Int = 0, // 命令序号
     override val variables: Map<String, String>, // 变量
     override val watcher: Watcher, // 监控对象

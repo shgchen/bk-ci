@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,22 +28,22 @@
 package com.tencent.devops.store.api.atom
 
 import com.tencent.devops.common.api.pojo.Result
-import com.tencent.devops.store.pojo.common.Classify
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
+import com.tencent.devops.store.pojo.common.classify.Classify
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["USER_PIPELINE_ATOM_CLASSIFY"], description = "流水线-插件分类")
+@Tag(name = "USER_PIPELINE_ATOM_CLASSIFY", description = "流水线-插件分类")
 @Path("/user/pipeline/atom/classify")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface UserAtomClassifyResource {
 
-    @ApiOperation("获取所有流水线插件分类信息")
+    @Operation(summary = "获取所有流水线插件分类信息")
     @GET
     @Path("/")
     fun getAllAtomClassifys(): Result<List<Classify>>

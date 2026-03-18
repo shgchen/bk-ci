@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,13 +27,12 @@
 
 package com.tencent.devops.store.pojo.common.index
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("指标等级信息")
+@Schema(title = "指标等级信息")
 data class StoreIndexLevelInfo(
-    @ApiModelProperty("等级名称", required = true)
+    @get:Schema(title = "等级名称", required = true)
     val levelName: String,
-    @ApiModelProperty("图标URL", required = true)
+    @get:Schema(title = "图标URL", required = true)
     val iconUrl: String
 )

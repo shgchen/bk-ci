@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C)) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C)) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -26,33 +26,26 @@
  */
 
 dependencies {
-    implementation(project(":core:common:common-auth:common-auth-mock"))
-    implementation(project(":core:common:common-auth:common-auth-blueking"))
-    implementation(project(":core:common:common-auth:common-auth-v3"))
     implementation(project(":core:common:common-archive"))
-
+    api(project(":core:common:common-auth:common-auth-provider"))
     implementation(project(":core:artifactory:biz-artifactory"))
-    implementation(project(":core:auth:biz-auth-blueking"))
     implementation(project(":core:dispatch:biz-dispatch"))
-    implementation(project(":core:dispatch-docker:biz-dispatch-docker-sample"))
     implementation(project(":core:environment:biz-environment"))
-    implementation(project(":core:image:biz-image"))
+    implementation(project(":core:misc:biz-image"))
     implementation(project(":core:log:biz-log-sample"))
     implementation(project(":core:misc:biz-misc-sample"))
     implementation(project(":core:notify:biz-notify"))
     implementation(project(":core:openapi:biz-openapi"))
-    implementation(project(":core:plugin:biz-plugin"))
+    implementation(project(":core:misc:biz-plugin"))
     implementation(project(":core:process:biz-engine"))
     implementation(project(":core:process:biz-process"))
     implementation(project(":core:project:biz-project-sample"))
     implementation(project(":core:quality:biz-quality"))
-    implementation(project(":core:repository:biz-repository-sample"))
-    implementation(project(":core:store:biz-store-sample"))
-    implementation(project(":core:store:biz-store-image-sample"))
-    implementation(project(":core:ticket:biz-ticket-sample"))
+    implementation(project(":core:ticket:biz-ticket"))
     implementation(project(":core:websocket:biz-websocket"))
+    implementation(project(":core:store:biz-store"))
 }
 
 configurations.all {
-    exclude(group = "javax.ws.rs", module = "jsr311-api")
+    exclude(group = "jakarta.ws.rs", module = "jsr311-api")
 }

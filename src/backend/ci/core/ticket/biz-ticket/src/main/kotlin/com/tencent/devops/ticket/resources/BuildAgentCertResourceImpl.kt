@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,8 +27,10 @@
 
 package com.tencent.devops.ticket.resources
 
+import com.tencent.bk.audit.annotations.AuditEntry
 import com.tencent.devops.common.api.exception.ParamBlankException
 import com.tencent.devops.common.api.pojo.Result
+import com.tencent.devops.common.auth.api.ActionId
 import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.ticket.api.BuildAgentCertResource
 import com.tencent.devops.ticket.pojo.CertAndroid
@@ -42,13 +44,15 @@ class BuildAgentCertResourceImpl @Autowired constructor(
     private val certService: CertService
 ) : BuildAgentCertResource {
 
+    @AuditEntry(actionId = ActionId.CERT_VIEW)
     override fun queryIos(
         projectId: String,
         agentId: String,
         secretKey: String,
         buildId: String,
         certId: String,
-        publicKey: String
+        publicKey: String,
+        padding: Boolean?
     ): Result<CertIOS> {
         if (buildId.isBlank()) {
             throw ParamBlankException("Invalid buildId")
@@ -59,16 +63,26 @@ class BuildAgentCertResourceImpl @Autowired constructor(
         if (publicKey.isBlank()) {
             throw ParamBlankException("Invalid publicKey")
         }
-        return Result(certService.queryIos(projectId, buildId, certId, publicKey))
+        return Result(
+            certService.queryIos(
+                projectId = projectId,
+                buildId = buildId,
+                certId = certId,
+                publicKey = publicKey,
+                padding = padding ?: false
+            )
+        )
     }
 
+    @AuditEntry(actionId = ActionId.CERT_VIEW)
     override fun queryAndroid(
         projectId: String,
         agentId: String,
         secretKey: String,
         buildId: String,
         certId: String,
-        publicKey: String
+        publicKey: String,
+        padding: Boolean?
     ): Result<CertAndroid> {
         if (buildId.isBlank()) {
             throw ParamBlankException("Invalid buildId")
@@ -84,7 +98,8 @@ class BuildAgentCertResourceImpl @Autowired constructor(
                 projectId = projectId,
                 buildId = buildId,
                 certId = certId,
-                publicKey = publicKey
+                publicKey = publicKey,
+                padding = padding ?: false
             )
         )
     }

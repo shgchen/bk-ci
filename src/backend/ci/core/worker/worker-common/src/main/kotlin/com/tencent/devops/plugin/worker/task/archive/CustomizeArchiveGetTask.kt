@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -39,7 +39,6 @@ import com.tencent.devops.process.utils.PIPELINE_START_USER_ID
 import com.tencent.devops.worker.common.api.ArtifactApiFactory
 import com.tencent.devops.worker.common.api.archive.ArchiveSDKApi
 import com.tencent.devops.worker.common.logger.LoggerService
-import com.tencent.devops.worker.common.service.RepoServiceFactory
 import com.tencent.devops.worker.common.task.ITask
 import com.tencent.devops.worker.common.task.TaskClassType
 import com.tencent.devops.worker.common.utils.TaskUtil
@@ -92,7 +91,7 @@ class CustomizeArchiveGetTask : ITask() {
         count = files.size
         LoggerService.addNormalLine("total $count file(s) found")
         files.forEachIndexed { index, (fileUrl, file) ->
-            val token = RepoServiceFactory.getInstance().getRepoToken(
+            val token = archiveGetResourceApi.getRepoToken(
                 userId = buildVariables.variables[PIPELINE_START_USER_ID] ?: "",
                 projectId = buildVariables.projectId,
                 repoName = "custom",

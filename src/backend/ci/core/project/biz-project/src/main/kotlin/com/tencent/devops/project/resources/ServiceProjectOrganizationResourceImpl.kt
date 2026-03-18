@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -32,6 +32,7 @@ import com.tencent.devops.project.api.service.ServiceProjectOrganizationResource
 import com.tencent.devops.project.pojo.DeptInfo
 import com.tencent.devops.project.pojo.OrganizationInfo
 import com.tencent.devops.project.pojo.Result
+import com.tencent.devops.project.pojo.StaffInfo
 import com.tencent.devops.project.pojo.enums.OrganizationType
 import com.tencent.devops.project.service.ProjectOrganizationService
 import org.springframework.beans.factory.annotation.Autowired
@@ -51,5 +52,9 @@ class ServiceProjectOrganizationResourceImpl @Autowired constructor(
 
     override fun getParentDeptInfos(deptId: String, level: Int): Result<List<DeptInfo>> {
         return Result(projectOrganizationService.getParentDeptInfos(deptId, level))
+    }
+
+    override fun getDeptStaffsWithLevel(deptId: String, level: Int): Result<List<StaffInfo>> {
+        return Result(projectOrganizationService.getDeptStaffsWithLevel(deptId, level))
     }
 }

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,13 +27,12 @@
 
 package com.tencent.devops.metrics.pojo.`do`
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("流水线stage耗时信息")
+@Schema(title = "流水线stage耗时信息")
 data class PipelineStageCostTimeInfoDO(
-    @ApiModelProperty("流水线名称")
+    @get:Schema(title = "流水线名称")
     val pipelineName: String,
-    @ApiModelProperty("stage平均耗时信息")
+    @get:Schema(title = "stage平均耗时信息")
     val stageAvgCostTimeInfos: List<StageAvgCostTimeInfoDO>
 )

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C)) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C)) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -31,24 +31,24 @@ dependencies {
     api(project(":core:common:common-client"))
     api(project(":core:common:common-redis"))
     api(project(":core:common:common-archive"))
-    api(project(":core:common:common-auth:common-auth-api"))
     api(project(":core:common:common-websocket"))
     api(project(":core:store:api-store"))
-    api(project(":core:store:api-store-image"))
     api(project(":core:dispatch:api-dispatch"))
     api(project(":core:project:api-project"))
     api(project(":core:repository:api-repository"))
     api(project(":core:artifactory:api-artifactory"))
     api(project(":core:process:api-process"))
-    api(project(":core:plugin:api-plugin"))
+    api(project(":core:misc:api-plugin"))
     api(project(":core:notify:api-notify"))
     api(project(":core:process:biz-base"))
     api(project(":core:log:api-log"))
     api(project(":core:common:common-webhook:biz-common-webhook"))
     api(project(":core:auth:api-auth"))
+    api(project(":core:common:common-pipeline-yaml"))
+    api(project(":core:common:common-codecc"))
     implementation("org.quartz-scheduler:quartz")
     api("org.springframework.boot:spring-boot-starter-websocket")
-    api("javax.websocket:javax.websocket-api")
+    api("jakarta.websocket:jakarta.websocket-api")
     api("io.undertow:undertow-servlet")
     api("io.undertow:undertow-websockets-jsr")
     api("io.github.resilience4j:resilience4j-circuitbreaker")

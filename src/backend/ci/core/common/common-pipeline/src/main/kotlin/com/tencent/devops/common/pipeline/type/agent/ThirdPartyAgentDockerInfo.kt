@@ -3,6 +3,7 @@ package com.tencent.devops.common.pipeline.type.agent
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.tencent.devops.common.api.util.EnvUtils
+import com.tencent.devops.common.pipeline.type.docker.ImageType
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -10,7 +11,10 @@ data class ThirdPartyAgentDockerInfo(
     var image: String,
     var credential: Credential?,
     var options: DockerOptions?,
-    var imagePullPolicy: String?
+    var imagePullPolicy: String?,
+    // 仅仅前端展示使用，不参与后端计算
+    val imageType: ImageType? = ImageType.THIRD,
+    val storeImage: ThirdPartyAgentDockerInfoStoreImage?
 )
 
 fun ThirdPartyAgentDockerInfo.replaceField(variables: Map<String, String>) {
@@ -32,6 +36,17 @@ fun ThirdPartyAgentDockerInfo.replaceField(variables: Map<String, String>) {
         } else {
             EnvUtils.parseEnv(options?.gpus, variables)
         }
+        options?.privileged = if (options?.privileged == null) {
+            null
+        } else {
+            EnvUtils.parseEnv(options?.privileged.toString(), variables).toBoolean()
+        }
+        options?.network = options?.network?.map { n -> EnvUtils.parseEnv(n, variables) }
+        options?.user = if (options?.user == null) {
+            null
+        } else {
+            EnvUtils.parseEnv(options?.user, variables)
+        }
     }
     if (!imagePullPolicy.isNullOrBlank()) {
         imagePullPolicy = EnvUtils.parseEnv(imagePullPolicy, variables)
@@ -46,7 +61,8 @@ data class Credential(
     var credentialId: String?,
     // 跨项目使用凭据相关信息
     val acrossTemplateId: String?,
-    val jobId: String?
+    val jobId: String?,
+    var credentialProjectId: String?
 )
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -54,7 +70,19 @@ data class Credential(
 data class DockerOptions(
     var volumes: List<String>?,
     var mounts: List<String>?,
-    var gpus: String?
+    var gpus: String?,
+    var privileged: Boolean?,
+    var network: List<String>?,
+    var user: String?,
+)
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
+data class ThirdPartyAgentDockerInfoStoreImage(
+    // 仅仅前端展示使用，不参与后端计算
+    var imageName: String?,
+    val imageCode: String,
+    val imageVersion: String?
 )
 
 // 第三方构建机docker类型，调度使用，会带有调度相关信息

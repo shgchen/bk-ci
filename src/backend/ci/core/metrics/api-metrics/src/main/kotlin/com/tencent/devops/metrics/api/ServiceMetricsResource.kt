@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -33,75 +33,93 @@ import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.web.annotation.BkField
 import com.tencent.devops.metrics.pojo.`do`.ComplianceInfoDO
 import com.tencent.devops.metrics.pojo.vo.BaseQueryReqVO
+import com.tencent.devops.metrics.pojo.vo.MaxJobConcurrencyVO
 import com.tencent.devops.metrics.pojo.vo.PipelineSumInfoVO
+import com.tencent.devops.metrics.pojo.vo.ProjectUserCountV0
 import com.tencent.devops.metrics.pojo.vo.QueryIntervalVO
 import com.tencent.devops.metrics.pojo.vo.ThirdPlatformOverviewInfoVO
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["SERVICE_METRICS"], description = "METRICS")
+@Tag(name = "SERVICE_METRICS", description = "METRICS")
 @Path("/service/metrics/")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface ServiceMetricsResource {
 
-    @ApiOperation("查询流水线汇总信息")
+    @Operation(summary = "查询流水线汇总信息")
     @Path("/summary_pipeline")
     @POST
     fun queryPipelineSumInfo(
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_PROJECT_ID)
         @BkField(required = true)
         projectId: String,
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @BkField(required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("查询条件", required = false)
+        @Parameter(description = "查询条件", required = false)
         baseQueryReq: BaseQueryReqVO?
     ): Result<PipelineSumInfoVO>
 
-    @ApiOperation("获取第三方汇总信息")
+    @Operation(summary = "获取第三方汇总信息")
     @Path("/summary_third_party")
     @GET
     fun queryPipelineSummaryInfo(
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_PROJECT_ID)
         @BkField(required = true)
         projectId: String,
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         @BkField(required = true)
         userId: String,
-        @ApiParam("开始时间", required = false)
+        @Parameter(description = "开始时间", required = false)
         @QueryParam("startTime")
         startTime: String?,
-        @ApiParam("结束时间", required = false)
+        @Parameter(description = "结束时间", required = false)
         @QueryParam("endTime")
         endTime: String?
     ): Result<ThirdPlatformOverviewInfoVO>
 
-    @ApiOperation("查询插件合规率信息")
+    @Operation(summary = "查询插件合规率信息")
     @Path("/compliance_atom")
     @POST
     fun queryAtomComplianceInfo(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         @BkField(required = true)
         userId: String,
-        @ApiParam("插件code", required = true)
+        @Parameter(description = "插件code", required = true)
         @QueryParam("atomCode")
         atomCode: String,
-        @ApiParam("查询区间视图", required = true)
+        @Parameter(description = "查询区间视图", required = true)
         queryIntervalVO: QueryIntervalVO
     ): Result<ComplianceInfoDO?>
+
+    @Operation(summary = "查询项目活跃用户数")
+    @Path("/get_project_active_user_count")
+    @POST
+    fun getProjectActiveUserCount(
+        @Parameter(description = "查询条件", required = false)
+        baseQueryReq: BaseQueryReqVO
+    ): Result<ProjectUserCountV0?>
+
+    @Operation(summary = "获取job最大并发")
+    @Path("/get_max_job_concurrency")
+    @POST
+    fun getMaxJobConcurrency(
+        @Parameter(description = "查询条件", required = false)
+        dispatchJobReq: BaseQueryReqVO
+    ): Result<MaxJobConcurrencyVO?>
 }

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,12 +28,11 @@
 package com.tencent.devops.auth.entity
 
 import com.tencent.devops.common.auth.api.pojo.EsbBaseReq
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel
+@Schema
 data class SearchRetrieveDeptEntity(
-    @ApiModelProperty("部门 ID")
+    @get:Schema(title = "部门 ID")
     val id: Int,
     override var bk_app_code: String,
     override var bk_app_secret: String,

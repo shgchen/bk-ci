@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -63,6 +63,7 @@ class PipelineBuildContainerDao {
                     SEQ,
                     CONTAINER_ID,
                     CONTAINER_HASH_ID,
+                    JOB_ID,
                     STATUS,
                     START_TIME,
                     END_TIME,
@@ -81,6 +82,7 @@ class PipelineBuildContainerDao {
                         buildContainer.seq,
                         buildContainer.containerId,
                         buildContainer.containerHashId,
+                        buildContainer.jobId,
                         buildContainer.status.ordinal,
                         buildContainer.startTime,
                         buildContainer.endTime,
@@ -103,6 +105,7 @@ class PipelineBuildContainerDao {
                 STAGE_ID,
                 CONTAINER_ID,
                 CONTAINER_HASH_ID,
+                JOB_ID,
                 MATRIX_GROUP_FLAG,
                 MATRIX_GROUP_ID,
                 CONTAINER_TYPE,
@@ -122,6 +125,7 @@ class PipelineBuildContainerDao {
                         it.stageId,
                         it.containerId,
                         it.containerHashId,
+                        it.jobId,
                         it.matrixGroupFlag,
                         it.matrixGroupId,
                         it.containerType,
@@ -153,6 +157,7 @@ class PipelineBuildContainerDao {
                     .set(CONTAINER_TYPE, it.containerType)
                     .set(CONTAINER_ID, it.containerId)
                     .set(CONTAINER_HASH_ID, it.containerHashId)
+                    .set(JOB_ID, it.jobId)
                     .set(STATUS, it.status.ordinal)
                     .set(START_TIME, it.startTime)
                     .set(END_TIME, it.endTime)
@@ -346,6 +351,8 @@ class PipelineBuildContainerDao {
                     containerType = containerType,
                     containerId = containerId,
                     containerHashId = containerHashId,
+                    containPostTaskFlag = controlOption.containPostTaskFlag,
+                    jobId = jobId,
                     matrixGroupFlag = matrixGroupFlag,
                     matrixGroupId = matrixGroupId,
                     seq = seq,

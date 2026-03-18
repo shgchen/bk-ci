@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,93 +29,156 @@ package com.tencent.devops.store.api.template
 
 import com.tencent.devops.common.api.auth.AUTH_HEADER_USER_ID
 import com.tencent.devops.common.api.pojo.Result
-import com.tencent.devops.store.pojo.common.StoreProcessInfo
+import com.tencent.devops.store.pojo.common.publication.StoreProcessInfo
 import com.tencent.devops.store.pojo.template.MarketTemplateRelRequest
+import com.tencent.devops.store.pojo.template.MarketTemplateReleaseReq
 import com.tencent.devops.store.pojo.template.MarketTemplateUpdateRequest
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.POST
-import javax.ws.rs.PUT
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import com.tencent.devops.store.pojo.template.MarketTemplateUpdateV2Request
+import com.tencent.devops.store.pojo.template.TemplateOfflineReq
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.PUT
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["USER_MARKET_TEMPLATE"], description = "模板")
+@Tag(name = "USER_MARKET_TEMPLATE", description = "模板")
 @Path("/user/market")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface UserTemplateReleaseResource {
 
-    @ApiOperation("关联模板")
+    @Operation(summary = "关联模板")
     @POST
     @Path("/templates/{templateCode}/store/rel")
     fun addMarketTemplate(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("模板代码", required = true)
+        @Parameter(description = "模板代码", required = true)
         @PathParam("templateCode")
         templateCode: String,
-        @ApiParam("关联模板请求报文体", required = true)
+        @Parameter(description = "关联模板请求报文体", required = true)
         marketTemplateRelRequest: MarketTemplateRelRequest
     ): Result<Boolean>
 
-    @ApiOperation("上架模板")
+    @Operation(summary = "上架模板")
     @PUT
     @Path("/desk/template/release")
     fun updateMarketTemplate(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("上架模板请求报文体", required = true)
+        @Parameter(description = "上架模板请求报文体", required = true)
         marketTemplateUpdateRequest: MarketTemplateUpdateRequest
     ): Result<String?>
 
-    @ApiOperation("根据模板版本ID获取模板版本进度")
+    @Operation(summary = "上架模板-v2")
+    @PUT
+    @Path("/desk/template/v2/release")
+    fun releaseMarketTemplate(
+        @Parameter(description = "userId", required = true)
+        @HeaderParam(AUTH_HEADER_USER_ID)
+        userId: String,
+        @Parameter(description = "上架模板请求报文体", required = true)
+        request: MarketTemplateUpdateV2Request
+    ): Result<String>
+
+    @Operation(summary = "上架模板版本-v2")
+    @PUT
+    @Path("/desk/template/v2/release/versions")
+    fun releaseMarketTemplateVersions(
+        @Parameter(description = "userId", required = true)
+        @HeaderParam(AUTH_HEADER_USER_ID)
+        userId: String,
+        @Parameter(description = "上架模板版本请求报文体", required = true)
+        request: MarketTemplateReleaseReq
+    ): Result<Boolean>
+
+    @Operation(summary = "根据模板版本ID获取模板版本进度")
     @GET
     @Path("/desk/template/release/process/{templateId}")
     fun getProcessInfo(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("templateId", required = true)
+        @Parameter(description = "templateId", required = true)
         @PathParam("templateId")
         templateId: String
     ): Result<StoreProcessInfo>
 
-    @ApiOperation("取消发布")
+    @Operation(summary = "根据模板版本ID获取模板版本进度-根据模板Code")
+    @GET
+    @Path("/desk/template/release/process/templateCodes/{templateCode}")
+    fun getProcessInfoByCode(
+        @Parameter(description = "userId", required = true)
+        @HeaderParam(AUTH_HEADER_USER_ID)
+        userId: String,
+        @Parameter(description = "templateCode", required = true)
+        @PathParam("templateCode")
+        templateCode: String
+    ): Result<StoreProcessInfo>
+
+    @Operation(summary = "取消发布")
     @PUT
     @Path("/desk/template/release/cancel/templateIds/{templateId}")
     fun cancelRelease(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("templateId", required = true)
+        @Parameter(description = "templateId", required = true)
         @PathParam("templateId")
         templateId: String
     ): Result<Boolean>
 
-    @ApiOperation("下架模板")
+    @Operation(summary = "取消发布-根据Code")
+    @PUT
+    @Path("/desk/template/release/cancel/templateCodes/{templateCode}")
+    fun cancelReleaseByCode(
+        @Parameter(description = "userId", required = true)
+        @HeaderParam(AUTH_HEADER_USER_ID)
+        userId: String,
+        @Parameter(description = "templateCode", required = true)
+        @PathParam("templateCode")
+        templateCode: String
+    ): Result<Boolean>
+
+    @Operation(summary = "下架模板")
     @PUT
     @Path("/desk/template/offline/templateCodes/{templateCode}/versions")
     fun offlineTemplate(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("模版代码", required = true)
+        @Parameter(description = "模版代码", required = true)
         @PathParam("templateCode")
         templateCode: String,
-        @ApiParam("版本号", required = false)
+        @Parameter(description = "版本号", required = false)
         @QueryParam("version")
         version: String?,
-        @ApiParam("原因", required = false)
+        @Parameter(description = "原因", required = false)
         @QueryParam("reason")
         reason: String?
+    ): Result<Boolean>
+
+    @Operation(summary = "下架模板v2")
+    @PUT
+    @Path("/desk/template/v2/offline/templateCodes/{templateCode}/versions")
+    fun offlineTemplateV2(
+        @Parameter(description = "userId", required = true)
+        @HeaderParam(AUTH_HEADER_USER_ID)
+        userId: String,
+        @Parameter(description = "模版代码", required = true)
+        @PathParam("templateCode")
+        templateCode: String,
+        @Parameter(description = "请求体", required = false)
+        request: TemplateOfflineReq
     ): Result<Boolean>
 }

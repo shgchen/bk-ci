@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -36,73 +36,73 @@ import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_VM_SEQ_ID
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.process.pojo.report.ReportEmail
 import com.tencent.devops.process.pojo.report.enums.ReportTypeEnum
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["BUILD_REPORT"], description = "构建-自定义报告")
+@Tag(name = "BUILD_REPORT", description = "构建-自定义报告")
 @Path("/build/reports")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Suppress("ALL")
 interface BuildReportResource {
 
-    @ApiOperation("创建自定义报告")
+    @Operation(summary = "创建自定义报告")
     // @Path("/tasks/{taskId}")
     @Path("/{taskId}")
     @POST
     fun create(
-        @ApiParam(value = "项目英文名，或者叫projectCode", required = true)
+        @Parameter(description = "项目英文名，或者叫projectCode", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_PROJECT_ID)
         projectId: String,
-        @ApiParam(value = "流水线ID", required = true)
+        @Parameter(description = "流水线ID", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_PIPELINE_ID)
         pipelineId: String,
-        @ApiParam(value = "构建ID", required = true)
+        @Parameter(description = "构建ID", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_BUILD_ID)
         buildId: String,
-        @ApiParam(value = "构建环境ID", required = true)
+        @Parameter(description = "构建环境ID", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_VM_SEQ_ID)
         vmSeqId: String,
-        @ApiParam(value = "构建机名称", required = true)
+        @Parameter(description = "构建机名称", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_VM_NAME)
         vmName: String,
-        @ApiParam(value = "构建机名称", required = true)
+        @Parameter(description = "构建机名称", required = true)
         @PathParam("taskId")
         taskId: String,
-        @ApiParam(value = "构建机名称", required = true)
+        @Parameter(description = "构建机名称", required = true)
         @QueryParam("indexFile")
         indexFile: String,
-        @ApiParam(value = "报告名称", required = true)
+        @Parameter(description = "报告名称", required = true)
         @QueryParam("name")
         name: String,
-        @ApiParam(value = "报告类型", required = true)
+        @Parameter(description = "报告类型", required = true)
         @QueryParam("reportType")
         reportType: ReportTypeEnum,
-        @ApiParam(value = "报告邮件", required = false)
+        @Parameter(description = "报告邮件", required = false)
         reportEmail: ReportEmail?
     ): Result<Boolean>
 
-    @ApiOperation("获取自定义报告根目录Url")
+    @Operation(summary = "获取自定义报告根目录Url")
     @Path("/{taskId}/rootUrl")
     @GET
     fun getRootUrl(
-        @ApiParam(value = "项目英文名", required = true)
+        @Parameter(description = "项目英文名", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_PROJECT_ID)
         projectId: String,
-        @ApiParam(value = "构建ID", required = true)
+        @Parameter(description = "构建ID", required = true)
         @HeaderParam(AUTH_HEADER_BUILD_ID)
         buildId: String,
-        @ApiParam(value = "构建机名称", required = true)
+        @Parameter(description = "构建机名称", required = true)
         @PathParam("taskId")
         taskId: String
     ): Result<String>

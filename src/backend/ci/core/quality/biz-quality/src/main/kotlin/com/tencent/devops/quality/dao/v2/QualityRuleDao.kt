@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -39,7 +39,7 @@ import org.jooq.Result
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
-import javax.ws.rs.NotFoundException
+import jakarta.ws.rs.NotFoundException
 
 @Repository
 @Suppress("ALL")
@@ -115,6 +115,7 @@ class QualityRuleDao {
                 .set(UPDATE_TIME, LocalDateTime.now())
                 .set(GATEWAY_ID, ruleRequest.gatewayId)
                 .where(ID.eq(ruleId))
+                .and(PROJECT_ID.eq(projectId))
                 .execute()
         }
         with(TQualityRuleMap.T_QUALITY_RULE_MAP) {
@@ -129,19 +130,21 @@ class QualityRuleDao {
         }
     }
 
-    fun updateEnable(dslContext: DSLContext, ruleId: Long, enable: Boolean) {
+    fun updateEnable(dslContext: DSLContext, projectId: String, ruleId: Long, enable: Boolean) {
         with(TQualityRule.T_QUALITY_RULE) {
             dslContext.update(this)
                 .set(ENABLE, enable)
                 .where(ID.eq(ruleId))
+                .and(PROJECT_ID.eq(projectId))
                 .execute()
         }
     }
 
-    fun delete(dslContext: DSLContext, ruleId: Long) {
+    fun delete(dslContext: DSLContext, projectId: String, ruleId: Long) {
         with(TQualityRule.T_QUALITY_RULE) {
             dslContext.deleteFrom(this)
                 .where(ID.eq(ruleId))
+                .and(PROJECT_ID.eq(projectId))
                 .execute()
         }
     }

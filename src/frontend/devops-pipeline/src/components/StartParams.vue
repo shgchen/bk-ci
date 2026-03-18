@@ -1,14 +1,33 @@
 <template>
-    <section class="startup-parameter-box" v-bkloading="{ isLoading }">
+    <section
+        class="startup-parameter-box"
+        v-bkloading="{ isLoading }"
+    >
+        <param-set
+            only-save-as-set
+            ref="paramSet"
+            is-start-up
+            :is-visible-version="isVisibleVersion"
+            :build-num="execDetail?.buildNum"
+            :all-params="buildParamProperities"
+        />
         <div class="startup-parameter-wrapper">
-            <div ref="parent" class="build-param-row" v-for="(param, index) in params" :key="index">
+            <div
+                ref="parent"
+                class="build-param-row"
+                v-for="(param, index) in params"
+                :key="index"
+            >
                 <span class="build-param-span">
-                    <span class="build-param-key-span" :title="param.key">
+                    <span
+                        class="build-param-key-span"
+                        :title="param.key"
+                    >
                         {{ param.key }}
                     </span>
                     <i
                         v-if="param.desc"
-                        v-bk-tooltips="param.desc"
+                        v-bk-tooltips="{ content: param.desc, allowHTML: false }"
                         class="devops-icon icon-question-circle"
                     />
                 </span>
@@ -44,7 +63,11 @@
                 :is-show.sync="isDetailShow"
                 @hidden="hideDetail"
             >
-                <div v-if="activeParam" slot="content" class="startup-param-detail-wrapper">
+                <div
+                    v-if="activeParam"
+                    slot="content"
+                    class="startup-param-detail-wrapper"
+                >
                     <p>{{ activeParam.key }}</p>
                     <pre>{{ activeParam.value }}</pre>
                 </div>
@@ -54,8 +77,13 @@
 </template>
 
 <script>
-    import { mapActions } from 'vuex'
+    import ParamSet from '@/components/ParamSet.vue'
+    import { allVersionKeyList } from '@/utils/pipelineConst'
+    import { mapActions, mapGetters } from 'vuex'
     export default {
+        components: {
+            ParamSet
+        },
         data () {
             return {
                 isLoading: false,
@@ -63,8 +91,19 @@
                 defaultParamMap: {},
                 activeParam: null,
                 isDetailShow: false,
-                overflowSpan: []
+                overflowSpan: [],
+                buildParamProperities: [],
+                isVisibleVersion: false
             }
+        },
+        computed: {
+            ...mapGetters('atom', {
+                execDetail: 'getExecDetail'
+            }),
+            archiveFlag () {
+                return this.$route.query.archiveFlag
+            }
+            
         },
         watch: {
             '$route.params.buildNo': function () {
@@ -75,7 +114,7 @@
             this.init()
         },
         methods: {
-            ...mapActions('atom', ['requestBuildParams']),
+            ...mapActions('atom', ['requestBuildParams', 'fetchBuildParamsByBuildId']),
             showDetail (param) {
                 this.isDetailShow = true
                 this.activeParam = param
@@ -87,12 +126,18 @@
                 try {
                     this.isLoading = true
                     const { projectId, pipelineId, buildNo: buildId } = this.$route.params
-                    const res = await this.requestBuildParams({
+                    const urlParams = {
                         projectId,
                         pipelineId,
-                        buildId
-                    })
-
+                        buildId,
+                        ...(this.archiveFlag ? { archiveFlag: this.archiveFlag } : {})
+                    }
+                    const [res, buildParamProperities] = await Promise.all([
+                        this.requestBuildParams(urlParams),
+                        this.fetchBuildParamsByBuildId(urlParams)
+                    ])
+                    this.buildParamProperities = buildParamProperities
+                    this.isVisibleVersion = buildParamProperities.some(item => allVersionKeyList.includes(item.id))
                     this.defaultParamMap = res.reduce((acc, item) => {
                         acc[item.key] = item.defaultValue
                         return acc
@@ -134,11 +179,13 @@
     width: 100%;
     height: 100%;
     padding: 24px;
+    overflow: scroll;
 }
 .startup-parameter-wrapper {
   border-radius: 2px;
   width: fit-content;
   width: 100%;
+  margin-top: 12px;
   .build-param-row {
     display: flex;
     align-items: center;

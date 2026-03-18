@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -42,166 +42,166 @@ import com.tencent.devops.process.pojo.template.TemplateInstanceParams
 import com.tencent.devops.process.pojo.template.TemplateInstanceUpdate
 import com.tencent.devops.process.pojo.template.TemplateOperationRet
 import com.tencent.devops.process.pojo.template.TemplateInstancePage
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.POST
-import javax.ws.rs.PUT
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.PUT
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["USER_TEMPLATE_INSTANCE"], description = "用户-流水模板-实例化资源")
+@Tag(name = "USER_TEMPLATE_INSTANCE", description = "用户-流水模板-实例化资源")
 @Path("/user/templateInstances")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Suppress("ALL")
 interface UserTemplateInstanceResource {
 
-    @ApiOperation("流水线模板-批量实例化流水线模板")
+    @Operation(summary = "流水线模板-批量实例化流水线模板")
     @POST
     @Path("/projects/{projectId}/templates/{templateId}")
     fun createTemplateInstances(
-        @ApiParam(value = "用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @PathParam("projectId")
         projectId: String,
-        @ApiParam("模板ID", required = true)
+        @Parameter(description = "模板ID", required = true)
         @PathParam("templateId")
         templateId: String,
-        @ApiParam("模板版本", required = true)
+        @Parameter(description = "模板版本", required = true)
         @QueryParam("version")
         version: Long,
-        @ApiParam("是否应用模板设置")
+        @Parameter(description = "是否应用模板设置")
         @QueryParam("useTemplateSettings")
         useTemplateSettings: Boolean,
-        @ApiParam("创建实例", required = true)
+        @Parameter(description = "创建实例", required = true)
         instances: List<TemplateInstanceCreate>
     ): TemplateOperationRet
 
-    @ApiOperation("通过流水线ID获取流水线启动参数")
+    @Operation(summary = "通过流水线ID获取流水线启动参数")
     @POST
     @Path("/projects/{projectId}/templates/{templateId}/pipelines")
     @BkApiPermission([BkApiHandleType.API_NO_AUTH_CHECK])
     fun listTemplateInstancesParams(
-        @ApiParam(value = "用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @PathParam("projectId")
         projectId: String,
-        @ApiParam("模板ID", required = true)
+        @Parameter(description = "模板ID", required = true)
         @PathParam("templateId")
         templateId: String,
-        @ApiParam("模板版本", required = true)
+        @Parameter(description = "模板版本", required = true)
         @QueryParam("version")
         version: Long,
-        @ApiParam("创建实例", required = true)
+        @Parameter(description = "创建实例", required = true)
         pipelineIds: List<PipelineId>
     ): Result<Map<String/*pipelineId*/, TemplateInstanceParams>>
 
-    @ApiOperation("差异对比")
+    @Operation(summary = "差异对比")
     @POST
     @Path("/projects/{projectId}/templates/{templateId}/pipelines/{pipelineId}/compare")
     @BkApiPermission([BkApiHandleType.API_NO_AUTH_CHECK])
     fun compareTemplateInstances(
-        @ApiParam(value = "用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @PathParam("projectId")
         projectId: String,
-        @ApiParam("模板ID", required = true)
+        @Parameter(description = "模板ID", required = true)
         @PathParam("templateId")
         templateId: String,
-        @ApiParam("流水线ID", required = true)
+        @Parameter(description = "流水线ID", required = true)
         @PathParam("pipelineId")
         pipelineId: String,
-        @ApiParam("模板版本", required = true)
+        @Parameter(description = "模板版本", required = true)
         @QueryParam("version")
         version: Long
     ): Result<TemplateCompareModelResult>
 
-    @ApiOperation("批量更新流水线模板实例")
+    @Operation(summary = "批量更新流水线模板实例")
     @PUT
     @Path("/projects/{projectId}/templates/{templateId}")
     fun updateTemplate(
-        @ApiParam(value = "用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @PathParam("projectId")
         projectId: String,
-        @ApiParam("模板ID", required = true)
+        @Parameter(description = "模板ID", required = true)
         @PathParam("templateId")
         templateId: String,
-        @ApiParam("版本号", required = true)
+        @Parameter(description = "版本号", required = true)
         @QueryParam("version")
         version: Long,
-        @ApiParam("是否应用模板设置")
+        @Parameter(description = "是否应用模板设置")
         @QueryParam("useTemplateSettings")
         useTemplateSettings: Boolean,
-        @ApiParam("模板实例", required = true)
+        @Parameter(description = "模板实例", required = true)
         instances: List<TemplateInstanceUpdate>
     ): TemplateOperationRet
 
-    @ApiOperation("异步批量更新流水线模板实例")
+    @Operation(summary = "异步批量更新流水线模板实例")
     @PUT
     @Path("/projects/{projectId}/templates/{templateId}/async/update")
     fun asyncUpdateTemplateInstances(
-        @ApiParam(value = "用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @PathParam("projectId")
         projectId: String,
-        @ApiParam("模板ID", required = true)
+        @Parameter(description = "模板ID", required = true)
         @PathParam("templateId")
         templateId: String,
-        @ApiParam("模板版本", required = true)
+        @Parameter(description = "模板版本", required = true)
         @QueryParam("version")
         version: Long,
-        @ApiParam("是否应用模板设置")
+        @Parameter(description = "是否应用模板设置")
         @QueryParam("useTemplateSettings")
         useTemplateSettings: Boolean,
-        @ApiParam("模板实例", required = true)
+        @Parameter(description = "模板实例", required = true)
         instances: List<TemplateInstanceUpdate>
     ): Result<Boolean>
 
-    @ApiOperation("列表流水线模板实例")
+    @Operation(summary = "列表流水线模板实例")
     @GET
     @Path("/projects/{projectId}/templates/{templateId}")
     fun listTemplate(
-        @ApiParam(value = "用户ID", required = true, defaultValue = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
+        @Parameter(description = "用户ID", required = true, example = AUTH_HEADER_USER_ID_DEFAULT_VALUE)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @PathParam("projectId")
         projectId: String,
-        @ApiParam("模板ID", required = true)
+        @Parameter(description = "模板ID", required = true)
         @PathParam("templateId")
         templateId: String,
-        @ApiParam("第几页", required = false, defaultValue = "1")
+        @Parameter(description = "第几页", required = false, example = "1")
         @QueryParam("page")
         page: Int,
-        @ApiParam("每页多少条", required = false, defaultValue = "20")
+        @Parameter(description = "每页多少条", required = false, example = "20")
         @QueryParam("pageSize")
         @BkField(patternStyle = BkStyleEnum.PAGE_SIZE_STYLE, required = true)
         pageSize: Int,
-        @ApiParam("名字搜索的关键字", required = false)
+        @Parameter(description = "名字搜索的关键字", required = false)
         @QueryParam("searchKey")
         searchKey: String?,
-        @ApiParam("排序字段", required = false)
+        @Parameter(description = "排序字段", required = false)
         @QueryParam("sortType")
         sortType: TemplateSortTypeEnum?,
-        @ApiParam("是否降序", required = false)
+        @Parameter(description = "是否降序", required = false)
         @QueryParam("desc")
         desc: Boolean?
     ): Result<TemplateInstancePage>

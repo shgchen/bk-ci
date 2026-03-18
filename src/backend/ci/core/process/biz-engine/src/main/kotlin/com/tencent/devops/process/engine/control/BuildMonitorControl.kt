@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -36,7 +36,10 @@ import com.tencent.devops.common.event.enums.ActionType
 import com.tencent.devops.common.log.utils.BuildLogPrinter
 import com.tencent.devops.common.pipeline.container.TriggerContainer
 import com.tencent.devops.common.pipeline.enums.BuildStatus
+import com.tencent.devops.common.pipeline.pojo.BuildNo
+import com.tencent.devops.common.pipeline.pojo.BuildNoType
 import com.tencent.devops.common.pipeline.pojo.StageReviewRequest
+import com.tencent.devops.common.redis.RedisOperation
 import com.tencent.devops.common.web.utils.I18nUtil
 import com.tencent.devops.process.constant.ProcessMessageCode
 import com.tencent.devops.process.constant.ProcessMessageCode.BK_JOB_QUEUE_TIMEOUT
@@ -45,6 +48,7 @@ import com.tencent.devops.process.constant.ProcessMessageCode.ERROR_TIMEOUT_IN_B
 import com.tencent.devops.process.constant.ProcessMessageCode.ERROR_TIMEOUT_IN_RUNNING
 import com.tencent.devops.process.engine.common.Timeout
 import com.tencent.devops.process.engine.common.VMUtils
+import com.tencent.devops.process.engine.control.lock.ConcurrencyGroupLock
 import com.tencent.devops.process.engine.pojo.BuildInfo
 import com.tencent.devops.process.engine.pojo.PipelineBuildContainer
 import com.tencent.devops.process.engine.pojo.PipelineBuildStage
@@ -52,20 +56,20 @@ import com.tencent.devops.process.engine.pojo.event.PipelineBuildContainerEvent
 import com.tencent.devops.process.engine.pojo.event.PipelineBuildFinishEvent
 import com.tencent.devops.process.engine.pojo.event.PipelineBuildMonitorEvent
 import com.tencent.devops.process.engine.pojo.event.PipelineBuildStartEvent
-import com.tencent.devops.process.engine.service.PipelineBuildDetailService
 import com.tencent.devops.process.engine.service.PipelineContainerService
 import com.tencent.devops.process.engine.service.PipelineRepositoryService
 import com.tencent.devops.process.engine.service.PipelineRuntimeExtService
 import com.tencent.devops.process.engine.service.PipelineRuntimeService
 import com.tencent.devops.process.engine.service.PipelineSettingService
 import com.tencent.devops.process.engine.service.PipelineStageService
+import com.tencent.devops.process.engine.service.record.ContainerBuildRecordService
 import com.tencent.devops.process.pojo.StageQualityRequest
 import com.tencent.devops.quality.api.v2.pojo.ControlPointPosition
-import java.time.LocalDateTime
-import java.util.concurrent.TimeUnit
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
+import java.time.LocalDateTime
+import java.util.concurrent.TimeUnit
 import kotlin.math.min
 
 /**
@@ -82,11 +86,13 @@ class BuildMonitorControl @Autowired constructor(
     private val pipelineContainerService: PipelineContainerService,
     private val pipelineRuntimeExtService: PipelineRuntimeExtService,
     private val pipelineStageService: PipelineStageService,
-    private val pipelineBuildDetailService: PipelineBuildDetailService,
-    private val pipelineRepositoryService: PipelineRepositoryService
+    private val containerBuildRecordService: ContainerBuildRecordService,
+    private val pipelineRepositoryService: PipelineRepositoryService,
+    private val redisOperation: RedisOperation
 ) {
 
     companion object {
+        const val START_EVENT_SOURCE = "start_monitor"
         private const val TAG = "startVM-0"
         private const val JOB_ID = "0"
         private val LOG = LoggerFactory.getLogger(BuildMonitorControl::class.java)
@@ -97,6 +103,15 @@ class BuildMonitorControl @Autowired constructor(
     fun handle(event: PipelineBuildMonitorEvent): Boolean {
 
         val buildId = event.buildId
+        val pipelineInfo = pipelineRepositoryService.getPipelineInfo(
+            projectId = event.projectId,
+            pipelineId = event.pipelineId,
+            channelCode = null
+        )
+        if (pipelineInfo == null) {
+            LOG.info("ENGINE|$buildId|BUILD_MONITOR|pipeline_deleted_cancel_monitor|ec=${event.executeCount}")
+            return true
+        }
         val buildInfo = pipelineRuntimeService.getBuildInfo(event.projectId, buildId)
         if (buildInfo == null || buildInfo.isFinish()) {
             LOG.info("ENGINE|$buildId|BUILD_MONITOR|status=${buildInfo?.status}|ec=${event.executeCount}")
@@ -121,14 +136,18 @@ class BuildMonitorControl @Autowired constructor(
         val minInterval = min(jobMinInt, stageMinInt)
 
         if (minInterval < min(Timeout.CONTAINER_MAX_MILLS, Timeout.STAGE_MAX_MILLS)) {
-            LOG.info("ENGINE|${event.buildId}|BUILD_MONITOR_CONTINUE|jobMinInt=$jobMinInt|" +
-                "stageMinInt=$stageMinInt|Interval=$minInterval")
+            LOG.info(
+                "ENGINE|${event.buildId}|BUILD_MONITOR_CONTINUE|jobMinInt=$jobMinInt|" +
+                    "stageMinInt=$stageMinInt|Interval=$minInterval"
+            )
             // 每次Check间隔不能大于10分钟，防止长时间延迟消息被大量堆积
             event.delayMills = coerceAtMost10Min(minInterval).toInt()
             pipelineEventDispatcher.dispatch(event)
         } else {
-            LOG.info("ENGINE|${event.buildId}|BUILD_MONITOR_QUIT|jobMinInt=$jobMinInt|" +
-                "stageMinInt=$stageMinInt|Interval=$minInterval")
+            LOG.info(
+                "ENGINE|${event.buildId}|BUILD_MONITOR_QUIT|jobMinInt=$jobMinInt|" +
+                    "stageMinInt=$stageMinInt|Interval=$minInterval"
+            )
         }
         return true
     }
@@ -139,7 +158,15 @@ class BuildMonitorControl @Autowired constructor(
         // #5090 ==0 是为了兼容旧的监控事件
         var containers = pipelineContainerService.listContainers(event.projectId, event.buildId)
         if (containers.isEmpty()) { // 因数据被过期清理，必须超时失败
-            buildLogPrinter.addRedLine(event.buildId, "empty_container!", TAG, JOB_ID, event.executeCount)
+            buildLogPrinter.addRedLine(
+                buildId = event.buildId,
+                message = "empty_container!",
+                tag = TAG,
+                containerHashId = JOB_ID,
+                executeCount = event.executeCount,
+                jobId = null,
+                stepId = TAG
+            )
             pipelineEventDispatcher.dispatch(
                 PipelineBuildFinishEvent(
                     source = "empty_container",
@@ -180,7 +207,15 @@ class BuildMonitorControl @Autowired constructor(
 
         var stages = pipelineStageService.listStages(event.projectId, event.buildId)
         if (stages.isEmpty()) { // 因数据被过期清理，必须超时失败
-            buildLogPrinter.addRedLine(event.buildId, "empty_stage!", TAG, JOB_ID, event.executeCount)
+            buildLogPrinter.addRedLine(
+                buildId = event.buildId,
+                message = "empty_stage!",
+                tag = TAG,
+                containerHashId = JOB_ID,
+                executeCount = event.executeCount,
+                jobId = null,
+                stepId = TAG
+            )
             pipelineEventDispatcher.dispatch(
                 PipelineBuildFinishEvent(
                     source = "empty_stage",
@@ -255,8 +290,10 @@ class BuildMonitorControl @Autowired constructor(
                 buildId = buildId,
                 message = errorInfo.message ?: "[SystemLog]Job timeout: $minute minutes!",
                 tag = VMUtils.genStartVMTaskId(containerId),
-                jobId = containerHashId,
-                executeCount = executeCount
+                containerHashId = containerHashId,
+                executeCount = executeCount,
+                jobId = null,
+                stepId = VMUtils.genStartVMTaskId(containerId)
             )
             // 终止当前容器下的任务
             pipelineEventDispatcher.dispatch(
@@ -271,6 +308,7 @@ class BuildMonitorControl @Autowired constructor(
                     containerHashId = containerHashId,
                     containerType = containerType,
                     actionType = ActionType.TERMINATE,
+                    executeCount = executeCount,
                     reason = errorInfo.message ?: "[SystemLog]Job timeout: $minute minutes!",
                     errorCode = ErrorCode.USER_JOB_OUTTIME_LIMIT,
                     errorTypeName = ErrorType.USER.name
@@ -341,8 +379,10 @@ class BuildMonitorControl @Autowired constructor(
                 buildId = buildId,
                 message = "Stage Review timeout $hours hours. Shutdown build!",
                 tag = stageId,
-                jobId = "",
-                executeCount = executeCount
+                containerHashId = "",
+                executeCount = executeCount,
+                jobId = null,
+                stepId = null
             )
 
             // #5654 如果是红线待审核状态则取消红线审核
@@ -375,7 +415,9 @@ class BuildMonitorControl @Autowired constructor(
                         id = pauseCheck.groupToReview()?.id,
                         suggest = "TIMEOUT"
                     ),
-                    timeout = true
+                    timeout = true,
+                    debug = buildInfo.debug,
+                    system = true
                 )
             }
         }
@@ -387,11 +429,12 @@ class BuildMonitorControl @Autowired constructor(
     private fun monitorQueueBuild(event: PipelineBuildMonitorEvent, buildInfo: BuildInfo): Boolean {
         // 判断是否超时
         if (pipelineSettingService.isQueueTimeout(event.projectId, event.pipelineId, buildInfo.queueTime)) {
-            val exitQueue = pipelineRuntimeExtService.existQueue(
+            val exitQueue = pipelineRuntimeExtService.changeBuildStatus(
                 projectId = event.projectId,
                 pipelineId = event.pipelineId,
                 buildId = event.buildId,
-                buildStatus = buildInfo.status
+                oldBuildStatus = buildInfo.status,
+                newBuildStatus = BuildStatus.UNEXEC
             )
             LOG.info("ENGINE|${event.buildId}|BUILD_QUEUE_MONITOR_TIMEOUT|queue timeout|exitQueue=$exitQueue")
             val errorInfo = I18nUtil.generateResponseDataObject<String>(
@@ -407,8 +450,10 @@ class BuildMonitorControl @Autowired constructor(
                     language = I18nUtil.getDefaultLocaleLanguage()
                 ) + ". Cancel build!"),
                 tag = VMUtils.genStartVMTaskId(jobId),
-                jobId = jobId,
-                executeCount = 1
+                containerHashId = jobId,
+                executeCount = event.executeCount,
+                jobId = null,
+                stepId = VMUtils.genStartVMTaskId(jobId)
             )
             pipelineEventDispatcher.dispatch(
                 PipelineBuildFinishEvent(
@@ -428,21 +473,37 @@ class BuildMonitorControl @Autowired constructor(
             )
         } else {
             // 判断当前监控的排队构建是否可以尝试启动(仅当前是在队列中排第1位的构建可以)
-            val canStart = pipelineRuntimeExtService.queueCanPend2Start(
-                projectId = event.projectId, pipelineId = event.pipelineId, buildId = buildInfo.buildId
-            )
+            val canStart = if (buildInfo.concurrencyGroup.isNullOrBlank()) { // 旧版串行队列
+                pipelineRuntimeExtService.queueCanPend2Start(
+                    projectId = event.projectId, pipelineId = event.pipelineId, buildId = buildInfo.buildId
+                )
+            } else { // concurrent并发组
+                ConcurrencyGroupLock(redisOperation, buildInfo.projectId, buildInfo.concurrencyGroup!!).use { gLock ->
+                    gLock.lock()
+                    pipelineRuntimeExtService.popNextConcurrencyGroupQueueCanPend2Start(
+                        concurrencyGroup = buildInfo.concurrencyGroup!!,
+                        projectId = buildInfo.projectId, pipelineId = buildInfo.pipelineId, buildId = buildInfo.buildId
+                    ) != null
+                }
+            }
             if (canStart) {
-                val buildId = event.buildId
+                val buildId = buildInfo.buildId
                 LOG.info("ENGINE|$buildId|BUILD_QUEUE_TRY_START")
-                val model = pipelineBuildDetailService.getBuildModel(event.projectId, buildInfo.buildId)
-                    ?: throw ErrorCodeException(
-                        errorCode = ProcessMessageCode.ERROR_NO_BUILD_EXISTS_BY_ID,
-                        params = arrayOf(buildInfo.buildId)
-                    )
-                val triggerContainer = model.stages[0].containers[0] as TriggerContainer
+                val triggerRecordContainer = containerBuildRecordService.getLatestRecord(
+                    projectId = buildInfo.projectId,
+                    pipelineId = buildInfo.pipelineId,
+                    buildId = buildId,
+                    containerId = "0",
+                    executeCount = buildInfo.executeCount
+                ) ?: throw ErrorCodeException(
+                    errorCode = ProcessMessageCode.ERROR_NO_BUILD_EXISTS_BY_ID, params = arrayOf(buildId)
+                )
+                val buildNoMap =
+                    triggerRecordContainer.containerVar[TriggerContainer::buildNo.name] as? Map<*, *>
+                val buildNoTypeStr = buildNoMap?.get(BuildNo::buildNoType.name)?.toString()
                 pipelineEventDispatcher.dispatch(
                     PipelineBuildStartEvent(
-                        source = "start_monitor",
+                        source = START_EVENT_SOURCE,
                         projectId = buildInfo.projectId,
                         pipelineId = buildInfo.pipelineId,
                         userId = buildInfo.startUser,
@@ -450,7 +511,8 @@ class BuildMonitorControl @Autowired constructor(
                         taskId = buildInfo.firstTaskId,
                         status = BuildStatus.RUNNING,
                         actionType = ActionType.START,
-                        buildNoType = triggerContainer.buildNo?.buildNoType
+                        executeCount = buildInfo.executeCount,
+                        buildNoType = buildNoTypeStr?.let { BuildNoType.valueOf(it) }
                     )
                 )
             }

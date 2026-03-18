@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,13 +27,12 @@
 
 package com.tencent.devops.process.pojo.template
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("复制模版请求包体")
+@Schema(title = "复制模版请求包体")
 data class CopyTemplateReq(
-    @ApiModelProperty("模板名字", required = false)
+    @get:Schema(title = "模板名字", required = false)
     val templateName: String,
-    @ApiModelProperty("是否复制设置", required = false)
+    @get:Schema(title = "是否复制设置", required = false)
     val isCopySetting: Boolean
 )

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,50 +28,55 @@
 package com.tencent.devops.project.api.service
 
 import com.tencent.devops.project.pojo.Result
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.PUT
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.PUT
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["SERVICE_TAG"], description = "项目流量信息")
+@Tag(name = "SERVICE_TAG", description = "项目流量信息")
 @Path("/service/projects/tag")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface ServiceProjectTagResource {
     @GET
     @Path("/checkProject/{projectId}/router")
-    @ApiOperation("判断项目指向是否一致")
+    @Operation(summary = "判断项目指向是否一致")
     fun checkProjectRouter(
-        @ApiParam("项目id", required = true)
+        @Parameter(description = "项目id", required = true)
         @PathParam("projectId")
         projectId: String
     ): Result<Boolean>
 
     @GET
     @Path("/{projectId}/isRbacPermission")
-    @ApiOperation("获取项目网关路由Tag")
+    @Operation(summary = "获取项目网关路由Tag")
     fun isRbacPermission(
-        @ApiParam("项目id", required = true)
+        @Parameter(description = "项目id", required = true)
         @PathParam("projectId")
         projectId: String
     ): Result<Boolean>
 
     @PUT
     @Path("/{projectCode}/updateProjectRouteTag")
-    @ApiOperation("更新项目tag")
+    @Operation(summary = "更新项目tag")
     fun updateProjectRouteTag(
-        @ApiParam("项目id", required = true)
+        @Parameter(description = "项目id", required = true)
         @PathParam("projectCode")
         projectCode: String,
-        @ApiParam("项目tag", required = true)
+        @Parameter(description = "项目tag", required = true)
         @QueryParam("tag")
         tag: String
     ): Result<Boolean>
+
+    @GET
+    @Path("/blacklist")
+    @Operation(summary = "查询全局路由黑名单")
+    fun getBlacklist(): Result<Set<String>>
 }

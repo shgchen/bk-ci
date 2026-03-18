@@ -3,7 +3,7 @@ import com.tencent.devops.utils.findPropertyOrNull
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -32,11 +32,13 @@ dependencies {
     api(project(":core:common:common-service"))
     api(project(":core:common:common-security"))
     api(project(":core:common:common-client"))
-    api(project(":core:common:common-third-sdk:common-sdk-util"))
+    api("com.tencent.bk.sdk:iam-java-sdk")
+    api("org.reflections:reflections")
+    api("org.glassfish.jersey.media:jersey-media-multipart")
     api("org.springframework.boot:spring-boot-starter-jersey")
     api("org.springframework.boot:spring-boot-starter-undertow")
     api("org.springframework.boot:spring-boot-starter-web")
-    api("io.swagger:swagger-jersey2-jaxrs")
+    api("io.swagger.core.v3:swagger-jaxrs2-jakarta")
     api("com.github.ulisesbocchio:jasypt-spring-boot-starter")
     api("org.springframework.boot:spring-boot-starter-amqp")
     api("org.aspectj:aspectjweaver")

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,26 +27,27 @@
 
 package com.tencent.devops.quality.api.v2
 
+import com.tencent.devops.common.api.constant.IN_READY_TEST
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.quality.api.v2.pojo.op.QualityMetaData
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import javax.ws.rs.Consumes
-import javax.ws.rs.DELETE
-import javax.ws.rs.POST
-import javax.ws.rs.PUT
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.DELETE
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.PUT
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["SERVICE_METADATA_MARKET"], description = "服务-质量红线-插件市场")
+@Tag(name = "SERVICE_METADATA_MARKET", description = "服务-质量红线-插件市场")
 @Path("/service/metadata/market")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface ServiceQualityMetadataMarketResource {
 
-    @ApiOperation("注册插件指标的元数据")
+    @Operation(summary = "注册插件指标的测试元数据")
     @Path("/setMetadata")
     @POST
     fun setTestMetadata(
@@ -54,10 +55,12 @@ interface ServiceQualityMetadataMarketResource {
         userId: String,
         @QueryParam("atomCode")
         atomCode: String,
+        @QueryParam("extra")
+        extra: String = IN_READY_TEST,
         metadataList: List<QualityMetaData>
     ): Result<Map<String/* dataId */, Long/* metadataId */>>
 
-    @ApiOperation("刷新插件指标的元数据")
+    @Operation(summary = "刷新插件指标的元数据")
     @Path("/refreshMetadata")
     @PUT
     fun refreshMetadata(
@@ -65,11 +68,13 @@ interface ServiceQualityMetadataMarketResource {
         elementType: String
     ): Result<Map<String, String>>
 
-    @ApiOperation("删除插件指标的测试元数据")
+    @Operation(summary = "删除插件指标的测试元数据")
     @Path("/deleteTestMetadata")
     @DELETE
     fun deleteTestMetadata(
         @QueryParam("elementType")
-        elementType: String
+        elementType: String,
+        @QueryParam("extra")
+        extra: String = IN_READY_TEST
     ): Result<Int>
 }

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,34 +27,34 @@
 
 package com.tencent.devops.dispatch.api
 
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import io.swagger.annotations.ApiResponse
-import io.swagger.annotations.ApiResponses
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
-import javax.ws.rs.core.Response
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.responses.ApiResponses
+import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
+import jakarta.ws.rs.core.Response
 
-@Api(tags = ["BUILD_WORKER"], description = "构建-构建执行器资源")
+@Tag(name = "BUILD_WORKER", description = "构建-构建执行器资源")
 @Path("/build/workers")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface BuildWorkerResource {
 
-    @ApiOperation("下载构建执行器")
+    @Operation(summary = "下载构建执行器")
     @GET
     @Path("/")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
     @ApiResponses(
-            ApiResponse(code = 304, message = "本地的构建执行器已是最新，无需下载")
+        ApiResponse(responseCode = "304", description = "本地的构建执行器已是最新，无需下载")
     )
     fun download(
-        @ApiParam("本地eTag标签", required = false)
+        @Parameter(description = "本地eTag标签", required = false)
         @QueryParam("eTag")
         eTag: String?
     ): Response

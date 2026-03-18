@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -47,8 +47,9 @@ object BuildTimeCostUtils {
 
     fun BuildRecordModel.generateBuildTimeCost(stageRecords: List<BuildRecordStage>): BuildRecordTimeCost {
         val startTime = startTime ?: return BuildRecordTimeCost()
+        // 构建级别的总耗时从触发入队列算起
         val endTime = endTime ?: LocalDateTime.now()
-        val totalCost = Duration.between(startTime, endTime).toMillis()
+        val totalCost = Duration.between(queueTime, endTime).toMillis()
         var executeCost = 0L
         var waitCost = 0L
         var queueCost = 0L
@@ -66,7 +67,9 @@ object BuildTimeCostUtils {
             totalCost = totalCost,
             executeCost = executeCost,
             waitCost = waitCost,
-            queueCost = queueCost,
+            // 给前端展示的构建排队时间为触发-开始,
+            // 上面的queueCost用于systemCost的差值
+            queueCost = Duration.between(queueTime, startTime).toMillis(),
             systemCost = systemCost.notNegative()
         )
     }

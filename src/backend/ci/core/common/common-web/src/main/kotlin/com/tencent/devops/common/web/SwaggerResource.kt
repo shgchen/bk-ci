@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,32 +27,26 @@
 
 package com.tencent.devops.common.web
 
-import io.swagger.jaxrs.listing.ApiListingResource
-import io.swagger.models.HttpMethod
-import javax.servlet.ServletConfig
-import javax.ws.rs.core.Application
-import javax.ws.rs.core.HttpHeaders
-import javax.ws.rs.core.Response
-import javax.ws.rs.core.UriInfo
+import io.swagger.v3.jaxrs2.integration.resources.OpenApiResource
+import io.swagger.v3.oas.models.PathItem
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.core.HttpHeaders
+import jakarta.ws.rs.core.Response
+import jakarta.ws.rs.core.UriInfo
 
-class SwaggerResource : ApiListingResource() {
+@Path("/swagger.json")
+class SwaggerResource : OpenApiResource() {
 
     private val allowOrigin = listOf("*")
-    private val allowMethods = HttpMethod.values().toList()
+    private val allowMethods = PathItem.HttpMethod.values().toList()
     private val allowHeaders = listOf(
         "Content-Type",
         "api_key",
         "Authorization"
     )
 
-    override fun getListing(
-        app: Application?,
-        sc: ServletConfig?,
-        headers: HttpHeaders?,
-        uriInfo: UriInfo?,
-        type: String?
-    ): Response {
-        val response = super.getListing(app, sc, headers, uriInfo, type)
+    override fun getOpenApi(headers: HttpHeaders?, uriInfo: UriInfo?, type: String?): Response {
+        val response = super.getOpenApi(headers, uriInfo, type)
         val responseHeaders = response.headers
         responseHeaders["Access-Control-Allow-Origin"] = allowOrigin
         responseHeaders["Access-Control-Allow-Methods"] = allowMethods

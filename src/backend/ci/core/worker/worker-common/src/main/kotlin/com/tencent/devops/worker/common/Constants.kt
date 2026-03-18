@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -63,11 +63,9 @@ const val LOG_SUBTAG_FLAG = "##subTag##"
 
 const val LOG_SUBTAG_FINISH_FLAG = "##subTagFinish##"
 
-const val LOG_UPLOAD_BUFFER_SIZE = 200
-
 const val LOG_MESSAGE_LENGTH_LIMIT = 16 * 1024 // 16KB
 
-const val LOG_TASK_LINE_LIMIT = 1000000
+const val LOG_TASK_LINE_LIMIT = 100000
 
 const val LOG_FILE_LENGTH_LIMIT = 1073741824 // 1 GB = 1073741824 Byte
 

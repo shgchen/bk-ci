@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,23 +28,22 @@
 
 package com.tencent.devops.auth.pojo.dto
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 import org.hibernate.validator.constraints.Length
 
-@ApiModel
+@Schema
 data class ProjectRoleDTO(
-    @ApiModelProperty("用户组Code")
+    @get:Schema(title = "用户组Code")
     val code: String,
-    @ApiModelProperty("用户组名称")
+    @get:Schema(title = "用户组名称")
     @Length(min = 1, max = 128)
     val name: String,
-    @ApiModelProperty("用户组别名")
+    @get:Schema(title = "用户组别名")
     val displayName: String?,
-    @ApiModelProperty("用户组描述")
+    @get:Schema(title = "用户组描述")
     val description: String?,
-    @ApiModelProperty("是否为默认分组")
+    @get:Schema(title = "是否为默认分组")
     val defaultGroup: Boolean? = true,
-    @ApiModelProperty("项目名称")
+    @get:Schema(title = "项目名称")
     val projectName: String
 )

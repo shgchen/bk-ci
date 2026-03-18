@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,24 +27,26 @@
 
 package com.tencent.devops.project.api.user
 
+import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_PIPELINE_ID
 import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_PROJECT_ID
 import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_USER_ID
+import com.tencent.devops.common.web.annotation.IgnoreUserApiPermission
 import com.tencent.devops.project.pojo.Result
 import com.tencent.devops.project.pojo.service.ServiceListVO
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.PUT
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.PUT
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["USER_PROJECT_SERVICE"], description = "项目服务管理接口")
+@Tag(name = "USER_PROJECT_SERVICE", description = "项目服务管理接口")
 @Path("/user")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
@@ -52,27 +54,45 @@ interface UserProjectServiceResource {
 
     @GET
     @Path("/services")
-    @ApiOperation("查询所有服务")
+    @Operation(summary = "查询所有服务")
+    @IgnoreUserApiPermission
     fun getServiceList(
         @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
         userId: String,
-        @ApiParam("项目ID", required = false)
+        @Parameter(description = "项目ID", required = false)
         @HeaderParam(AUTH_HEADER_DEVOPS_PROJECT_ID)
         projectId: String?
     ): Result<List<ServiceListVO>>
 
     @PUT
     @Path("/services/{service_id}")
-    @ApiOperation("用户修改关注")
+    @Operation(summary = "用户修改关注")
     fun updateCollected(
-        @ApiParam("bk Token", required = true)
+        @Parameter(description = "bk Token", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
         userId: String,
-        @ApiParam("服务ID")
+        @Parameter(description = "服务ID")
         @PathParam("service_id")
         serviceId: Long,
-        @ApiParam("关注/取消关注")
+        @Parameter(description = "关注/取消关注")
         @QueryParam("collector")
         collector: Boolean
     ): Result<Boolean>
+
+    @GET
+    @Path("/services/{serviceId}/url/get")
+    @Operation(summary = "查询服务跳转地址")
+    fun getServiceUrl(
+        @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
+        userId: String,
+        @Parameter(description = "项目ID", required = false)
+        @HeaderParam(AUTH_HEADER_DEVOPS_PROJECT_ID)
+        projectId: String?,
+        @Parameter(description = "流水线ID", required = false)
+        @HeaderParam(AUTH_HEADER_DEVOPS_PIPELINE_ID)
+        pipelineId: String?,
+        @Parameter(description = "服务ID", required = true)
+        @PathParam("serviceId")
+        serviceId: Long
+    ): Result<String>
 }

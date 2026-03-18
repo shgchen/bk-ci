@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,26 +28,26 @@
 package com.tencent.devops.log.api
 
 import com.tencent.devops.common.api.pojo.Result
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.PUT
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.PUT
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.core.MediaType
 
 /**
  *
  * Powered By Tencent
  */
-@Api(tags = ["OP_LOG"], description = "管理-日志资源")
+@Tag(name = "OP_LOG", description = "管理-日志资源")
 @Path("/op")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface OpLogResource {
 
-    @ApiParam("执行搬冷任务")
+    @Parameter(description = "执行搬冷任务")
     @PUT
-    @Path("/es/index/cold")
-    fun makeIndexCold(): Result<Boolean>
+    @Path("/clean/data")
+    fun cleanBuildData(): Result<Boolean>
 }

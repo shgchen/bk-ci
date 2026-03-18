@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -31,11 +31,9 @@ import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.pipeline.Model
 import com.tencent.devops.common.pipeline.container.Container
 import com.tencent.devops.common.pipeline.pojo.element.Element
-import com.tencent.devops.common.redis.RedisOperation
 import com.tencent.devops.process.engine.control.ControlUtils
 import com.tencent.devops.process.engine.dao.PipelinePauseValueDao
 import com.tencent.devops.process.engine.pojo.PipelinePauseValue
-import com.tencent.devops.process.engine.utils.PauseRedisUtils
 import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -44,13 +42,8 @@ import org.springframework.stereotype.Service
 @Service
 class PipelineTaskPauseService @Autowired constructor(
     private val pipelinePauseValueDao: PipelinePauseValueDao,
-    private val dslContext: DSLContext,
-    private val redisOperation: RedisOperation
+    private val dslContext: DSLContext
 ) {
-    // 重置暂停任务暂停状态位
-    fun pauseTaskFinishExecute(buildId: String, taskId: String) {
-        redisOperation.delete(PauseRedisUtils.getPauseRedisKey(buildId, taskId))
-    }
 
     fun savePauseValue(pipelinePauseValue: PipelinePauseValue) {
         pipelinePauseValueDao.save(dslContext, pipelinePauseValue)
@@ -84,12 +77,6 @@ class PipelineTaskPauseService @Autowired constructor(
         container.elements.forEach nextElement@{ element ->
             if (element.id == null) {
                 return@nextElement
-            }
-            // 重置插件状态开发
-            val pauseFlag = redisOperation.get(PauseRedisUtils.getPauseRedisKey(buildId, element.id!!))
-            if (pauseFlag != null) { // 若插件已经暂停过,重试构建需复位对应构建暂停状态位
-                logger.info("Refresh pauseFlag| $buildId|${element.id}")
-                pauseTaskFinishExecute(buildId, element.id!!)
             }
 
             if (ControlUtils.pauseFlag(element.additionalOptions)) {

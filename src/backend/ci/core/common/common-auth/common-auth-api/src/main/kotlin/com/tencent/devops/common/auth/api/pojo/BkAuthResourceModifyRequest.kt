@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,11 +28,11 @@
 package com.tencent.devops.common.auth.api.pojo
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
 data class BkAuthResourceModifyRequest(
     @JsonProperty("project_Code")
-    @ApiModelProperty(name = "project_Code")
+    @get:Schema(title = "project_Code")
     val projectCode: String,
     @JsonProperty("service_code")
     val serviceCode: String,

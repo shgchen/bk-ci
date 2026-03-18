@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -145,7 +145,7 @@ class PipelineWebHookQueueService @Autowired constructor(
                 projectId = projectId,
                 pipelineId = pipelineId,
                 buildId = buildId,
-                variables = variables.mapValues { it.value.toString() }
+                variables = variables.filter { it.value != null }.mapValues { it.value.toString() }
             ) { pipelineWebHookQueue ->
                 logger.info("webhook queue start on webhook trigger|$projectId|$pipelineId|$buildId")
                 with(pipelineWebHookQueue) {
@@ -169,8 +169,10 @@ class PipelineWebHookQueueService @Autowired constructor(
                                         "[<a target='_blank' href='" + // #4796 日志展示去掉链接上的域名前缀
                                     "/console/pipeline/$projectId/$pipelineId/detail/$buildId'>$buildId</a>]overlay",
                                 tag = "",
-                                jobId = "",
-                                executeCount = 1
+                                containerHashId = "",
+                                executeCount = 1,
+                                jobId = null,
+                                stepId = null
                             )
                             client.get(ServiceBuildResource::class).serviceShutdown(
                                 pipelineId = pipelineId,

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -33,12 +33,14 @@ import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.process.api.auth.ServiceProcessAuthResource
 import com.tencent.devops.process.service.AuthPipelineGroupService
 import com.tencent.devops.process.service.AuthPipelineService
+import com.tencent.devops.process.service.AuthPipelineTemplateService
 import org.springframework.beans.factory.annotation.Autowired
 
 @RestResource
 class ServiceProcessAuthResourceImpl @Autowired constructor(
     val authPipelineService: AuthPipelineService,
-    val authPipelineGroupService: AuthPipelineGroupService
+    val authPipelineGroupService: AuthPipelineGroupService,
+    val authPipelineTemplateService: AuthPipelineTemplateService
 ) : ServiceProcessAuthResource {
 
     override fun pipelineInfo(
@@ -54,6 +56,13 @@ class ServiceProcessAuthResourceImpl @Autowired constructor(
 
     override fun pipelineGroupInfo(callBackInfo: CallbackRequestDTO, token: String): CallbackBaseResponseDTO? {
         return authPipelineGroupService.pipelineGroupInfo(
+            callBackInfo = callBackInfo,
+            token = token
+        )
+    }
+
+    override fun pipelineTemplateInfo(callBackInfo: CallbackRequestDTO, token: String): CallbackBaseResponseDTO? {
+        return authPipelineTemplateService.pipelineTemplateInfo(
             callBackInfo = callBackInfo,
             token = token
         )

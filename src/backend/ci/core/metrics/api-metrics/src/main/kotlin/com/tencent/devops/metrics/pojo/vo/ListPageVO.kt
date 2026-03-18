@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,23 +27,22 @@
 
 package com.tencent.devops.metrics.pojo.vo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 import kotlin.math.ceil
 
-@ApiModel("动态列表分页数据包装模型")
+@Schema(title = "动态列表分页数据包装模型")
 data class ListPageVO<out T>(
-    @ApiModelProperty("总记录行数", required = true)
+    @get:Schema(title = "总记录行数", required = true)
     val count: Long,
-    @ApiModelProperty("第几页", required = true)
+    @get:Schema(title = "第几页", required = true)
     val page: Int,
-    @ApiModelProperty("每页多少条", required = true)
+    @get:Schema(title = "每页多少条", required = true)
     val pageSize: Int,
-    @ApiModelProperty("总共多少页", required = true)
+    @get:Schema(title = "总共多少页", required = true)
     val totalPages: Int,
-    @ApiModelProperty("列表头部集合", required = true)
+    @get:Schema(title = "列表头部集合", required = true)
     val headerInfo: Map<String, String>,
-    @ApiModelProperty("数据", required = true)
+    @get:Schema(title = "数据", required = true)
     val records: List<T>
 ) {
     constructor(page: Int = 1, pageSize: Int = 10, count: Long, headerInfo: Map<String, String>, records: List<T>) :

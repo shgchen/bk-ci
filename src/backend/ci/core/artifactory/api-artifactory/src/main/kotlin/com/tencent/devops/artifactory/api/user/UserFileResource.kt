@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,106 +30,106 @@ package com.tencent.devops.artifactory.api.user
 import com.tencent.devops.artifactory.pojo.CopyFileRequest
 import com.tencent.devops.common.api.auth.AUTH_HEADER_USER_ID
 import com.tencent.devops.common.api.pojo.Result
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition
 import org.glassfish.jersey.media.multipart.FormDataParam
 import java.io.InputStream
-import javax.servlet.http.HttpServletResponse
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.Context
-import javax.ws.rs.core.MediaType
+import jakarta.servlet.http.HttpServletResponse
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.Context
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["USER_ARTIFACTORY"], description = "仓库-文件管理")
+@Tag(name = "USER_ARTIFACTORY", description = "仓库-文件管理")
 @Path("/user/artifactories")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface UserFileResource {
 
-    @ApiOperation("上传文件到指定自定义仓库路径")
+    @Operation(summary = "上传文件到指定自定义仓库路径")
     @POST
     @Path("/file/uploadToPath")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     fun uploadToPath(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("项目代码", required = false)
+        @Parameter(description = "项目代码", required = false)
         @FormDataParam("projectId")
         projectId: String,
         @FormDataParam("path")
         path: String,
-        @ApiParam("文件", required = true)
+        @Parameter(description = "文件", required = true)
         @FormDataParam("file")
         inputStream: InputStream,
         @FormDataParam("file")
         disposition: FormDataContentDisposition
     ): Result<String?>
 
-    @ApiOperation("下载文件到本地")
+    @Operation(summary = "下载文件到本地")
     @GET
     @Path("/file/download/local")
     fun downloadFileToLocal(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("文件路径", required = true)
+        @Parameter(description = "文件路径", required = true)
         @QueryParam("filePath")
         filePath: String,
         @Context
         response: HttpServletResponse
     )
 
-    @ApiOperation("下载文件")
+    @Operation(summary = "下载文件")
     @GET
     @Path("/file/download")
     fun downloadFile(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("文件路径", required = true)
+        @Parameter(description = "文件路径", required = true)
         @QueryParam("filePath")
         filePath: String,
-        @ApiParam("是否为logo文件", required = false)
+        @Parameter(description = "是否为logo文件", required = false)
         @QueryParam("logo")
         logo: Boolean?,
         @Context
         response: HttpServletResponse
     )
 
-    @ApiOperation("下载文件")
+    @Operation(summary = "下载文件")
     @GET
     @Path("/file/download/{filePath}")
     fun downloadFileExt(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("文件路径", required = true)
+        @Parameter(description = "文件路径", required = true)
         @PathParam("filePath")
         filePath: String,
-        @ApiParam("是否为logo文件", required = false)
+        @Parameter(description = "是否为logo文件", required = false)
         @QueryParam("logo")
         logo: Boolean?,
         @Context
         response: HttpServletResponse
     )
 
-    @ApiOperation("复制文件")
+    @Operation(summary = "复制文件")
     @POST
     @Path("/file/copy")
     fun copy(
-        @ApiParam("userId", required = true)
+        @Parameter(description = "userId", required = true)
         @HeaderParam(AUTH_HEADER_USER_ID)
         userId: String,
-        @ApiParam("复制文件请求体", required = true)
+        @Parameter(description = "复制文件请求体", required = true)
         copyFileRequest: CopyFileRequest
     ): Result<Boolean>
 }

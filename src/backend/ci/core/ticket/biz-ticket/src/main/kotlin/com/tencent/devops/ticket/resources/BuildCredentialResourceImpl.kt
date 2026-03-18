@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,8 +27,10 @@
 
 package com.tencent.devops.ticket.resources
 
+import com.tencent.bk.audit.annotations.AuditEntry
 import com.tencent.devops.common.api.exception.ParamBlankException
 import com.tencent.devops.common.api.pojo.Result
+import com.tencent.devops.common.auth.api.ActionId
 import com.tencent.devops.common.service.prometheus.BkTimed
 import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.common.web.annotation.SensitiveApiPermission
@@ -42,6 +44,7 @@ import org.springframework.beans.factory.annotation.Autowired
 class BuildCredentialResourceImpl @Autowired constructor(
     private val credentialService: CredentialService
 ) : BuildCredentialResource {
+
     @SensitiveApiPermission("get_credential")
     @BkTimed(extraTags = ["operate", "get"])
     override fun get(
@@ -52,7 +55,8 @@ class BuildCredentialResourceImpl @Autowired constructor(
         credentialId: String,
         publicKey: String,
         taskId: String?,
-        oldTaskId: String?
+        oldTaskId: String?,
+        padding: Boolean?
     ): Result<CredentialInfo?> {
         if (buildId.isBlank()) {
             throw ParamBlankException("Invalid buildId")
@@ -75,13 +79,15 @@ class BuildCredentialResourceImpl @Autowired constructor(
                 buildId = buildId,
                 credentialId = credentialId,
                 publicKey = publicKey,
-                taskId = taskId ?: oldTaskId
+                taskId = taskId ?: oldTaskId,
+                padding = padding ?: false
             )
         )
     }
 
     @SensitiveApiPermission("get_credential")
     @BkTimed(extraTags = ["operate", "get"])
+    @AuditEntry(actionId = ActionId.CREDENTIAL_VIEW)
     override fun getAcrossProject(
         projectId: String,
         buildId: String,
@@ -89,7 +95,8 @@ class BuildCredentialResourceImpl @Autowired constructor(
         vmName: String,
         credentialId: String,
         targetProjectId: String,
-        publicKey: String
+        publicKey: String,
+        padding: Boolean?
     ): Result<CredentialInfo?> {
         if (buildId.isBlank()) {
             throw ParamBlankException("Invalid buildId")
@@ -107,12 +114,20 @@ class BuildCredentialResourceImpl @Autowired constructor(
             throw ParamBlankException("Invalid publicKey")
         }
         return Result(
-            credentialService.buildGetAcrossProject(projectId, targetProjectId, buildId, credentialId, publicKey)
+            credentialService.buildGetAcrossProject(
+                projectId = projectId,
+                targetProjectId = targetProjectId,
+                buildId = buildId,
+                credentialId = credentialId,
+                publicKey = publicKey,
+                padding = padding ?: false
+            )
         )
     }
 
     @SensitiveApiPermission("get_credential")
     @BkTimed(extraTags = ["operate", "get"])
+    @AuditEntry(actionId = ActionId.CREDENTIAL_VIEW)
     override fun getDetail(
         projectId: String,
         buildId: String,
@@ -135,14 +150,17 @@ class BuildCredentialResourceImpl @Autowired constructor(
             throw ParamBlankException("Invalid credentialId")
         }
         // 这里兼容下旧版本sdk的header
-        return Result(credentialService.buildGetDetail(
-            projectId = projectId,
-            buildId = buildId,
-            taskId = taskId ?: oldTaskId,
-            credentialId = credentialId
-        ))
+        return Result(
+            credentialService.buildGetDetail(
+                projectId = projectId,
+                buildId = buildId,
+                taskId = taskId ?: oldTaskId,
+                credentialId = credentialId
+            )
+        )
     }
 
+    @AuditEntry(actionId = ActionId.CREDENTIAL_CREATE)
     override fun create(userId: String, projectId: String, credential: CredentialCreate): Result<Boolean> {
         if (userId.isBlank()) {
             throw ParamBlankException("Invalid userId")

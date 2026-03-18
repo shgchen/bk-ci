@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -37,9 +37,10 @@ import com.tencent.devops.common.archive.element.SingleArchiveElement
 import com.tencent.devops.process.pojo.BuildTask
 import com.tencent.devops.process.pojo.BuildVariables
 import com.tencent.devops.process.utils.PIPELINE_START_USER_ID
+import com.tencent.devops.worker.common.api.ArtifactApiFactory
+import com.tencent.devops.worker.common.api.archive.ArchiveSDKApi
 import com.tencent.devops.worker.common.constants.WorkerMessageCode.NO_MATCHING_ARCHIVE_FILE
 import com.tencent.devops.worker.common.env.AgentEnv
-import com.tencent.devops.worker.common.service.RepoServiceFactory
 import com.tencent.devops.worker.common.task.ITask
 import com.tencent.devops.worker.common.task.TaskClassType
 import com.tencent.devops.worker.common.utils.ArchiveUtils.archiveCustomFiles
@@ -50,18 +51,20 @@ import java.io.File
 @TaskClassType(classTypes = [SingleArchiveElement.classType])
 class SingleFileArchiveTask : ITask() {
 
+    private val api = ArtifactApiFactory.create(ArchiveSDKApi::class)
+
     override fun execute(buildTask: BuildTask, buildVariables: BuildVariables, workspace: File) {
         val taskParams = buildTask.params ?: mapOf()
         val filePath = taskParams["filePath"] ?: throw ParamBlankException("param [filePath] is empty")
         val isCustomize = taskParams["customize"] ?: throw ParamBlankException("param [isCustomize] is empty")
         TaskUtil.setTaskId(buildTask.taskId ?: "")
-        val token = RepoServiceFactory.getInstance().getRepoToken(
+        val token = api.getRepoToken(
             userId = buildVariables.variables[PIPELINE_START_USER_ID] ?: "",
             projectId = buildVariables.projectId,
             repoName = if (isCustomize.toBoolean()) "custom" else "pipeline",
             path = if (isCustomize.toBoolean()) "/" else "/${buildVariables.pipelineId}/${buildVariables.buildId}",
             type = TokenType.UPLOAD,
-            expireSeconds = TaskUtil.getTimeOut(buildTask)?.times(60)
+            expireSeconds = TaskUtil.getTimeOut(buildTask).times(60)
         )
         try {
             val count = if (isCustomize.toBoolean()) {

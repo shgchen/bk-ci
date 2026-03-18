@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,17 +28,16 @@
 package com.tencent.devops.process.pojo.pipeline
 
 import com.tencent.devops.common.api.pojo.ErrorType
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("构建模型-ID")
+@Schema(title = "构建模型-ID")
 data class SubPipelineStatus(
-    @ApiModelProperty("子流水线状态", required = true)
+    @get:Schema(title = "子流水线状态", required = true)
     val status: String,
-    @ApiModelProperty("错误类型", required = false)
+    @get:Schema(title = "错误类型", required = false)
     var errorType: ErrorType? = null,
-    @ApiModelProperty("错误码", required = false)
+    @get:Schema(title = "错误码", required = false)
     var errorCode: Int? = null,
-    @ApiModelProperty("错误信息", required = false)
+    @get:Schema(title = "错误信息", required = false)
     var errorMsg: String? = null
 )

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,34 +30,33 @@ package com.tencent.devops.project.service
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.common.cache.CacheBuilder
 import com.tencent.devops.common.api.exception.ParamBlankException
-import com.tencent.devops.common.api.pojo.PipelineAsCodeSettings
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.api.util.Watcher
-import com.tencent.devops.common.api.util.timestampmilli
 import com.tencent.devops.common.client.consul.ConsulConstants.PROJECT_TAG_CODECC_REDIS_KEY
 import com.tencent.devops.common.client.consul.ConsulConstants.PROJECT_TAG_REDIS_KEY
 import com.tencent.devops.common.redis.RedisOperation
 import com.tencent.devops.common.service.BkTag
 import com.tencent.devops.common.service.utils.KubernetesUtils
 import com.tencent.devops.common.service.utils.LogUtils
-import com.tencent.devops.model.project.tables.records.TProjectRecord
-import com.tencent.devops.project.ProjectInfoResponse
+import com.tencent.devops.common.auth.api.pojo.ProjectConditionDTO
 import com.tencent.devops.project.dao.ProjectDao
 import com.tencent.devops.project.dao.ProjectTagDao
 import com.tencent.devops.project.pojo.ProjectExtSystemTagDTO
-import com.tencent.devops.project.pojo.ProjectProperties
+import com.tencent.devops.project.pojo.ProjectPercentageRoutingRequest
+import com.tencent.devops.project.pojo.ProjectPercentageRoutingResult
 import com.tencent.devops.project.pojo.ProjectTagUpdateDTO
 import com.tencent.devops.project.pojo.enums.SystemEnums
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.zip.CRC32
 import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 
-@Suppress("UNUSED")
+@Suppress("ALL")
 @Service
 class ProjectTagService @Autowired constructor(
     val dslContext: DSLContext,
@@ -85,18 +84,38 @@ class ProjectTagService @Autowired constructor(
     @Value("\${tag.gray:#{null}}")
     private val grayTag: String? = null
 
+    @Value("\${tag.codecc.gray:#{null}}")
+    private val codeccGrayTag: String? = null
+
+    @Value("\${tag.codecc.prod:#{null}}")
+    private val codeccProdTag: String? = null
+
     @Value("\${system.inContainer:#{null}}")
     private val inContainerTags: String? = null
 
     private val projectRouterCache = CacheBuilder.newBuilder()
-        .maximumSize(1000)
-        .expireAfterWrite(2, TimeUnit.MINUTES)
+        .maximumSize(30000)
+        .expireAfterWrite(1, TimeUnit.MINUTES)
         .build<String/*projectId*/, String>/*routerTag*/()
 
     fun setGrayExt(projectCodeList: List<String>, operateFlag: Int, system: SystemEnums): Boolean {
         val routerTag = when (operateFlag) {
-            grayLabel -> grayTag
-            prodLabel -> prodTag
+            grayLabel -> {
+                if (system == SystemEnums.CODECC) {
+                    codeccGrayTag
+                } else {
+                    grayTag
+                }
+            }
+
+            prodLabel -> {
+                if (system == SystemEnums.CODECC) {
+                    codeccProdTag
+                } else {
+                    grayTag
+                }
+            }
+
             else -> null
         }
 
@@ -312,28 +331,42 @@ class ProjectTagService @Autowired constructor(
 
     // 判断当前项目流量与当前集群匹配
     fun checkProjectTag(projectId: String): Boolean {
-        // 因定时任务请求量太大,为减小redis压力,优先match内存缓存。 内存数据可能与实际数据存在差异。失败继续做redis校验
-        if (projectRouterCache.getIfPresent(projectId) != null) {
-            val cacheCheck = projectClusterCheck(projectRouterCache.getIfPresent(projectId))
-            // 如果缓存内的为"",说明项目没有配置路由信息。 缓存校验生效
-            if (cacheCheck || projectRouterCache.getIfPresent(projectId).isNullOrBlank()) {
-                return cacheCheck
+        if (projectId.isBlank()) {
+            return false
+        }
+
+        // 1. 优先检查内存缓存
+        val cachedTag = projectRouterCache.getIfPresent(projectId)
+        if (cachedTag != null) {
+            val cacheResult = projectClusterCheck(cachedTag)
+            // 如果缓存校验通过或缓存为空（表示项目无路由配置），直接返回结果
+            if (cacheResult || cachedTag.isBlank()) {
+                return cacheResult
             }
         }
 
-        // 内存缓存校验失败, 走redis。 redis数据与db基本保持一致,仅redis击穿后再查db。 redis校验结果具备判断权,校验失败直接返回
-        if (redisOperation.hget(PROJECT_TAG_REDIS_KEY, projectId) != null) {
-            val redisCheck = projectClusterCheck(redisOperation.hget(PROJECT_TAG_REDIS_KEY, projectId))
-            projectRouterCache.put(projectId, redisOperation.hget(PROJECT_TAG_REDIS_KEY, projectId)!!)
-            return redisCheck
+        // 2. 内存缓存未命中或校验失败，检查Redis缓存
+        val redisTag = redisOperation.hget(PROJECT_TAG_REDIS_KEY, projectId)
+        if (redisTag != null) {
+            val redisResult = projectClusterCheck(redisTag)
+            // 更新内存缓存以供后续使用
+            projectRouterCache.put(projectId, redisTag)
+            return redisResult
         }
-        // 直接从db获取
-        val projectInfo = projectDao.getByEnglishName(dslContext, projectId) ?: return false
-        logger.info("refresh router cache $projectId|${projectInfo.routerTag}| by checkProjectTag")
-        // 刷新内存缓存。 网关根据redis的值做判断依据。 此处不额外更新redis. 减少redis自动操作。
-        projectRouterCache.put(projectId, projectInfo.routerTag ?: "")
 
-        return projectClusterCheck(projectInfo.routerTag)
+        // 3. 缓存全部未命中，从数据库查询
+        val projectInfo = projectDao.getByEnglishName(dslContext, projectId) ?: run {
+            logger.warn("Project not found: $projectId")
+            return false
+        }
+
+        val routerTag = projectInfo.routerTag ?: ""
+        logger.info("Refresh router cache - projectId: $projectId, routerTag: $routerTag, source: checkProjectTag")
+
+        // 更新内存缓存（不更新Redis，由更新接口负责刷新redis）
+        projectRouterCache.put(projectId, routerTag)
+
+        return projectClusterCheck(routerTag)
     }
 
     @SuppressWarnings("ReturnCount")
@@ -344,7 +377,7 @@ class ProjectTagService @Autowired constructor(
         }
         // 容器化项目需要将本地tag中的kubernetes-去掉来比较
         val localTag = bkTag.getLocalTag()
-        val clusterTag = if (isContainerProject) localTag.replace("kubernetes-", "") else localTag
+        val clusterTag = localTag.removePrefix("kubernetes-")
         // 默认集群是不会有routerTag的信息
         if (projectTag.isNullOrBlank()) {
             // 只有默认集群在routerTag为空的时候才返回true
@@ -372,117 +405,132 @@ class ProjectTagService @Autowired constructor(
         }
     }
 
-    fun getProjectListByFlag(
-        projectName: String?,
-        englishName: String?,
-        projectType: Int?,
-        isSecrecy: Boolean?,
-        creator: String?,
-        approver: String?,
-        approvalStatus: Int?,
-        offset: Int,
-        limit: Int,
-        grayFlag: Boolean,
-        codeCCGrayFlag: Boolean,
-        repoGrayFlag: Boolean
-    ): com.tencent.devops.project.pojo.Result<Map<String, Any?>?> {
-        val dataObj = mutableMapOf<String, Any?>()
+    // ======================== 路由名单管理（黑名单） ========================
 
-        val routerTag = if (grayFlag) grayTag else null
-
-        val otherRouterTagMaps = mutableMapOf<String, String>()
-        if (codeCCGrayFlag && grayTag != null) {
-            otherRouterTagMaps[SystemEnums.CODECC.name] = grayTag
-        }
-        if (repoGrayFlag && grayTag != null) {
-            otherRouterTagMaps[SystemEnums.REPO.name] = grayTag
-        }
-
-        val projectInfos = projectDao.getProjectList(
-            dslContext = dslContext,
-            projectName = projectName,
-            englishName = englishName,
-            projectType = projectType,
-            isSecrecy = isSecrecy,
-            creator = creator,
-            approver = approver,
-            approvalStatus = approvalStatus,
-            offset = offset,
-            limit = limit,
-            routerTag = routerTag,
-            otherRouterTagMaps = otherRouterTagMaps
-        )
-        val totalCount = projectDao.getProjectCount(
-            dslContext = dslContext,
-            projectName = projectName,
-            englishName = englishName,
-            projectType = projectType,
-            isSecrecy = isSecrecy,
-            creator = creator,
-            approver = approver,
-            approvalStatus = approvalStatus,
-            routerTag = routerTag,
-            otherRouterTagMaps = otherRouterTagMaps
-        )
-        val dataList = mutableListOf<ProjectInfoResponse>()
-
-        for (i in projectInfos.indices) {
-            val projectData = projectInfos[i]
-            val projectInfo = getProjectInfoResponse(projectData)
-            dataList.add(projectInfo)
-        }
-        dataObj["projectList"] = dataList
-        dataObj["count"] = totalCount
-        return com.tencent.devops.project.pojo.Result(dataObj)
+    fun addToBlacklist(projectCodes: List<String>): Long {
+        if (projectCodes.isEmpty()) return 0L
+        redisOperation.sadd(BLACKLIST_KEY, *projectCodes.toTypedArray())
+        logger.info("addToBlacklist count=${projectCodes.size}")
+        return redisOperation.getSetMembers(BLACKLIST_KEY)?.size?.toLong() ?: 0L
     }
 
-    private fun getProjectInfoResponse(projectData: TProjectRecord): ProjectInfoResponse {
-        val otherRouterTagMap = projectData.otherRouterTags?.let {
-            JsonUtil.to<Map<String, String>>(projectData.otherRouterTags.toString())
-        } ?: emptyMap()
+    fun removeFromBlacklist(projectCodes: List<String>): Long {
+        if (projectCodes.isEmpty()) return 0L
+        redisOperation.sremove(BLACKLIST_KEY, *projectCodes.toTypedArray())
+        logger.info("removeFromBlacklist count=${projectCodes.size}")
+        return redisOperation.getSetMembers(BLACKLIST_KEY)?.size?.toLong() ?: 0L
+    }
 
-        val projectProperties = projectData.properties?.let {
-            JsonUtil.toOrNull(projectData.properties.toString(), ProjectProperties::class.java)
-        } ?: ProjectProperties(pipelineAsCodeSettings = PipelineAsCodeSettings(enable = false))
-        return ProjectInfoResponse(
-            projectId = projectData.projectId,
-            projectName = projectData.projectName,
-            projectEnglishName = projectData.englishName,
-            creatorBgName = projectData.creatorBgName,
-            creatorDeptName = projectData.creatorDeptName,
-            creatorCenterName = projectData.creatorCenterName,
-            bgId = projectData.bgId,
-            bgName = projectData.bgName,
-            deptId = projectData.deptId,
-            deptName = projectData.deptName,
-            centerId = projectData.centerId,
-            centerName = projectData.centerName,
-            projectType = projectData.projectType,
-            approver = projectData.approver,
-            approvalTime = projectData.approvalTime?.timestampmilli(),
-            approvalStatus = projectData.approvalStatus,
-            secrecyFlag = projectData.isSecrecy,
-            creator = projectData.creator,
-            createdAtTime = projectData.createdAt.timestampmilli(),
-            ccAppId = projectData.ccAppId,
-            useBk = projectData.useBk,
-            offlinedFlag = projectData.isOfflined,
-            kind = projectData.kind,
-            enabled = projectData.enabled ?: true,
-            grayFlag = projectData.routerTag == grayTag,
-            codeCCGrayFlag = otherRouterTagMap[SystemEnums.CODECC.name] == grayTag,
-            repoGrayFlag = otherRouterTagMap[SystemEnums.REPO.name] == grayTag,
-            hybridCCAppId = projectData.hybridCcAppId,
-            enableExternal = projectData.enableExternal,
-            enableIdc = projectData.enableIdc,
-            pipelineLimit = projectData.pipelineLimit,
-            properties = projectProperties
+    fun getBlacklist(): Set<String> = redisOperation.getSetMembers(BLACKLIST_KEY) ?: emptySet()
+
+    // ======================== 百分比放量路由 ========================
+
+    fun percentageRouting(request: ProjectPercentageRoutingRequest): ProjectPercentageRoutingResult {
+        require(request.targetPercent in 1..100) { "targetPercent must be between 1 and 100" }
+        require(request.targetTag.isNotBlank()) { "targetTag must not be blank" }
+        require(request.sourceTag.isNotBlank()) { "sourceTag must not be blank" }
+        checkRouteTag(request.targetTag)
+
+        val watcher = Watcher("percentageRouting ${request.targetPercent}% -> ${request.targetTag}")
+        logger.info(
+            "percentageRouting start|" +
+                "targetPercent=${request.targetPercent}|channelCode=${request.channelCode}|" +
+                "sourceTag=${request.sourceTag}|targetTag=${request.targetTag}|" +
+                "dryRun=${request.dryRun}"
         )
+
+        val blacklist = getBlacklist()
+        logger.info(
+            "percentageRouting lists loaded|blacklistSize=${blacklist.size}"
+        )
+
+        val condition = ProjectConditionDTO(channelCode = request.channelCode)
+        val threshold = request.targetPercent
+
+        var totalProjectCount = 0
+        var alreadyDoneCount = 0
+        val candidates = mutableListOf<String>()
+
+        var offset = 0
+        var pageSize: Int
+        do {
+            val page = projectDao.listProjectsByCondition(dslContext, condition, PAGE_SIZE, offset)
+            pageSize = page.size
+            totalProjectCount += pageSize
+
+            for (record in page) {
+                val projectCode = record.englishName ?: continue
+                if (projectCode in blacklist) continue
+                val alreadyAtTarget = record.routerTag == request.targetTag
+                if (hashBucket(projectCode) < threshold) {
+                    if (alreadyAtTarget) {
+                        alreadyDoneCount++
+                    } else {
+                        candidates.add(projectCode)
+                    }
+                }
+            }
+            offset += pageSize
+        } while (pageSize == PAGE_SIZE)
+
+        val failedProjects = mutableListOf<String>()
+        val switchedCount: Int
+
+        if (request.dryRun) {
+            switchedCount = candidates.size
+        } else {
+            var actualSwitched = 0
+            candidates.chunked(BATCH_SIZE).forEach { batch ->
+                try {
+                    projectTagDao.updateProjectTags(
+                        dslContext = dslContext,
+                        englishNames = batch,
+                        routerTag = request.targetTag
+                    )
+                    refreshRouterByProject(
+                        routerTag = request.targetTag,
+                        redisOperation = redisOperation,
+                        projectIds = batch
+                    )
+                    actualSwitched += batch.size
+                } catch (e: Exception) {
+                    logger.error("percentageRouting batch update failed|batch=${batch.size}", e)
+                    failedProjects.addAll(batch)
+                }
+            }
+            switchedCount = actualSwitched
+        }
+
+        LogUtils.printCostTimeWE(watcher)
+        return ProjectPercentageRoutingResult(
+            dryRun = request.dryRun,
+            targetPercent = request.targetPercent,
+            totalProjectCount = totalProjectCount,
+            targetCount = candidates.size + alreadyDoneCount,
+            alreadyDoneCount = alreadyDoneCount,
+            switchedCount = switchedCount,
+            failedCount = failedProjects.size,
+            failedProjects = failedProjects
+        )
+    }
+
+    /**
+     * 确定性哈希分桶：CRC32(englishName) % 100
+     * 结果范围 [0, 99]，与项目总数无关，同一 englishName 永远映射到相同桶。
+     */
+    fun hashBucket(englishName: String): Int {
+        val crc = CRC32()
+        crc.update(englishName.toByteArray(Charsets.UTF_8))
+        return (crc.value % HASH_BUCKET_SIZE).toInt()
     }
 
     companion object {
         private const val grayLabel = 1
         private const val prodLabel = 2
+        private const val HASH_BUCKET_SIZE = 100L
+        private const val BATCH_SIZE = 500
+        private const val PAGE_SIZE = 1000
+        const val BLACKLIST_KEY = "project:percentage:routing:blacklist"
         private val logger = LoggerFactory.getLogger(ProjectTagService::class.java)
     }
 }

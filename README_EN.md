@@ -24,7 +24,7 @@ bk-ci provides seven core services, namely Process, CodeCheck, Repository, Ticke
 - **Environment**: It can host the internal agents of the enterprise on bk-ci.
 - **Store**: It consists of pipeline plugins and pipeline templates. Plugins are used to integrate with various third-party services of the enterprise and templates help to standardize its internal R&D process.
 - **Turbo**: Based on self-developed acceleration engine, it supports acceleration in multiple scenarios such as C/C++ compilation, UE4 code compilation, and UE4 Shader compilation, making construction tasks faster
-
+- **Cloud Desktop**: A cloud-based virtual desktop service based on video streaming technology that provides high-performance graphical interface access capabilities, supporting remote use of graphical development and compilation tools for code development and compilation.
 
 ## Overview
 
@@ -34,8 +34,8 @@ bk-ci provides seven core services, namely Process, CodeCheck, Repository, Ticke
 
 ## Features
 
-- Continuous integration and continuous delivery: Due to the scalability of the framework, bk-ci can not only be used in simple CI scenarios, but also as the continuous delivery center of all the projects of the enterprise.
-- What you see is what you get: bk-ci provides flexible and visualized pipelines for you to orchestrate. Move your fingers and you can describe the R&D process here.
+- Continuous Integration and Continuous Delivery: Thanks to its scalable framework, bk-ci is not just suited for basic CI workflows—it can also serve as the central hub for continuous delivery across all enterprise projects.
+- What you see is what you get: bk-ci offers flexible, visualized pipelines for seamless orchestration. With just a few clicks, you can map out your entire R&D process effortlessly.
 - Parallel and scalable framework: The flexible framework can be scaled horizontally at will to meet the enterprise’s need for large-scale use.
 - Distributed system: bk-ci can manage multiple agents easily to help you perform cross-platform build, testing and deployment in a faster manner.
 - Pipeline plugins: bk-ci has a complete plugin development system with properties like low barrier to entry and scalability.
@@ -61,7 +61,9 @@ bk-ci provides seven core services, namely Process, CodeCheck, Repository, Ticke
 - [BK-CMDB](https://github.com/Tencent/bk-cmdb): BlueKing Configuration Management DataBase (BlueKing CMDB) is an enterprise level configuration management platform for assets and applications.
 - [BK-JOB](https://github.com/Tencent/bk-job): BlueKing JOB is a set of operation and maintenance script management platform with the ability to handle a large number of tasks concurrently.
 - [BK-PaaS](https://github.com/Tencent/bk-PaaS): BlueKing PaaS is an open development platform that allows developers to create, develop, deploy and manage SaaS applications quickly and easily.
+- [BK-Repo](https://github.com/Tencentblueking/bk-repo): The BlueKing Artifact Repository Platform is a continuous delivery platform that provides enterprises with various types of artifact package storage, proxy, distribution, promotion, scanning, and dependency package management.
 - [BK-SOPS](https://github.com/Tencent/bk-sops): BlueKing Standard OPS (SOPS) is a light-weighted SaaS product in the Tencent BlueKing product system designed for the orchestration and execution of tasks through a graphical interface.
+- [BK-Turbo](https://github.com/Tencentblueking/bk-turbo): The BlueKing Turbo Platform  provides compilation acceleration services for various languages, including UE and C/C++, in CI scenarios.
 ## Contributing
 
 - Please read [Contributing](CONTRIBUTING.en.md) for the branch management, issue and pr specifications of bk-ci.

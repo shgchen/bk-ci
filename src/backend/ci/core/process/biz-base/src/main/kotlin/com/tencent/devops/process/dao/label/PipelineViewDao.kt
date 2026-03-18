@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -276,12 +276,14 @@ class PipelineViewDao {
     fun list(
         dslContext: DSLContext,
         projectId: String? = null,
-        viewIds: Set<Long>
+        viewIds: Collection<Long>,
+        viewType: Int? = null
     ): Result<TPipelineViewRecord> {
         with(TPipelineView.T_PIPELINE_VIEW) {
             return dslContext.selectFrom(this)
                 .where(ID.`in`(viewIds))
                 .let { if (projectId == null) it else it.and(PROJECT_ID.eq(projectId)) }
+                .let { if (viewType == null) it else it.and(VIEW_TYPE.eq(viewType)) }
                 .orderBy(CREATE_TIME.desc())
                 .fetch()
         }

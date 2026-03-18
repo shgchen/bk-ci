@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,13 +27,12 @@
 
 package com.tencent.devops.common.pipeline.pojo.element.atom
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("人工审核-自定义参数-下拉框列表剑")
+@Schema(title = "人工审核-自定义参数-下拉框列表剑")
 data class ManualReviewParamPair(
-    @ApiModelProperty("参数名", required = true)
+    @get:Schema(title = "参数名", required = true)
     val key: String,
-    @ApiModelProperty("参数内容", required = true)
+    @get:Schema(title = "参数内容", required = true)
     val value: String
 )

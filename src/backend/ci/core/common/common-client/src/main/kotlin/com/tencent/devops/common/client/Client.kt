@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -46,7 +46,7 @@ import feign.RetryableException
 import feign.Retryer
 import feign.jackson.JacksonDecoder
 import feign.jackson.JacksonEncoder
-import feign.jaxrs.JAXRSContract
+import feign.jaxrs3.JAXRS3Contract
 import feign.okhttp.OkHttpClient
 import feign.spring.SpringContract
 import java.lang.reflect.Method
@@ -56,13 +56,13 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
+import kotlin.reflect.KClass
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.cloud.client.discovery.composite.CompositeDiscoveryClient
 import org.springframework.context.annotation.DependsOn
 import org.springframework.stereotype.Component
-import kotlin.reflect.KClass
 
 /**
  *
@@ -133,6 +133,7 @@ class Client @Autowired constructor(
     private val feignClient = OkHttpClient(okHttpClient)
     private val clientContract = ClientContract()
     private val springContract = SpringContract()
+    private val clientResponseDecoder = ClientResponseDecoder(objectMapper)
     private val jacksonDecoder = JacksonDecoder(objectMapper)
     private val jacksonEncoder = JacksonEncoder(objectMapper)
 
@@ -256,7 +257,7 @@ class Client @Autowired constructor(
             .client(feignClient)
             .errorDecoder(clientErrorDecoder)
             .encoder(jacksonEncoder)
-            .decoder(jacksonDecoder)
+            .decoder(clientResponseDecoder)
             .contract(contract)
             .requestInterceptor(requestInterceptor)
             .retryer(HttpGetRetry()) // 优化重复创建的匿名类
@@ -268,6 +269,12 @@ class Client @Autowired constructor(
                     bkTag = bkTag
                 )
             )
+    }
+
+    // devnet区域的，只能直接通过ip访问
+    fun <T : Any> getScmUrl(clz: KClass<T>): String {
+        val serviceName = BkServiceUtil.findServiceName(clz).removeSuffix(serviceSuffix ?: "")
+        return buildGatewayUrl(path = "/$serviceName/api", gatewayType = GatewayType.IDC_PROXY)
     }
 
     fun getServiceUrl(clz: KClass<*>): String {
@@ -320,7 +327,7 @@ class Client @Autowired constructor(
     }
 }
 
-class ClientContract : JAXRSContract() {
+class ClientContract : JAXRS3Contract() {
     override fun parseAndValidateMetadata(targetType: Class<*>?, method: Method?): MethodMetadata {
         val parseAndValidateMetadata = super.parseAndValidateMetadata(targetType, method)
         parseAndValidateMetadata.template().decodeSlash(false)

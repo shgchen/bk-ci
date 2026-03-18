@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,15 +27,14 @@
 
 package com.tencent.devops.project.pojo.code
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("返回码更新请求报文体")
+@Schema(title = "返回码更新请求报文体")
 data class UpdateMessageCodeRequest(
-    @ApiModelProperty("中文简体描述信息", required = true)
+    @get:Schema(title = "中文简体描述信息", required = true)
     var messageDetailZhCn: String,
-    @ApiModelProperty("中文繁体描述信息", required = true)
+    @get:Schema(title = "中文繁体描述信息", required = true)
     var messageDetailZhTw: String,
-    @ApiModelProperty("英文描述信息", required = true)
+    @get:Schema(title = "英文描述信息", required = true)
     var messageDetailEn: String
 )

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,6 +30,7 @@ package com.tencent.devops.common.webhook.service.code.matcher
 import com.tencent.devops.common.pipeline.pojo.element.trigger.enums.CodeType
 import com.tencent.devops.common.webhook.pojo.code.WebHookParams
 import com.tencent.devops.common.webhook.pojo.code.git.GitEvent
+import com.tencent.devops.common.webhook.service.code.pojo.WebhookMatchResult
 import com.tencent.devops.repository.pojo.CodeGitRepository
 import com.tencent.devops.repository.pojo.CodeTGitRepository
 import com.tencent.devops.repository.pojo.Repository
@@ -49,12 +50,12 @@ open class GitWebHookMatcher(
         pipelineId: String,
         repository: Repository,
         webHookParams: WebHookParams
-    ): ScmWebhookMatcher.MatchResult {
+    ): WebhookMatchResult {
         if (repository !is CodeGitRepository &&
             repository !is CodeTGitRepository
         ) {
             logger.warn("$pipelineId|Is not code repo for git web hook for repo and pipeline: $repository")
-            return ScmWebhookMatcher.MatchResult(isMatch = false)
+            return WebhookMatchResult(isMatch = false)
         }
         return eventHandler.isMatch(
             event = event,

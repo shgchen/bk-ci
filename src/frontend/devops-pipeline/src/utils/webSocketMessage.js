@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -18,21 +18,33 @@
  */
 export default {
     callBack: () => {},
+    onReconnect: () => {},
 
     installWsMessage (callBack) {
         this.callBack = (res) => {
             const type = res?.data?.webSocketType
+            console.log('webSocket Receive data', res?.data)
             if (type === 'IFRAME' && res.data?.message) {
                 const message = JSON.parse(res.data.message)
-                callBack(message)
+                if (message === 'WEBSOCKET_RECONNECT') {
+                    console.log('webSocket reconnect', this.onReconnect)
+                    this.onReconnect?.()
+                } else {
+                    callBack(message)
+                }
             }
         }
         window.addEventListener('message', this.callBack)
     },
 
+    registeOnReconnect (callBack) {
+        this.onReconnect = callBack
+    },
+
     unInstallWsMessage () {
         window.removeEventListener('message', this.callBack)
         this.callBack = () => {}
+        this.onReconnect = () => {}
     },
 
     openDialogWebSocket (callBack, payLoad) {

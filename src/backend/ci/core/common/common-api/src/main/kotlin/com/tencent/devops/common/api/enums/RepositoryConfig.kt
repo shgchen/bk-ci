@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,7 +29,8 @@ package com.tencent.devops.common.api.enums
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.tencent.devops.common.api.exception.ParamBlankException
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
+
 import java.net.URLEncoder
 
 /**
@@ -38,11 +39,30 @@ import java.net.URLEncoder
  */
 class RepositoryConfig(
     val repositoryHashId: String?,
-    @ApiModelProperty("新版的git代码库名")
+    @get:Schema(title = "新版的git代码库名")
     val repositoryName: String?,
-    @ApiModelProperty("新版的git插件的类型")
+    @get:Schema(title = "新版的git插件的类型")
     val repositoryType: RepositoryType
 ) {
+
+    constructor(
+        repositoryHashId: String?,
+        repositoryName: String?,
+        triggerRepositoryType: TriggerRepositoryType?,
+        selfRepoHashId: String?
+    ) : this(
+        repositoryHashId =
+        if (triggerRepositoryType == TriggerRepositoryType.SELF) {
+            selfRepoHashId
+        } else {
+            repositoryHashId
+        },
+        repositoryName = repositoryName,
+        repositoryType = TriggerRepositoryType.toRepositoryType(
+            triggerRepositoryType
+        ) ?: RepositoryType.ID
+    )
+
     @JsonIgnore
     fun getRepositoryId(): String {
         return when (repositoryType) {

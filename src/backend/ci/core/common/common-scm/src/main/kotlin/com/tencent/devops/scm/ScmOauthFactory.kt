@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -37,6 +37,7 @@ import com.tencent.devops.scm.code.CodeGitlabScmImpl
 import com.tencent.devops.scm.code.CodeSvnScmImpl
 import com.tencent.devops.scm.code.CodeTGitScmImpl
 import com.tencent.devops.scm.code.git.api.GitOauthApi
+import com.tencent.devops.scm.code.svn.api.SVNOauthApi
 import com.tencent.devops.scm.config.GitConfig
 import com.tencent.devops.scm.config.SVNConfig
 import com.tencent.devops.scm.enums.CodeSvnRegion
@@ -44,6 +45,7 @@ import com.tencent.devops.scm.enums.CodeSvnRegion
 object ScmOauthFactory {
 
     private val gitOauthApi = GitOauthApi()
+    private val svnOauthApi = SVNOauthApi()
 
     @Suppress("ALL")
     fun getScm(
@@ -56,7 +58,7 @@ object ScmOauthFactory {
         token: String?,
         region: CodeSvnRegion?,
         userName: String?,
-        event: String?
+        event: String? = null
     ): IScm {
         return when (type) {
             ScmType.CODE_SVN -> {
@@ -84,7 +86,9 @@ object ScmOauthFactory {
                     username = userName,
                     privateKey = privateKey,
                     passphrase = passPhrase,
-                    svnConfig = svnConfig
+                    svnConfig = svnConfig,
+                    token = token,
+                    svnApi = svnOauthApi
                 )
             }
             ScmType.CODE_GIT -> {

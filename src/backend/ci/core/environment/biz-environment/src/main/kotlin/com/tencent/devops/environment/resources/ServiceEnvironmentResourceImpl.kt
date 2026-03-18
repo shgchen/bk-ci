@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,10 +27,13 @@
 
 package com.tencent.devops.environment.resources
 
+import com.tencent.bk.audit.annotations.AuditEntry
 import com.tencent.devops.common.api.constant.CommonMessageCode
 import com.tencent.devops.common.api.exception.ErrorCodeException
 import com.tencent.devops.common.api.pojo.OS
+import com.tencent.devops.common.api.pojo.Page
 import com.tencent.devops.common.api.pojo.Result
+import com.tencent.devops.common.auth.api.ActionId
 import com.tencent.devops.common.service.prometheus.BkTimed
 import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.environment.api.ServiceEnvironmentResource
@@ -69,6 +72,7 @@ class ServiceEnvironmentResourceImpl @Autowired constructor(
     }
 
     @BkTimed(extraTags = ["operate", "createEnvironment"])
+    @AuditEntry(actionId = ActionId.ENVIRONMENT_CREATE)
     override fun create(userId: String, projectId: String, environment: EnvCreateInfo): Result<EnvironmentId> {
         if (environment.name.isBlank()) {
             throw ErrorCodeException(errorCode = EnvironmentMessageCode.ERROR_ENV_NAME_NULL)
@@ -77,6 +81,21 @@ class ServiceEnvironmentResourceImpl @Autowired constructor(
         return Result(envService.createEnvironment(userId, projectId, environment))
     }
 
+    @AuditEntry(actionId = ActionId.ENVIRONMENT_VIEW)
+    override fun get(
+        userId: String,
+        projectId: String,
+        envHashId: String,
+        checkPermission: Boolean?
+    ): Result<EnvWithPermission> {
+        if (envHashId.isBlank()) {
+            throw ErrorCodeException(errorCode = EnvironmentMessageCode.ERROR_ENV_ID_NULL)
+        }
+
+        return Result(envService.getEnvironment(userId, projectId, envHashId, checkPermission ?: true))
+    }
+
+    @AuditEntry(actionId = ActionId.ENVIRONMENT_DELETE)
     override fun delete(userId: String, projectId: String, envHashId: String): Result<Boolean> {
         if (envHashId.isBlank()) {
             throw ErrorCodeException(errorCode = EnvironmentMessageCode.ERROR_ENV_ID_NULL)
@@ -86,6 +105,7 @@ class ServiceEnvironmentResourceImpl @Autowired constructor(
     }
 
     @BkTimed(extraTags = ["operate", "createNode"])
+    @AuditEntry(actionId = ActionId.ENVIRONMENT_EDIT)
     override fun addNodes(
         userId: String,
         projectId: String,
@@ -104,6 +124,7 @@ class ServiceEnvironmentResourceImpl @Autowired constructor(
         return Result(true)
     }
 
+    @AuditEntry(actionId = ActionId.ENVIRONMENT_EDIT)
     override fun deleteNodes(
         userId: String,
         projectId: String,
@@ -134,6 +155,20 @@ class ServiceEnvironmentResourceImpl @Autowired constructor(
         return Result(envService.listAllEnvNodes(userId, projectId, envHashIds))
     }
 
+    @BkTimed(extraTags = ["operate", "getNode"])
+    override fun listNodesByEnvIdsNew(
+        userId: String,
+        projectId: String,
+        page: Int?,
+        pageSize: Int?,
+        envHashIds: List<String>
+    ): Result<Page<NodeBaseInfo>> {
+        if (envHashIds.isEmpty()) {
+            throw ErrorCodeException(errorCode = CommonMessageCode.ERROR_NEED_PARAM_, params = arrayOf("envHashIds"))
+        }
+        return Result(envService.listAllEnvNodesNew(userId, projectId, page, pageSize, envHashIds))
+    }
+
     @BkTimed(extraTags = ["operate", "getEnv"])
     override fun listRawByEnvNames(
         userId: String,
@@ -151,6 +186,7 @@ class ServiceEnvironmentResourceImpl @Autowired constructor(
         return Result(envService.listBuildEnvs(userId, projectId, os))
     }
 
+    @AuditEntry(actionId = ActionId.ENVIRONMENT_EDIT)
     override fun setShareEnv(
         userId: String,
         projectId: String,
@@ -160,6 +196,38 @@ class ServiceEnvironmentResourceImpl @Autowired constructor(
         checkParam(userId, projectId, envHashId)
         envService.setShareEnv(userId, projectId, envHashId, sharedProjects.sharedProjects)
         return Result(true)
+    }
+
+    override fun enableNodeEnv(
+        userId: String,
+        projectId: String,
+        envHashId: String?,
+        nodeHashId: String?,
+        envName: String?,
+        nodeName: String?,
+        enableNode: Boolean
+    ): Result<Boolean> {
+        if (envHashId.isNullOrBlank() && envName.isNullOrBlank()) {
+            throw ErrorCodeException(
+                errorCode = CommonMessageCode.ERROR_NEED_PARAM_,
+                params = arrayOf("envHashId or envName")
+            )
+        }
+        if (nodeHashId.isNullOrBlank() && nodeName.isNullOrBlank()) {
+            throw ErrorCodeException(
+                errorCode = CommonMessageCode.ERROR_NEED_PARAM_,
+                params = arrayOf("nodeHashId or nodeName")
+            )
+        }
+        return envService.enableNodeEnv(
+            projectId = projectId,
+            userId = userId,
+            envHashId = envHashId,
+            nodeHashId = nodeHashId,
+            envName = envName,
+            nodeName = nodeName,
+            enableNode = enableNode
+        )
     }
 
     private fun checkParam(

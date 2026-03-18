@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -34,69 +34,75 @@ import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_PROJECT_ID
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.ticket.pojo.CertAndroid
 import com.tencent.devops.ticket.pojo.CertIOS
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["BUILD_AGENT_CERT"], description = "构建-证书资源")
+@Tag(name = "BUILD_AGENT_CERT", description = "构建-证书资源")
 @Path("/buildAgent/builds/certs")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Suppress("ALL")
 interface BuildAgentCertResource {
-    @ApiOperation("按证书ID获取ios加密的证书内容")
+    @Operation(summary = "按证书ID获取ios加密的证书内容")
     @Path("/ios/{certId}/")
     @GET
     fun queryIos(
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_PROJECT_ID)
         projectId: String,
-        @ApiParam("Agent ID", required = true)
+        @Parameter(description = "Agent ID", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_AGENT_ID)
         agentId: String,
-        @ApiParam("秘钥", required = true)
+        @Parameter(description = "秘钥", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_AGENT_SECRET_KEY)
         secretKey: String,
-        @ApiParam("构建ID", required = true)
+        @Parameter(description = "构建ID", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_BUILD_ID)
         buildId: String,
-        @ApiParam("证书ID", required = true)
+        @Parameter(description = "证书ID", required = true)
         @PathParam("certId")
         certId: String,
-        @ApiParam("Base64编码的加密公钥", required = true)
+        @Parameter(description = "Base64编码的加密公钥", required = true)
         @QueryParam("publicKey")
-        publicKey: String
+        publicKey: String,
+        @Parameter(description = "是否填充,如果bcpPro版本高于1.46,则传true,否则传false", required = false)
+        @QueryParam("padding")
+        padding: Boolean? = false
     ): Result<CertIOS>
 
-    @ApiOperation("按证书ID获取android加密的证书内容")
+    @Operation(summary = "按证书ID获取android加密的证书内容")
     @Path("/android/{certId}/")
     @GET
     fun queryAndroid(
-        @ApiParam("项目ID", required = true)
+        @Parameter(description = "项目ID", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_PROJECT_ID)
         projectId: String,
-        @ApiParam("Agent ID", required = true)
+        @Parameter(description = "Agent ID", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_AGENT_ID)
         agentId: String,
-        @ApiParam("秘钥", required = true)
+        @Parameter(description = "秘钥", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_AGENT_SECRET_KEY)
         secretKey: String,
-        @ApiParam("构建ID", required = true)
+        @Parameter(description = "构建ID", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_BUILD_ID)
         buildId: String,
-        @ApiParam("证书ID", required = true)
+        @Parameter(description = "证书ID", required = true)
         @PathParam("certId")
         certId: String,
-        @ApiParam("Base64编码的加密公钥", required = true)
+        @Parameter(description = "Base64编码的加密公钥", required = true)
         @QueryParam("publicKey")
-        publicKey: String
+        publicKey: String,
+        @Parameter(description = "是否填充,如果bcpPro版本高于1.46,则传true,否则传false", required = false)
+        @QueryParam("padding")
+        padding: Boolean? = false
     ): Result<CertAndroid>
 }

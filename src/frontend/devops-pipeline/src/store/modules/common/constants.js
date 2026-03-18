@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,9 +29,9 @@ export const ENVS_MUTATION = 'ENVS_MUTATION'
 export const APP_ENV_MUTATION = 'APP_ENV_MUTATION'
 export const APP_NODE_MUTATION = 'APP_NODE_MUTATION'
 export const PROJECT_GROUP_USERS_MUTATION = 'PROJECT_GROUP_USERS_MUTATION'
-export const UPDATE_PIPELINE_SETTING_MUNTATION = 'UPDATE_PIPELINE_SETTING_MUNTATION'
-export const RESET_PIPELINE_SETTING_MUNTATION = 'RESET_PIPELINE_SETTING_MUNTATION'
 export const REFRESH_QUALITY_LOADING_MUNTATION = 'REFRESH_QUALITY_LOADING_MUNTATION'
 export const INTERCEPT_ATOM_MUTATION = 'INTERCEPT_ATOM_MUTATION'
 export const INTERCEPT_TEMPLATE_MUTATION = 'INTERCEPT_TEMPLATE_MUTATION'
 export const QUALITY_ATOM_MUTATION = 'QUALITY_ATOM_MUTATION'
+export const SET_PAC_SUPPORT_SCM_TYPE_LIST = 'SET_PAC_SUPPORT_SCM_TYPE_LIST'
+export const SET_PROJECT_PERM = 'SET_PROJECT_PERM'

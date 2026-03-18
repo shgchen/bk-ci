@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -47,6 +47,7 @@ import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_MR_DESC
 import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_MR_ID
 import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_MR_IID
 import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_MR_PROPOSER
+import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_MR_TAPD_ISSUES
 import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_MR_TITLE
 import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_MR_URL
 import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_REF
@@ -59,10 +60,14 @@ import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_REPO_NAME
 import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_REPO_URL
 import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_SHA
 import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_SHA_SHORT
+import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_TAG_DESC
 import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_TAG_FROM
 import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_TAG_MESSAGE
 import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_UPDATE_USER
 import com.tencent.devops.common.pipeline.utils.PIPELINE_GIT_YAML_PATH
+import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GITHUB_WEBHOOK_CREATE_REF_NAME
+import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GITHUB_WEBHOOK_CREATE_REF_TYPE
+import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_BRANCH
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_ISSUE_DESCRIPTION
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_ISSUE_ID
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_ISSUE_IID
@@ -70,12 +75,21 @@ import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_ISSUE_MIL
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_ISSUE_OWNER
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_ISSUE_STATE
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_ISSUE_TITLE
+import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_MR_MILESTONE
+import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_MR_MILESTONE_ID
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_MR_REVIEWERS
+import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_NOTE_AUTHOR_ID
+import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_NOTE_CREATED_AT
+import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_NOTE_NOTEABLE_TYPE
+import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_NOTE_UPDATED_AT
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_REVIEW_ID
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_REVIEW_IID
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_REVIEW_OWNER
+import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_REVIEW_REVIEWABLE_TYPE
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_REVIEW_REVIEWERS
 import com.tencent.devops.common.webhook.pojo.code.BK_REPO_GIT_WEBHOOK_REVIEW_STATE
+import com.tencent.devops.common.webhook.pojo.code.BK_REPO_WEBHOOK_REPO_ALIAS_NAME
+import com.tencent.devops.common.webhook.pojo.code.BK_REPO_WEBHOOK_REPO_TYPE
 import com.tencent.devops.common.webhook.pojo.code.PIPELINE_REPO_NAME
 import com.tencent.devops.common.webhook.pojo.code.PIPELINE_WEBHOOK_BLOCK
 import com.tencent.devops.common.webhook.pojo.code.PIPELINE_WEBHOOK_BRANCH
@@ -98,6 +112,7 @@ import java.util.regex.Pattern
 object PipelineVarUtil {
 
     private val tPattern = Pattern.compile("\\$[{]{2}(?<double>[^$^{}]+)[}]{2}")
+    const val CONTEXT_PREFIX = "variables."
 
     /**
      * 检查[keyword]字符串是不是一个变量语法， ${{ varName }}， 如果不是则返回false
@@ -192,6 +207,8 @@ object PipelineVarUtil {
      * CI预置上下文转换映射关系
      */
     private val contextVarMappingBuildVar = mapOf(
+        "ci.project_name" to PROJECT_NAME_CHINESE,
+        "ci.build_msg" to PIPELINE_BUILD_MSG,
         "ci.workspace" to WORKSPACE,
         "ci.pipeline_id" to PIPELINE_ID,
         "ci.pipeline_name" to PIPELINE_NAME,
@@ -225,6 +242,8 @@ object PipelineVarUtil {
         "ci.mr_iid" to PIPELINE_GIT_MR_IID,
         "ci.tag_message" to PIPELINE_GIT_TAG_MESSAGE,
         "ci.tag_from" to PIPELINE_GIT_TAG_FROM,
+        "ci.tag_desc" to PIPELINE_GIT_TAG_DESC,
+        "ci.mr_tapd_issues" to PIPELINE_GIT_MR_TAPD_ISSUES,
         "ci.mr_title" to PIPELINE_GIT_MR_TITLE,
         "ci.mr_desc" to PIPELINE_GIT_MR_DESC,
         "ci.mr_proposer" to PIPELINE_GIT_MR_PROPOSER,
@@ -248,7 +267,32 @@ object PipelineVarUtil {
         "ci.mr_reviewers" to BK_REPO_GIT_WEBHOOK_MR_REVIEWERS,
         "ci.pipeline_path" to PIPELINE_GIT_YAML_PATH,
         "ci.repo_create_time" to PIPELINE_GIT_REPO_CREATE_TIME,
-        "ci.repo_creator" to PIPELINE_GIT_REPO_CREATOR
+        "ci.repo_creator" to PIPELINE_GIT_REPO_CREATOR,
+        "ci.remark" to PIPELINE_BUILD_REMARK,
+        "ci.repo_alias_name" to BK_REPO_WEBHOOK_REPO_ALIAS_NAME,
+        "ci.build_msg" to PIPELINE_BUILD_MSG,
+        "ci.event" to PIPELINE_WEBHOOK_EVENT_TYPE,
+        "ci.milestone_name" to BK_REPO_GIT_WEBHOOK_MR_MILESTONE,
+        "ci.milestone_id" to BK_REPO_GIT_WEBHOOK_MR_MILESTONE_ID,
+        "ci.note_type" to BK_REPO_GIT_WEBHOOK_NOTE_NOTEABLE_TYPE,
+        "ci.note_author" to BK_REPO_GIT_WEBHOOK_NOTE_AUTHOR_ID,
+        "ci.create_time" to BK_REPO_GIT_WEBHOOK_NOTE_CREATED_AT,
+        "ci.modify_time" to BK_REPO_GIT_WEBHOOK_NOTE_UPDATED_AT,
+        "ci.review_type" to BK_REPO_GIT_WEBHOOK_REVIEW_REVIEWABLE_TYPE,
+        "ci.build-no" to BUILD_NO,
+        "ci.pipeline_creator" to PIPELINE_CREATE_USER,
+        "ci.pipeline_modifier" to PIPELINE_UPDATE_USER,
+        "ci.pipeline_version" to PIPELINE_VERSION,
+        "ci.project_id" to PROJECT_NAME,
+        "ci.project_name" to PROJECT_NAME_CHINESE,
+        "ci.build_start_type" to PIPELINE_START_TYPE,
+        "ci.repo_type" to BK_REPO_WEBHOOK_REPO_TYPE,
+        "ci.branch" to BK_REPO_GIT_WEBHOOK_BRANCH,
+        "ci.create_ref" to BK_REPO_GITHUB_WEBHOOK_CREATE_REF_NAME,
+        "ci.create_type" to BK_REPO_GITHUB_WEBHOOK_CREATE_REF_TYPE,
+        "ci.failed_tasks" to BK_CI_BUILD_FAIL_TASKS,
+        "ci.failed_tasknames" to BK_CI_BUILD_FAIL_TASKNAMES,
+        "ci.authorizer" to BK_CI_AUTHORIZER
     )
 
     /**
@@ -318,6 +362,29 @@ object PipelineVarUtil {
     fun fillOldVar(vars: MutableMap<String, String>) {
         turning(newVarMappingOldVar, vars)
         prefixTurning(newPrefixMappingOld, vars)
+    }
+
+    /**
+     * 填充variable变量
+     */
+    fun fillVariableMap(pipelineParamMap: Map<String, String>): Map<String, String> {
+        val allVars = mutableMapOf<String, String>()
+        pipelineParamMap.forEach { (name, value) ->
+            allVars[name] = value
+            if (!name.startsWith(CONTEXT_PREFIX)) {
+                allVars[CONTEXT_PREFIX + name] = value
+            }
+        }
+        return allVars
+    }
+
+    /**
+     * 获取variable变量名
+     */
+    fun getVariableKey(key: String) = if (key.startsWith(CONTEXT_PREFIX)) {
+        key
+    } else {
+        CONTEXT_PREFIX + key
     }
 
     /**
@@ -444,6 +511,8 @@ object PipelineVarUtil {
 
     fun newVarToOldVar(newVarName: String): String? = newVarMappingOldVar[newVarName]
 
+    fun contextVarMap() = contextVarMappingBuildVar
+
     const val MAX_VERSION_LEN = 64
 
     /**
@@ -477,5 +546,9 @@ object PipelineVarUtil {
             ?.value?.toString() ?: return null
 
         return "$majorVersion.$minorVersion.$fixVersion"
+    }
+
+    fun recommendVersionKey(key: String): Boolean {
+        return key == MAJORVERSION || key == MINORVERSION || key == FIXVERSION
     }
 }

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,46 +27,62 @@
 
 package com.tencent.devops.common.pipeline
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.tencent.devops.common.api.constant.CommonMessageCode
+import com.tencent.devops.common.api.constant.HIDDEN_SYMBOL
 import com.tencent.devops.common.pipeline.container.Container
 import com.tencent.devops.common.pipeline.container.NormalContainer
 import com.tencent.devops.common.pipeline.container.Stage
+import com.tencent.devops.common.pipeline.container.TriggerContainer
 import com.tencent.devops.common.pipeline.container.VMBuildContainer
 import com.tencent.devops.common.pipeline.event.CallBackEvent
 import com.tencent.devops.common.pipeline.event.PipelineCallbackEvent
 import com.tencent.devops.common.pipeline.event.ProjectPipelineCallBack
+import com.tencent.devops.common.pipeline.pojo.TemplateInstanceField
+import com.tencent.devops.common.pipeline.pojo.element.ElementAdditionalOptions
+import com.tencent.devops.common.pipeline.pojo.element.trigger.ManualTriggerElement
 import com.tencent.devops.common.pipeline.pojo.time.BuildRecordTimeCost
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import com.tencent.devops.common.pipeline.pojo.transfer.Resources
+import com.tencent.devops.common.pipeline.template.ITemplateModel
+import com.tencent.devops.common.web.utils.I18nUtil
+import io.swagger.v3.oas.annotations.media.Schema
 
 @Suppress("ALL")
-@ApiModel("流水线模型-创建信息")
+@Schema(title = "流水线模型-创建信息")
 data class Model(
-    @ApiModelProperty("名称", required = true)
+    @get:Schema(title = "名称", required = true)
     var name: String,
-    @ApiModelProperty("描述", required = false)
+    @get:Schema(title = "描述", required = false)
     var desc: String?,
-    @ApiModelProperty("阶段集合", required = true)
+    @get:Schema(title = "阶段集合", required = true)
     val stages: List<Stage>,
-    @ApiModelProperty("标签", required = false)
+    @get:Schema(title = "标签", required = false)
+    @Deprecated("以PipelineGroupService和流水线设置版本中为准")
     var labels: List<String> = emptyList(),
-    @ApiModelProperty("是否从模板中实例化出来的", required = false)
+    @get:Schema(title = "是否从模板中实例化出来的", required = false)
     val instanceFromTemplate: Boolean? = null,
-    @ApiModelProperty("创建人", required = false)
+    @get:Schema(title = "创建人", required = false)
     var pipelineCreator: String? = null,
-    @ApiModelProperty("当前模板对应的被复制的模板或安装的研发商店的模板对应的ID", required = false)
+    @get:Schema(title = "当前模板对应的被复制的模板或安装的研发商店的模板对应的ID", required = false)
     var srcTemplateId: String? = null,
-    @ApiModelProperty("当前模板的ID", required = false)
+    @get:Schema(title = "当前模板的ID", required = false)
     var templateId: String? = null,
-    @ApiModelProperty("提示", required = false)
+    @get:Schema(title = "提示", required = false)
     var tips: String? = null,
-    @ApiModelProperty("流水线事件回调", required = false)
+    @get:Schema(title = "流水线事件回调", required = false)
     var events: Map<String, PipelineCallbackEvent>? = emptyMap(),
-    @ApiModelProperty("静态流水线组", required = false)
+    @get:Schema(title = "静态流水线组", required = false)
     var staticViews: List<String> = emptyList(),
-    @ApiModelProperty("各项耗时", required = true)
-    var timeCost: BuildRecordTimeCost? = null
-) {
-    @ApiModelProperty("提交时流水线最新版本号", required = false)
+    @get:Schema(title = "各项耗时", required = true)
+    var timeCost: BuildRecordTimeCost? = null,
+    @get:Schema(title = "模板资源", required = true)
+    val resources: Resources? = null,
+    @get:Schema(title = "实例化模版信息", required = true)
+    var template: TemplateInstanceDescriptor? = null,
+    @get:Schema(title = "实例化流水线自定义的参数、触发器和设置", required = false)
+    var overrideTemplateField: TemplateInstanceField? = null
+) : ITemplateModel {
+    @get:Schema(title = "提交时流水线最新版本号", required = false)
     var latestVersion: Int = 0
 
     /**
@@ -99,6 +115,7 @@ data class Model(
                             maxRunningMinutes = container.maxRunningMinutes,
                             buildEnv = container.buildEnv,
                             customBuildEnv = container.customBuildEnv,
+                            customEnv = container.customEnv,
                             thirdPartyAgentId = container.thirdPartyAgentId,
                             thirdPartyAgentEnvId = container.thirdPartyAgentEnvId,
                             thirdPartyWorkspace = container.thirdPartyWorkspace,
@@ -215,5 +232,53 @@ data class Model(
             }
         }
         return pipelineCallBack
+    }
+
+    @JsonIgnore
+    fun getTriggerContainer() = stages[0].containers[0] as TriggerContainer
+
+    fun encryptParamsValue() {
+        (stages[0].containers[0] as TriggerContainer).params.forEach {
+            if (it.sensitive == true) {
+                it.value = HIDDEN_SYMBOL
+                it.defaultValue = HIDDEN_SYMBOL
+            }
+        }
+    }
+
+    companion object {
+        const val classType = "model"
+        fun defaultModel(
+            pipelineName: String = "",
+            userId: String? = null
+        ): Model {
+            return Model(
+                name = pipelineName,
+                desc = "",
+                stages = listOf(
+                    Stage(
+                        id = "stage-1",
+                        containers = listOf(
+                            TriggerContainer(
+                                id = "0",
+                                name = "trigger",
+                                elements = listOf(
+                                    ManualTriggerElement(
+                                        id = "T-1-1-1",
+                                        name = I18nUtil.getCodeLanMessage(
+                                            messageCode = CommonMessageCode.BK_MANUAL_TRIGGER,
+                                            language = userId?.let { I18nUtil.getLanguage(userId) }
+                                        )
+                                    ).apply {
+                                        additionalOptions = ElementAdditionalOptions(enable = true)
+                                    },
+                                )
+                            )
+                        )
+                    )
+                ),
+                pipelineCreator = userId
+            )
+        }
     }
 }

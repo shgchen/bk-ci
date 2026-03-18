@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,15 +27,14 @@
 
 package com.tencent.devops.quality.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("质量红线-每日拦截")
+@Schema(title = "质量红线-每日拦截")
 data class CountDailyIntercept(
-    @ApiModelProperty("日期", required = true)
+    @get:Schema(title = "日期", required = true)
     val date: String,
-    @ApiModelProperty("拦截数", required = true)
+    @get:Schema(title = "拦截数", required = true)
     val count: Int,
-    @ApiModelProperty("生效流水线执行数", required = true)
+    @get:Schema(title = "生效流水线执行数", required = true)
     val pipelineExecuteCount: Int = 0
 )

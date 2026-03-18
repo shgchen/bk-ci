@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,21 +28,22 @@
 package com.tencent.devops.misc.pojo.process
 
 import com.tencent.devops.misc.dao.process.ProcessDao
-import com.tencent.devops.misc.dao.process.ProcessDataMigrateDao
-import io.swagger.annotations.ApiModel
+import com.tencent.devops.misc.factory.MigrationStrategyFactory
+import io.swagger.v3.oas.annotations.media.Schema
 import org.jooq.DSLContext
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Semaphore
 
-@ApiModel("迁移流水线数据参数")
+@Schema(title = "迁移流水线数据参数")
 data class MigratePipelineDataParam(
     val projectId: String,
     val pipelineId: String,
     val cancelFlag: Boolean,
-    val semaphore: Semaphore,
-    val doneSignal: CountDownLatch,
     val dslContext: DSLContext,
     val migratingShardingDslContext: DSLContext,
     val processDao: ProcessDao,
-    val processDataMigrateDao: ProcessDataMigrateDao
+    val migrationStrategyFactory: MigrationStrategyFactory,
+    val semaphore: Semaphore? = null,
+    val doneSignal: CountDownLatch? = null,
+    val archiveFlag: Boolean? = null
 )

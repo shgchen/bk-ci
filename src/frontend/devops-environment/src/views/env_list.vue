@@ -1,51 +1,127 @@
 <template>
     <div class="environment-list-wrapper">
-        <content-header class="env-header">
-            <div slot="left">{{ $t('environment.environment') }}</div>
-            <div slot="right" v-if="showContent && envList.length">
-                <bk-button theme="primary" @click="toCreateEnv">{{ $t('environment.new') }}</bk-button>
-            </div>
-        </content-header>
+        <div
+            class="filter-bar"
+            v-if="showContent && (envList.length || searchValue.length || isRequesting)"
+        >
+            <bk-button
+                :key="projectId"
+                v-perm="{
+                    permissionData: {
+                        projectId: projectId,
+                        resourceType: ENV_RESOURCE_TYPE,
+                        resourceCode: projectId,
+                        action: ENV_RESOURCE_ACTION.CREATE
+                    }
+                }"
+                theme="primary"
+                @click="toCreateEnv"
+            >
+                {{ $t('environment.new') }}
+            </bk-button>
+            <SearchSelect
+                class="search-input ml15"
+                v-model="searchValue"
+                :placeholder="filterPlaceHolder"
+                :data="filterData"
+                :show-condition="false"
+                clearable
+                key="search"
+            ></SearchSelect>
+        </div>
 
-        <section class="sub-view-port"
+        <section
+            class="sub-view-port"
             v-bkloading="{
                 isLoading: loading.isLoading,
                 title: loading.title
-            }">
-            <bk-table v-if="showContent && envList.length"
+            }"
+        >
+            <bk-table
+                v-if="showContent && (envList.length || searchValue.length || isRequesting)"
                 size="small"
                 :data="envList"
-                :row-class-name="getRowClsName"
-                @row-click="toEnvDetail">
-                <bk-table-column :label="$t('environment.envInfo.name')" prop="name"></bk-table-column>
-                <bk-table-column :label="$t('environment.envInfo.type')" prop="envType">
+                row-class-name="env-item-row"
+                @row-click="toEnvDetail"
+            >
+                <bk-table-column
+                    :label="$t('environment.envInfo.name')"
+                    prop="name"
+                ></bk-table-column>
+                <bk-table-column
+                    :label="$t('environment.envInfo.type')"
+                    prop="envType"
+                >
                     <template slot-scope="props">
                         <span v-if="props.row.envType === 'DEV'">{{ $t('environment.envInfo.devEnvType') }}</span>
                         <span v-if="props.row.envType === 'PROD'">{{ $t('environment.envInfo.testEnvType') }}</span>
                         <span v-if="props.row.envType === 'BUILD'">{{ $t('environment.envInfo.buildEnvType') }}</span>
                     </template>
                 </bk-table-column>
-                <bk-table-column :label="$t('environment.envInfo.nodeCount')" prop="nodeCount">
+                <bk-table-column
+                    :label="$t('environment.envInfo.nodeCount')"
+                    prop="nodeCount"
+                >
                     <template slot-scope="props">
-                        <span class="node-count-item">{{ props.row.nodeCount }}</span>
+                        {{ props.row.nodeCount }}
                     </template>
                 </bk-table-column>
-                <bk-table-column :label="$t('environment.envInfo.creationTime')" prop="createdTime">
+                <bk-table-column
+                    :label="$t('environment.envInfo.creationTime')"
+                    prop="createdTime"
+                >
                     <template slot-scope="props">
                         {{ localConvertTime(props.row.createdTime) }}
                     </template>
                 </bk-table-column>
-                <bk-table-column :label="$t('environment.operation')" width="160">
+                <bk-table-column
+                    :label="$t('environment.operation')"
+                    width="160"
+                >
                     <template slot-scope="props">
-                        <span :class="{ 'handler-text': props.row.canDelete, 'no-env-delete-permission': !props.row.canDelete }" @click.stop="confirmDelete(props.row)">{{ $t('environment.delete') }}</span>
+                        <template v-if="props.row.canUse">
+                            <span
+                                v-perm="{
+                                    hasPermission: props.row.canDelete,
+                                    disablePermissionApi: true,
+                                    permissionData: {
+                                        projectId: projectId,
+                                        resourceType: ENV_RESOURCE_TYPE,
+                                        resourceCode: props.row.envHashId,
+                                        action: ENV_RESOURCE_ACTION.DELETE
+                                    }
+                                }"
+                                :class="{ 'handler-text': props.row.canDelete }"
+                                @click.stop="confirmDelete(props.row)"
+                            >
+                                {{ $t('environment.delete') }}
+                            </span>
+                        </template>
+                        <template v-else>
+                            <bk-button
+                                theme="primary"
+                                outline
+                                @click="handleApplyPermission(props.row)"
+                            >
+                                {{ $t('environment.applyPermission') }}
+                            </bk-button>
+                        </template>
                     </template>
                 </bk-table-column>
+                <template #empty>
+                    <EmptyTableStatus
+                        :type="searchValue.length ? 'search-empty' : 'empty'"
+                        @clear="clearFilter"
+                    />
+                </template>
             </bk-table>
 
-            <empty-node v-if="showContent && !envList.length"
+            <empty-node
+                v-if="showContent && !envList.length && !searchValue.length && !isRequesting"
                 :is-env="true"
                 :to-create-node="toCreateEnv"
-                :empty-info="emptyInfo"></empty-node>
+                :empty-info="emptyInfo"
+            ></empty-node>
         </section>
     </div>
 </template>
@@ -53,13 +129,21 @@
 <script>
     import emptyNode from './empty_node'
     import { convertTime } from '@/utils/util'
+    import { ENV_RESOURCE_ACTION, ENV_RESOURCE_TYPE } from '@/utils/permission'
+    import EmptyTableStatus from '@/components/empty-table-status'
+    import SearchSelect from '@blueking/search-select'
+    import '@blueking/search-select/dist/styles/index.css'
 
     export default {
         components: {
-            emptyNode
+            emptyNode,
+            SearchSelect,
+            EmptyTableStatus
         },
         data () {
             return {
+                ENV_RESOURCE_TYPE,
+                ENV_RESOURCE_ACTION,
                 showContent: false, // 显示内容
                 envList: [], // 换环境列表
                 loading: {
@@ -69,60 +153,97 @@
                 emptyInfo: {
                     title: this.$t('environment.envInfo.emptyEnv'),
                     desc: this.$t('environment.envInfo.emptyEnvTips')
-                }
+                },
+                searchValue: [],
+                isRequesting: false,
             }
         },
         computed: {
             projectId () {
                 return this.$route.params.projectId
+            },
+            filterData () {
+                const data = [
+                    {
+                        name: this.$t('environment.environmentName'),
+                        id: 'envName',
+                        default: true
+                    },
+                    {
+                        name: this.$t('environment.environmentType'),
+                        id: 'envType',
+                        children: [
+                            {
+                                id: 'DEV',
+                                name: this.$t('environment.envInfo.devEnvType')
+                            },
+                            {
+                                id: 'PROD',
+                                name: this.$t('environment.envInfo.testEnvType')
+                            },
+                            {
+                                id: 'BUILD',
+                                name: this.$t('environment.envInfo.buildEnvType')
+                            }
+                        ]
+                    },
+                    {
+                        name: this.$t('environment.node'),
+                        id: 'nodeHashId',
+                        remoteMethod:
+                            async (search) => {
+                                const nodeList = await this.$store.dispatch('environment/requestNodeList', {
+                                    projectId: this.projectId,
+                                    params: {
+                                        displayName: search
+                                    }
+                                })
+                                return nodeList.records.map(item => ({
+                                    name: item.displayName,
+                                    id: item.nodeHashId
+                                }))
+                            },
+                        inputInclude: true
+                    }
+                ]
+                return data.filter(data => {
+                    return !this.searchValue.find(val => val.id === data.id)
+                })
+            },
+            filterPlaceHolder () {
+                return this.filterData.map(item => item.name).join(' / ')
             }
         },
         watch: {
             projectId: async function (val) {
-                await this.init()
+                this.searchValue = []
+                await this.requestList()
+            },
+            searchValue (val) {
+                const requestParams = {}
+                val?.forEach(i => {
+                    if (i.values?.length) requestParams[i.id] = i.values[0].id
+                })
+                this.requestList(requestParams)
             }
         },
         async mounted () {
-            await this.init()
+            await this.requestList()
         },
         methods: {
-            getRowClsName ({ row }) {
-                return `env-item-row ${row.canUse ? '' : 'env-row-useless'}`
-            },
-            async init () {
-                const {
-                    loading
-                } = this
-
-                loading.isLoading = true
-                loading.title = this.$t('environment.loadingTitle')
-
-                try {
-                    this.requestList()
-                } catch (err) {
-                    this.$bkMessage({
-                        message: err.message ? err.message : err,
-                        theme: 'error'
-                    })
-                } finally {
-                    setTimeout(() => {
-                        this.loading.isLoading = false
-                    }, 1000)
-                }
-            },
             /**
              * 获取环境列表
              */
-            async requestList () {
+            async requestList (params = {}) {
+                this.isRequesting = true
                 try {
+                    this.loading.isLoading = true
+                    this.loading.title = this.$t('environment.loadingTitle')
                     const res = await this.$store.dispatch('environment/requestEnvList', {
-                        projectId: this.projectId
+                        projectId: this.projectId,
+                        params
                     })
-
-                    this.envList.splice(0, this.envList.length)
-                    res.forEach(item => {
-                        this.envList.push(item)
-                    })
+                    this.envList = [...res]
                 } catch (err) {
                     const message = err.message ? err.message : err
                     const theme = 'error'
@@ -131,32 +252,28 @@
                         message,
                         theme
                     })
+                } finally {
+                    this.showContent = true
+                    this.isRequesting = false
+                    this.loading.isLoading = false
                 }
-
-                this.showContent = true
             },
             toCreateEnv () {
                 this.$router.push({ name: 'createEnv' })
+            },
+            handleApplyPermission (row) {
+                this.handleNoPermission({
+                    projectId: this.projectId,
+                    resourceType: ENV_RESOURCE_TYPE,
+                    resourceCode: row.envHashId,
+                    action: ENV_RESOURCE_ACTION.USE
+                })
             },
             /**
              * 删除环境
              */
             async confirmDelete (row) {
                 const id = row.envHashId
-                if (!row.canDelete) {
-                    this.$showAskPermissionDialog({
-                        noPermissionList: [{
-                            actionId: this.$permissionActionMap.delete,
-                            resourceId: this.$permissionResourceMap.environment,
-                            instanceId: [{
-                                id,
-                                name: row.name
-                            }],
-                            projectId: this.projectId
-                        }]
-                    })
-                    return
-                }
                 
                 this.$bkInfo({
                     type: 'warning',
@@ -173,28 +290,21 @@
 
                             message = this.$t('environment.successfullyDeleted')
                             theme = 'success'
-                        } catch (err) {
-                            if (err.code === 403) {
-                                this.$showAskPermissionDialog({
-                                    noPermissionList: [{
-                                        actionId: this.$permissionActionMap.delete,
-                                        resourceId: this.$permissionResourceMap.environment,
-                                        instanceId: [{
-                                            id,
-                                            name: row.name
-                                        }],
-                                        projectId: this.projectId
-                                    }]
-                                })
-                            } else {
-                                message = err.data ? err.data.message : err
-                                theme = 'error'
-                            }
-                        } finally {
                             this.$bkMessage({
                                 message,
                                 theme
                             })
+                        } catch (e) {
+                            this.handleError(
+                                e,
+                                {
+                                    projectId: this.projectId,
+                                    resourceType: ENV_RESOURCE_TYPE,
+                                    resourceCode: row.envHashId,
+                                    action: ENV_RESOURCE_ACTION.DELETE
+                                }
+                            )
+                        } finally {
                             this.requestList()
                         }
                     }
@@ -204,33 +314,23 @@
              * 跳转环境详情
              */
             toEnvDetail (row) {
-                if (row.canUse) {
-                    this.$router.push({
-                        name: 'envDetail',
-                        params: {
-                            envId: row.envHashId
-                        }
-                    })
-                } else {
-                    this.$showAskPermissionDialog({
-                        noPermissionList: [{
-                            actionId: this.$permissionActionMap.use,
-                            resourceId: this.$permissionResourceMap.environment,
-                            instanceId: [{
-                                id: row.envHashId,
-                                name: row.name
-                            }],
-                            projectId: this.projectId
-                        }]
-                    })
-                }
+                if (!row.canUse) return
+                this.$router.push({
+                    name: 'envDetail',
+                    params: {
+                        envId: row.envHashId
+                    }
+                })
             },
             /**
              * 处理时间格式
              */
             localConvertTime (timestamp) {
                 return convertTime(timestamp * 1000)
-            }
+            },
+            clearFilter () {
+                this.searchValue = []
+            },
         }
     }
 </script>
@@ -239,36 +339,35 @@
     @import './../scss/conf';
 
     .environment-list-wrapper {
-        height: 100%;
-        overflow: hidden;
-        .env-header {
-            display: flex;
-            justify-content: space-between;
-            padding: 18px 20px;
-            width: 100%;
-            height: 60px;
-            border-bottom: 1px solid $borderWeightColor;
-            background-color: #fff;
-            box-shadow:0px 2px 5px 0px rgba(51,60,72,0.03);
+        width: 100%;
+        height: calc(100% - 48px);
+        padding: 20px;
+        overflow-y: auto;
+        .sub-view-port {
+            height: calc(100% - 52px);
+            overflow: auto
         }
         .env-item-row {
             cursor: pointer;
-            &.env-row-useless {
-              cursor: url('../images/cursor-lock.png'), auto;
-              color: $fontLigtherColor;
-              .node-count-item {
-                color: $fontLigtherColor;
-              }
-            }
-            .no-env-delete-permission {
-              cursor: url('../images/cursor-lock.png'), auto;
-            }
         }
 
-        .node-count-item,
         .handler-text {
             color: $primaryColor;
             cursor: pointer;
+        }
+        .search-input {
+            max-width: 40%;
+            flex: 1;
+            background: #fff;
+            ::placeholder {
+                color: #c4c6cc;
+            }
+        }
+        .filter-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
         }
     }
 </style>

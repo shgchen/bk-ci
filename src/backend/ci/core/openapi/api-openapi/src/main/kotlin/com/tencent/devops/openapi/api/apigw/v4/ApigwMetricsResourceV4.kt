@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,33 +28,35 @@ package com.tencent.devops.openapi.api.apigw.v4
 
 import com.tencent.devops.common.api.auth.AUTH_HEADER_DEVOPS_USER_ID
 import com.tencent.devops.common.api.pojo.Result
+import com.tencent.devops.openapi.BkApigwApi
 import com.tencent.devops.openapi.pojo.ApigwMetricsSummary
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.HeaderParam
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.HeaderParam
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["OPENAPI_METRICS_V4"], description = "metrics接口")
+@Tag(name = "OPENAPI_METRICS_V4", description = "metrics接口")
 @Path("/{apigwType:apigw-user|apigw-app|apigw}/v4/metrics/projectId/{projectId}")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Suppress("ALL")
+@BkApigwApi(version = "v4")
 interface ApigwMetricsResourceV4 {
 
     @GET
-    @ApiOperation("获取看板 summary 数据", tags = ["v4_app_metrics_summary", "v4_user_metrics_summary"])
+    @Operation(summary = "获取看板 summary 数据", tags = ["v4_app_metrics_summary", "v4_user_metrics_summary"])
     @Path("/summary")
     fun getSummaryInfo(
-        @ApiParam(value = "项目id", required = true)
+        @Parameter(description = "项目id", required = true)
         @PathParam("projectId")
         projectId: String,
-        @ApiParam(value = "用户信息", required = true)
+        @Parameter(description = "用户信息", required = true)
         @HeaderParam(AUTH_HEADER_DEVOPS_USER_ID)
         userId: String
     ): Result<ApigwMetricsSummary>

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -33,67 +33,67 @@ import com.tencent.devops.notify.pojo.NotificationResponseWithPage
 import com.tencent.devops.notify.pojo.RtxNotifyMessage
 import com.tencent.devops.notify.pojo.SmsNotifyMessage
 import com.tencent.devops.notify.pojo.WechatNotifyMessage
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["OP_NOTIFIES"], description = "通知")
+@Tag(name = "OP_NOTIFIES", description = "通知")
 @Path("/op/notifies")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Suppress("ALL")
 interface OpNotifyResource {
 
-    @ApiOperation("发送RTX信息通知")
+    @Operation(summary = "发送RTX信息通知")
     @POST
     @Path("/rtx")
     fun sendRtxNotify(
-        @ApiParam(value = "RTX信息内容", required = true)
+        @Parameter(description = "RTX信息内容", required = true)
         message: RtxNotifyMessage
     ): Result<Boolean>
 
-    @ApiOperation("发送电子邮件通知")
+    @Operation(summary = "发送电子邮件通知")
     @POST
     @Path("/email")
-    fun sendEmailNotify(@ApiParam(value = "电子邮件信息内容", required = true) message: EmailNotifyMessage): Result<Boolean>
+    fun sendEmailNotify(@Parameter(description = "电子邮件信息内容", required = true) message: EmailNotifyMessage): Result<Boolean>
 
-    @ApiOperation("发送微信通知")
+    @Operation(summary = "发送微信通知")
     @POST
     @Path("/wechat")
-    fun sendWechatNotify(@ApiParam(value = "微信信息内容", required = true) message: WechatNotifyMessage): Result<Boolean>
+    fun sendWechatNotify(@Parameter(description = "微信信息内容", required = true) message: WechatNotifyMessage): Result<Boolean>
 
-    @ApiOperation("发送短信通知")
+    @Operation(summary = "发送短信通知")
     @POST
     @Path("/sms")
-    fun sendSmsNotify(@ApiParam(value = "短信信息内容", required = true) message: SmsNotifyMessage): Result<Boolean>
+    fun sendSmsNotify(@Parameter(description = "短信信息内容", required = true) message: SmsNotifyMessage): Result<Boolean>
 
-    @ApiOperation("列出所有的通知")
+    @Operation(summary = "列出所有的通知")
     @GET
     @Path("/listNotifications")
     fun listNotifications(
-        @ApiParam(value = "通知方式，包括 rtx, email, wechat, sms 四种", required = true)
+        @Parameter(description = "通知方式，包括 rtx, email, wechat, sms 四种", required = true)
         @QueryParam("type")
         type: String?,
-        @ApiParam(value = "开始页数，从1开始", required = false, defaultValue = "0")
+        @Parameter(description = "开始页数，从1开始", required = false, example = "0")
         @QueryParam("page")
         page: Int,
-        @ApiParam(value = "每页数据条数", required = false, defaultValue = "10")
+        @Parameter(description = "每页数据条数", required = false, example = "10")
         @QueryParam("pageSize")
         pageSize: Int,
-        @ApiParam(value = "结果是否是成功的", required = false)
+        @Parameter(description = "结果是否是成功的", required = false)
         @QueryParam("success")
         success: Boolean?,
-        @ApiParam(value = "源系统id", required = false)
+        @Parameter(description = "源系统id", required = false)
         @QueryParam("fromSysId")
         fromSysId: String?,
-        @ApiParam(value = "创建时间排序规则，传 'descend' 则递减排序，不传或传其他值递增排序）", required = false)
+        @Parameter(description = "创建时间排序规则，传 'descend' 则递减排序，不传或传其他值递增排序）", required = false)
         @QueryParam("createdTimeSortOrder")
         createdTimeSortOrder: String?
     ): Result<NotificationResponseWithPage<BaseMessage>?>

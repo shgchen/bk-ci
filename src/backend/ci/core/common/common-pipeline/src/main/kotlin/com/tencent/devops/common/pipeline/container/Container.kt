@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -32,14 +32,15 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.pipeline.pojo.element.Element
 import com.tencent.devops.common.pipeline.pojo.time.BuildRecordTimeCost
-import io.swagger.annotations.ApiModel
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("流水线模型-多态基类")
+@Schema(title = "流水线模型-多态基类")
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "@type")
 @JsonSubTypes(
     JsonSubTypes.Type(value = TriggerContainer::class, name = TriggerContainer.classType),
     JsonSubTypes.Type(value = NormalContainer::class, name = NormalContainer.classType),
-    JsonSubTypes.Type(value = VMBuildContainer::class, name = VMBuildContainer.classType)
+    JsonSubTypes.Type(value = VMBuildContainer::class, name = VMBuildContainer.classType),
+    JsonSubTypes.Type(value = JobTemplateContainer::class, name = JobTemplateContainer.classType)
 )
 interface Container {
     var id: String? // seq id
@@ -57,10 +58,11 @@ interface Container {
     var containerHashId: String? // container 全局唯一ID
     var startVMStatus: String?
     var executeCount: Int?
-    val jobId: String? // 用户自定义id
+    var jobId: String? // 用户自定义id
     var containPostTaskFlag: Boolean? // 是否包含post任务
     val matrixGroupFlag: Boolean? // 是否为构建矩阵组
     var timeCost: BuildRecordTimeCost? // 耗时结果
+    var startVMTaskSeq: Int? // 开机任务序号
 
     /**
      * 重置所有状态数据
@@ -83,6 +85,7 @@ interface Container {
             it.transformCompatibility()
         }
     }
+
     /**
      * 只存储Container相关的配置，elements不会存储。
      */
@@ -103,4 +106,10 @@ interface Container {
     fun fetchGroupContainers(): List<Container>?
 
     fun fetchMatrixContext(): Map<String, String>?
+
+    fun containerEnabled(): Boolean
+
+    fun setContainerEnable(enable: Boolean)
+
+    fun copyElements(elements: List<Element>): Container
 }

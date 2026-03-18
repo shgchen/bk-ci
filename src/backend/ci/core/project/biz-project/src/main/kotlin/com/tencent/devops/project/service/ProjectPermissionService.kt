@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -37,9 +37,8 @@ interface ProjectPermissionService {
 
     /**
      * 校验用户是否有这个项目的权限
-     * @param accessToken 用于超级管理员绕过项目成员的限制，可为空
      */
-    fun verifyUserProjectPermission(accessToken: String? = null, projectCode: String, userId: String): Boolean
+    fun verifyUserProjectPermission(projectCode: String, userId: String): Boolean
 
     fun createResources(
         resourceRegisterInfo: ResourceRegisterInfo,
@@ -58,11 +57,11 @@ interface ProjectPermissionService {
 
     fun filterProjects(
         userId: String,
-        permission: AuthPermission
+        permission: AuthPermission,
+        resourceType: String? = null
     ): List<String>?
 
     fun verifyUserProjectPermission(
-        accessToken: String? = null,
         projectCode: String,
         userId: String,
         permission: AuthPermission

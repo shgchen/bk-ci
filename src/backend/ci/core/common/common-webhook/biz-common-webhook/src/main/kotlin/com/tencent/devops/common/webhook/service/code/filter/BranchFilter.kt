@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -35,7 +35,11 @@ class BranchFilter(
     private val pipelineId: String,
     private val triggerOnBranchName: String,
     private val includedBranches: List<String>,
-    private val excludedBranches: List<String>
+    private val excludedBranches: List<String>,
+    // 包含过滤失败原因
+    private val includedFailedReason: String = "",
+    // 排除过滤失败原因
+    private val excludedFailedReason: String = ""
 ) : WebhookFilter {
 
     companion object {
@@ -48,19 +52,20 @@ class BranchFilter(
             "$pipelineId|triggerOnBranchName:$triggerOnBranchName|includedBranches:$includedBranches" +
                 "|excludedBranches:$excludedBranches|branch filter"
         )
-        return hasNoBranchSpecs() || (isBranchNotExcluded() && isBranchIncluded(response))
+        return hasNoBranchSpecs() || (isBranchNotExcluded(response) && isBranchIncluded(response))
     }
 
     private fun hasNoBranchSpecs(): Boolean {
         return includedBranches.isEmpty() && excludedBranches.isEmpty()
     }
 
-    private fun isBranchNotExcluded(): Boolean {
+    private fun isBranchNotExcluded(response: WebhookFilterResponse): Boolean {
         excludedBranches.forEach { excludePattern ->
             if (matcher.match(excludePattern, triggerOnBranchName)) {
                 logger.warn(
                     "$pipelineId|the excluded branch match the git event branch $excludePattern"
                 )
+                response.failedReason = excludedFailedReason
                 return false
             }
         }
@@ -77,6 +82,10 @@ class BranchFilter(
                 return true
             }
         }
-        return includedBranches.isEmpty()
+        val branchIncluded = includedBranches.isEmpty()
+        if (!branchIncluded) {
+            response.failedReason = includedFailedReason
+        }
+        return branchIncluded
     }
 }

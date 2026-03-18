@@ -9,13 +9,14 @@
         />
         <div
             v-bkloading="{ isLoading }"
-            :style="{ height: &quot;100%&quot; }"
+            :style="{ height: '100%' }"
         >
             <iframe
                 v-if="src"
                 id="iframe-box"
                 ref="iframeEle"
                 allowfullscreen
+                allow="clipboard-read; clipboard-write"
                 :src="src"
                 @load="onLoad"
             />
@@ -37,7 +38,7 @@
         'beforeRouteUpdate'
     ])
 
-    @Component
+    @Component()
     export default class IframeView extends Vue {
         isLoading: boolean = true
         initPath: string = ''
@@ -129,10 +130,10 @@
             } else {
                 const reg = /^\/?\w+\/(\S*)\/?$/
                 const initPath = path.match(reg) ? path.replace(reg, '$1') : ''
-                const query = Object.assign({
-                    project_code: cookie.get(X_DEVOPS_PROJECT_ID)
-                }, this.$route.query)
-
+                const query = Object.assign(
+                    this.currentPage.link === '/permission/' ? {} : { project_code: cookie.get(X_DEVOPS_PROJECT_ID) },
+                    this.$route.query
+                )
                 this.src = urlJoin(this.currentPage.iframe_url, initPath) + '?' + queryStringify(query) + hash
             }
         }

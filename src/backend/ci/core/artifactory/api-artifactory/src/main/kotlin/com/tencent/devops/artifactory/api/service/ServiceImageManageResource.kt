@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,33 +28,33 @@
 package com.tencent.devops.artifactory.api.service
 
 import com.tencent.devops.common.api.pojo.Result
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.POST
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
 
-@Api(tags = ["SERVICE_ARTIFACTORY_IMAGE"], description = "图片管理")
+@Tag(name = "SERVICE_ARTIFACTORY_IMAGE", description = "图片管理")
 @Path("/service/artifactories/image/manage")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface ServiceImageManageResource {
 
-    @ApiOperation("压缩图片")
+    @Operation(summary = "压缩图片")
     @POST
     @Path("/compress")
     fun compressImage(
-        @ApiParam("网络图片路径", required = true)
+        @Parameter(description = "网络图片路径", required = true)
         @QueryParam("imageUrl")
         imageUrl: String,
-        @ApiParam("压缩宽度", required = true)
+        @Parameter(description = "压缩宽度", required = true)
         @QueryParam("compressWidth")
         compressWidth: Int,
-        @ApiParam("压缩高度", required = true)
+        @Parameter(description = "压缩高度", required = true)
         @QueryParam("compressHeight")
         compressHeight: Int
     ): Result<String>

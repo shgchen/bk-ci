@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -26,20 +26,19 @@
  */
 package com.tencent.devops.notify.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("通用消息类型")
+@Schema(title = "通用消息类型")
 data class NotificationResponse<out T> (
     val id: String,
-    @ApiModelProperty("是否成功")
+    @get:Schema(title = "是否成功")
     val success: Boolean,
-    @ApiModelProperty("创建时间")
+    @get:Schema(title = "创建时间")
     val createdTime: Long?,
-    @ApiModelProperty("更新时间")
+    @get:Schema(title = "更新时间")
     val updatedTime: Long?,
-    @ApiModelProperty("总数")
+    @get:Schema(title = "总数")
     val contentMD5: String,
-    @ApiModelProperty("通知数据")
+    @get:Schema(title = "通知数据")
     val notificationMessage: T
 )

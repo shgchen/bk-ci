@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -38,8 +38,7 @@ import com.tencent.devops.common.web.utils.I18nUtil
 import com.tencent.devops.process.engine.dao.template.TemplateDao
 import com.tencent.devops.process.pojo.template.TemplateDetailInfo
 import com.tencent.devops.process.pojo.template.TemplateType
-import com.tencent.devops.store.api.image.service.ServiceStoreImageResource
-import com.tencent.devops.store.pojo.image.enums.ImageStatusEnum
+import com.tencent.devops.store.api.image.ServiceStoreImageResource
 import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -54,27 +53,26 @@ class PipelineTemplateService @Autowired constructor(
     private val client: Client
 ) {
 
-    fun getTemplateDetailInfo(templateCode: String): Result<TemplateDetailInfo?> {
+    fun getTemplateDetailInfo(templateCode: String): TemplateDetailInfo? {
         logger.info("getTemplateDetailInfo templateCode is:$templateCode")
         var templateRecord = templateDao.getLatestTemplate(dslContext, templateCode)
         if (templateRecord.srcTemplateId != null && templateRecord.type == TemplateType.CONSTRAINT.name) {
             templateRecord = templateDao.getLatestTemplate(dslContext, templateRecord.srcTemplateId)
         }
-        return Result(
-            TemplateDetailInfo(
+        return TemplateDetailInfo(
                 templateCode = templateRecord.id,
                 templateName = templateRecord.templateName,
                 templateModel = if (!StringUtils.isEmpty(templateRecord.template)) JsonUtil.to(
                     templateRecord.template,
                     Model::class.java
-                ) else null
+                ) else null,
+                templateVersion = templateRecord.version
             )
-        )
     }
 
     fun checkImageReleaseStatus(userId: String, templateCode: String): Result<String?> {
         logger.info("start checkImageReleaseStatus templateCode is:$templateCode")
-        val templateModel = getTemplateDetailInfo(templateCode).data?.templateModel
+        val templateModel = getTemplateDetailInfo(templateCode)?.templateModel
             ?: return I18nUtil.generateResponseDataObject(
                 CommonMessageCode.SYSTEM_ERROR,
                 language = I18nUtil.getLanguage(userId)
@@ -110,9 +108,8 @@ class PipelineTemplateService @Autowired constructor(
     }
 
     private fun isRelease(imageCode: String, imageVersion: String): Boolean {
-        val imageStatus = client.get(ServiceStoreImageResource::class)
-            .getImageStatusByCodeAndVersion(imageCode, imageVersion).data
-        return ImageStatusEnum.RELEASED.name == imageStatus
+        return client.get(ServiceStoreImageResource::class)
+            .isReleasedStatus(imageCode, imageVersion).data!!
     }
 
     companion object {

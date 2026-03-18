@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,52 +27,50 @@
 
 package com.tencent.devops.process.engine.atom.vm
 
-import com.tencent.devops.common.api.check.Preconditions
 import com.tencent.devops.common.api.constant.CommonMessageCode.BK_ENV_NOT_YET_SUPPORTED
+import com.tencent.devops.common.api.exception.ErrorCodeException
 import com.tencent.devops.common.api.pojo.ErrorCode
 import com.tencent.devops.common.api.pojo.ErrorType
-import com.tencent.devops.common.api.pojo.Zone
 import com.tencent.devops.common.api.util.EnvUtils
 import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.api.util.MessageUtil
-import com.tencent.devops.common.api.util.timestampmilli
 import com.tencent.devops.common.client.Client
-import com.tencent.devops.common.event.dispatcher.pipeline.PipelineEventDispatcher
+import com.tencent.devops.common.event.dispatcher.SampleEventDispatcher
 import com.tencent.devops.common.log.utils.BuildLogPrinter
 import com.tencent.devops.common.pipeline.EnvReplacementParser
+import com.tencent.devops.common.pipeline.NameAndValue
 import com.tencent.devops.common.pipeline.container.Container
 import com.tencent.devops.common.pipeline.container.VMBuildContainer
+import com.tencent.devops.common.pipeline.dialect.PipelineDialectUtil
 import com.tencent.devops.common.pipeline.enums.BuildStatus
-import com.tencent.devops.common.pipeline.type.DispatchType
-import com.tencent.devops.common.pipeline.type.agent.AgentType
 import com.tencent.devops.common.pipeline.type.agent.ThirdPartyAgentEnvDispatchType
 import com.tencent.devops.common.pipeline.type.agent.ThirdPartyAgentIDDispatchType
-import com.tencent.devops.common.pipeline.type.docker.DockerDispatchType
-import com.tencent.devops.common.pipeline.type.exsi.ESXiDispatchType
 import com.tencent.devops.common.web.utils.I18nUtil
 import com.tencent.devops.dispatch.api.ServiceDispatchJobResource
 import com.tencent.devops.dispatch.pojo.AgentStartMonitor
+import com.tencent.devops.process.constant.ProcessMessageCode
 import com.tencent.devops.process.constant.ProcessMessageCode.ERROR_PIPELINE_NODEL_CONTAINER_NOT_EXISTS
 import com.tencent.devops.process.constant.ProcessMessageCode.ERROR_PIPELINE_NOT_EXISTS
 import com.tencent.devops.process.engine.atom.AtomResponse
 import com.tencent.devops.process.engine.atom.AtomUtils
 import com.tencent.devops.process.engine.atom.IAtomTask
 import com.tencent.devops.process.engine.atom.defaultFailAtomResponse
-import com.tencent.devops.process.engine.atom.parser.DispatchTypeParser
+import com.tencent.devops.process.engine.atom.parser.DispatchTypeBuilder
+import com.tencent.devops.process.engine.common.BS_ATOM_STATUS_REFRESH_DELAY_MILLS
 import com.tencent.devops.process.engine.exception.BuildTaskException
 import com.tencent.devops.process.engine.pojo.PipelineBuildTask
 import com.tencent.devops.process.engine.pojo.PipelineInfo
 import com.tencent.devops.process.engine.service.PipelineRepositoryService
 import com.tencent.devops.process.engine.service.PipelineRuntimeService
-import com.tencent.devops.process.engine.service.detail.ContainerBuildDetailService
+import com.tencent.devops.process.engine.service.PipelineTaskService
 import com.tencent.devops.process.engine.service.record.ContainerBuildRecordService
 import com.tencent.devops.process.pojo.mq.PipelineAgentShutdownEvent
 import com.tencent.devops.process.pojo.mq.PipelineAgentStartupEvent
-import com.tencent.devops.process.service.BuildVariableService
-import com.tencent.devops.process.service.PipelineAsCodeService
 import com.tencent.devops.process.service.PipelineContextService
+import com.tencent.devops.process.utils.BK_CI_AUTHORIZER
+import com.tencent.devops.process.utils.PIPELINE_DIALECT
+import com.tencent.devops.process.yaml.transfer.VariableDefault
 import com.tencent.devops.store.api.container.ServiceContainerAppResource
-import java.util.concurrent.TimeUnit
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
@@ -83,21 +81,19 @@ import org.springframework.stereotype.Component
  *
  * @version 1.0
  */
-@Suppress("UNUSED", "LongParameterList")
+@Suppress("LongParameterList", "LongMethod", "MagicNumber")
 @Component
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 class DispatchVMStartupTaskAtom @Autowired constructor(
     private val pipelineRepositoryService: PipelineRepositoryService,
     private val client: Client,
-    private val containerBuildDetailService: ContainerBuildDetailService,
     private val containerBuildRecordService: ContainerBuildRecordService,
     private val pipelineRuntimeService: PipelineRuntimeService,
-    private val buildVariableService: BuildVariableService,
-    private val pipelineEventDispatcher: PipelineEventDispatcher,
+    private val pipelineEventDispatcher: SampleEventDispatcher,
     private val buildLogPrinter: BuildLogPrinter,
-    private val dispatchTypeParser: DispatchTypeParser,
-    private val pipelineAsCodeService: PipelineAsCodeService,
-    private val pipelineContextService: PipelineContextService
+    private val dispatchTypeBuilder: DispatchTypeBuilder,
+    private val pipelineContextService: PipelineContextService,
+    private val pipelineTaskService: PipelineTaskService
 ) : IAtomTask<VMBuildContainer> {
     override fun getParamElement(task: PipelineBuildTask): VMBuildContainer {
         return JsonUtil.mapTo(task.taskParams, VMBuildContainer::class.java)
@@ -113,11 +109,11 @@ class DispatchVMStartupTaskAtom @Autowired constructor(
         var atomResponse: AtomResponse
         // 解决BUG:93319235,env变量提前替换
         val context = pipelineContextService.getAllBuildContext(runVariables)
-        val buildEnv = param.customBuildEnv?.map { mit ->
-            mit.key to EnvUtils.parseEnv(mit.value, context)
-        }?.toMap()
-        val fixParam = param.copy(customBuildEnv = buildEnv)
-
+        val buildEnv = param.customEnv?.map { mit ->
+            NameAndValue(mit.key, EnvUtils.parseEnv(mit.value, context))
+        }
+        val fixParam = param.copy(customEnv = buildEnv)
+        val executeCount = task.executeCount ?: 1
         try {
             atomResponse = if (!checkBeforeStart(task, param, context)) {
                 AtomResponse(
@@ -127,21 +123,25 @@ class DispatchVMStartupTaskAtom @Autowired constructor(
                     errorMsg = "check job start fail"
                 )
             } else {
-                execute(task, fixParam)
+                execute(task, fixParam, null, runVariables[BK_CI_AUTHORIZER])
             }
             buildLogPrinter.stopLog(
                 buildId = task.buildId,
                 tag = task.taskId,
-                jobId = task.containerHashId,
-                executeCount = task.executeCount ?: 1
+                containerHashId = task.containerHashId,
+                executeCount = executeCount,
+                jobId = param.jobId,
+                stepId = task.stepId
             )
         } catch (e: BuildTaskException) {
             buildLogPrinter.addRedLine(
                 buildId = task.buildId,
                 message = "Fail to execute the task atom: ${e.message}",
                 tag = task.taskId,
-                jobId = task.containerHashId,
-                executeCount = task.executeCount ?: 1
+                containerHashId = task.containerHashId,
+                executeCount = executeCount,
+                jobId = null,
+                stepId = task.stepId
             )
             logger.warn("Fail to execute the task atom", e)
             atomResponse = AtomResponse(
@@ -155,8 +155,10 @@ class DispatchVMStartupTaskAtom @Autowired constructor(
                 buildId = task.buildId,
                 message = "Fail to execute the task atom: ${ignored.message}",
                 tag = task.taskId,
-                jobId = task.containerHashId,
-                executeCount = task.executeCount ?: 1
+                containerHashId = task.containerHashId,
+                executeCount = executeCount,
+                jobId = null,
+                stepId = task.stepId
             )
             logger.warn("Fail to execute the task atom", ignored)
             atomResponse = AtomResponse(
@@ -169,7 +171,12 @@ class DispatchVMStartupTaskAtom @Autowired constructor(
         return atomResponse
     }
 
-    fun execute(task: PipelineBuildTask, param: VMBuildContainer): AtomResponse {
+    fun execute(
+        task: PipelineBuildTask,
+        param: VMBuildContainer,
+        ignoreEnvAgentIds: Set<String>?,
+        pipelineAuthorizer: String? = ""
+    ): AtomResponse {
         val projectId = task.projectId
         val pipelineId = task.pipelineId
         val buildId = task.buildId
@@ -181,37 +188,43 @@ class DispatchVMStartupTaskAtom @Autowired constructor(
         // 预指定VM名称列表（逗号分割）
         val vmNames = param.vmNames.joinToString(",")
 
-        val pipelineInfo = pipelineRepositoryService.getPipelineInfo(projectId, pipelineId)
-        Preconditions.checkNotNull(
-            obj = pipelineInfo,
-            exception = BuildTaskException(
-                errorType = ErrorType.SYSTEM,
-                errorCode = ERROR_PIPELINE_NOT_EXISTS.toInt(),
-                errorMsg = MessageUtil.getMessageByLocale(
-                    ERROR_PIPELINE_NOT_EXISTS,
-                    I18nUtil.getDefaultLocaleLanguage()
-                ),
-                pipelineId = pipelineId,
-                buildId = buildId,
-                taskId = taskId
-            )
+        val pipelineInfo = pipelineRepositoryService.getPipelineInfo(projectId, pipelineId) ?: throw BuildTaskException(
+            errorType = ErrorType.SYSTEM,
+            errorCode = ERROR_PIPELINE_NOT_EXISTS.toInt(),
+            errorMsg = MessageUtil.getMessageByLocale(
+                ERROR_PIPELINE_NOT_EXISTS, I18nUtil.getDefaultLocaleLanguage()
+            ),
+            pipelineId = pipelineId,
+            buildId = buildId,
+            taskId = taskId
         )
-
-        val container = containerBuildDetailService.getBuildModel(projectId, buildId)?.getContainer(vmSeqId)
-        Preconditions.checkNotNull(
-            obj = container,
-            exception = BuildTaskException(
-                errorType = ErrorType.SYSTEM,
-                errorCode = ERROR_PIPELINE_NODEL_CONTAINER_NOT_EXISTS.toInt(),
-                errorMsg = MessageUtil.getMessageByLocale(
-                    ERROR_PIPELINE_NOT_EXISTS,
-                    I18nUtil.getDefaultLocaleLanguage(),
-                    arrayOf(vmNames)
-                ),
-                pipelineId = pipelineId,
-                buildId = buildId,
-                taskId = taskId
-            )
+        val executeCount = task.executeCount ?: 1
+        val buildRecordContainer = containerBuildRecordService.getRecord(
+            projectId = projectId,
+            pipelineId = pipelineId,
+            buildId = buildId,
+            containerId = vmSeqId,
+            executeCount = executeCount
+        ) ?: throw ErrorCodeException(
+            errorCode = ProcessMessageCode.ERROR_NO_BUILD_EXISTS_BY_ID, params = arrayOf(buildId)
+        )
+        val container = containerBuildRecordService.getRecordModel(
+            projectId = projectId,
+            pipelineId = pipelineId,
+            version = buildRecordContainer.resourceVersion,
+            buildId = buildId,
+            executeCount = executeCount
+        )?.getContainer(vmSeqId) ?: throw BuildTaskException(
+            errorType = ErrorType.SYSTEM,
+            errorCode = ERROR_PIPELINE_NODEL_CONTAINER_NOT_EXISTS.toInt(),
+            errorMsg = MessageUtil.getMessageByLocale(
+                ERROR_PIPELINE_NODEL_CONTAINER_NOT_EXISTS,
+                I18nUtil.getDefaultLocaleLanguage(),
+                arrayOf(vmNames)
+            ),
+            pipelineId = pipelineId,
+            buildId = buildId,
+            taskId = taskId
         )
 
         // 这个任务是在构建子流程启动的，所以必须使用根流程进程ID
@@ -220,9 +233,17 @@ class DispatchVMStartupTaskAtom @Autowired constructor(
         containerBuildRecordService.containerPreparing(
             projectId, pipelineId, buildId, vmSeqId, task.executeCount ?: 1
         )
-        dispatch(task, pipelineInfo!!, param, vmNames, container!!)
+        dispatch(
+            task = task,
+            pipelineInfo = pipelineInfo,
+            param = param,
+            vmNames = vmNames,
+            container = container,
+            ignoreEnvAgentIds = ignoreEnvAgentIds,
+            pipelineAuthorizer = pipelineAuthorizer
+        )
         logger.info("[$buildId]|STARTUP_VM|VM=${param.baseOS}-$vmNames($vmSeqId)|Dispatch startup")
-        return AtomResponse(BuildStatus.CALL_WAITING)
+        return AtomResponse(BuildStatus.RUNNING)
     }
 
     private fun dispatch(
@@ -230,7 +251,9 @@ class DispatchVMStartupTaskAtom @Autowired constructor(
         pipelineInfo: PipelineInfo,
         param: VMBuildContainer,
         vmNames: String,
-        container: Container
+        container: Container,
+        ignoreEnvAgentIds: Set<String>?,
+        pipelineAuthorizer: String? = ""
     ) {
 
         // 读取插件市场中的插件信息，写入待构建处理
@@ -241,34 +264,39 @@ class DispatchVMStartupTaskAtom @Autowired constructor(
             buildLogPrinter = buildLogPrinter
         )
 
-        val dispatchType = getDispatchType(task, param)
-
+        val dispatchType = dispatchTypeBuilder.getDispatchType(task, param)
+        val customBuildEnv = mutableMapOf<String, String>()
+        param.customEnv?.forEach {
+            if (!it.key.isNullOrBlank()) customBuildEnv[it.key!!] = it.value ?: ""
+        }
         pipelineEventDispatcher.dispatch(
             PipelineAgentStartupEvent(
                 source = "vmStartupTaskAtom",
                 projectId = task.projectId,
                 pipelineId = task.pipelineId,
                 pipelineName = pipelineInfo.pipelineName,
-                userId = task.starter,
+                userId = pipelineAuthorizer?.takeIf { it.isNotEmpty() } ?: task.starter,
                 buildId = task.buildId,
                 buildNo = pipelineRuntimeService.getBuildInfo(task.projectId, task.buildId)!!.buildNum,
                 vmSeqId = task.containerId,
                 taskName = param.name,
                 os = param.baseOS.name,
                 vmNames = vmNames,
-                startTime = System.currentTimeMillis(),
                 channelCode = pipelineInfo.channelCode.name,
                 dispatchType = dispatchType,
-                zone = getBuildZone(container),
                 atoms = atoms,
                 executeCount = task.executeCount,
                 routeKeySuffix = dispatchType.routeKeySuffix?.routeKeySuffix,
-                stageId = task.stageId,
                 containerId = task.containerId,
                 containerHashId = task.containerHashId,
                 queueTimeoutMinutes = param.jobControlOption?.prepareTimeout,
-                containerType = task.containerType,
-                customBuildEnv = param.customBuildEnv
+                customBuildEnv = customBuildEnv,
+                jobId = container.jobId,
+                ignoreEnvAgentIds = ignoreEnvAgentIds,
+                singleNodeConcurrency = param.jobControlOption?.singleNodeConcurrency,
+                allNodeConcurrency = param.jobControlOption?.allNodeConcurrency,
+                jobTimeoutMinutes = param.jobControlOption?.timeoutVar?.toIntOrNull() ?: param.jobControlOption?.timeout
+                ?: VariableDefault.DEFAULT_JOB_MAX_RUNNING_MINUTES
             )
         )
     }
@@ -283,12 +311,11 @@ class DispatchVMStartupTaskAtom @Autowired constructor(
     ): Boolean {
         param.buildEnv?.let { buildEnv ->
             val asCode by lazy {
-                val asCodeSettings = pipelineAsCodeService.getPipelineAsCodeSettings(task.projectId, task.pipelineId)
-                val asCodeEnabled = asCodeSettings?.enable == true
-                val contextPair = if (asCodeEnabled) {
+                val dialect = PipelineDialectUtil.getPipelineDialect(variables[PIPELINE_DIALECT])
+                val contextPair = if (dialect.supportUseExpression()) {
                     EnvReplacementParser.getCustomExecutionContextByMap(variables)
                 } else null
-                Pair(asCodeEnabled, contextPair)
+                Pair(dialect, contextPair)
             }
             buildEnv.forEach { env ->
                 if (!env.value.startsWith("$")) {
@@ -297,7 +324,7 @@ class DispatchVMStartupTaskAtom @Autowired constructor(
                 val version = EnvReplacementParser.parse(
                     value = env.value,
                     contextMap = variables,
-                    onlyExpression = asCode.first,
+                    onlyExpression = asCode.first.supportUseExpression(),
                     contextPair = asCode.second
                 )
                 val res = client.get(ServiceContainerAppResource::class).getBuildEnv(
@@ -314,75 +341,16 @@ class DispatchVMStartupTaskAtom @Autowired constructor(
                             arrayOf(env.key, version)
                         ),
                         tag = task.taskId,
-                        jobId = task.containerHashId,
-                        executeCount = task.executeCount ?: 1
+                        containerHashId = task.containerHashId,
+                        executeCount = task.executeCount ?: 1,
+                        jobId = null,
+                        stepId = task.stepId
                     )
                     return false
                 }
             }
         }
         return true
-    }
-
-    private fun getDispatchType(task: PipelineBuildTask, param: VMBuildContainer): DispatchType {
-
-        val dispatchType: DispatchType
-        /**
-         * 新版的构建环境直接传入指定的构建机方式
-         */
-        if (param.dispatchType != null) {
-            dispatchType = param.dispatchType!!
-        } else {
-            // 第三方构建机ID
-            val agentId = param.thirdPartyAgentId ?: ""
-            // 构建环境ID
-            val envId = param.thirdPartyAgentEnvId ?: ""
-            val workspace = param.thirdPartyWorkspace ?: ""
-            dispatchType = if (agentId.isNotBlank()) {
-                ThirdPartyAgentIDDispatchType(
-                    displayName = agentId,
-                    workspace = workspace,
-                    agentType = AgentType.ID,
-                    dockerInfo = null
-                )
-            } else if (envId.isNotBlank()) {
-                ThirdPartyAgentEnvDispatchType(
-                    envName = envId,
-                    envProjectId = null,
-                    workspace = workspace,
-                    agentType = AgentType.ID,
-                    dockerInfo = null
-                )
-            } // docker建机指定版本(旧)
-            else if (!param.dockerBuildVersion.isNullOrBlank()) {
-                DockerDispatchType(param.dockerBuildVersion!!)
-            } else {
-                ESXiDispatchType()
-            }
-        }
-
-        // 处理dispatchType中的BKSTORE镜像信息
-        dispatchTypeParser.parse(
-            userId = task.starter, projectId = task.projectId,
-            pipelineId = task.pipelineId, buildId = task.buildId, dispatchType = dispatchType
-        )
-
-        dispatchType.replaceVariable(
-            buildVariableService.getAllVariable(
-                projectId = task.projectId,
-                pipelineId = task.pipelineId,
-                buildId = task.buildId
-            )
-        )
-        return dispatchType
-    }
-
-    private fun getBuildZone(container: Container): Zone? {
-        return when {
-            container !is VMBuildContainer -> null
-            container.enableExternal == true -> Zone.EXTERNAL
-            else -> null
-        }
     }
 
     override fun tryFinish(
@@ -410,8 +378,13 @@ class DispatchVMStartupTaskAtom @Autowired constructor(
                         buildId = task.buildId,
                         vmSeqId = task.containerId,
                         buildResult = false, // #5046 强制终止为失败
-                        routeKeySuffix = param.dispatchType?.routeKeySuffix?.routeKeySuffix,
-                        executeCount = task.executeCount
+                        dispatchType = dispatchTypeBuilder.getDispatchType(task, param),
+                        routeKeySuffix = dispatchTypeBuilder
+                            .getDispatchType(task, param)
+                            .routeKeySuffix?.routeKeySuffix,
+                        executeCount = task.executeCount,
+                        jobId = task.jobId,
+                        containerHashId = task.containerHashId
                     )
                 )
                 defaultFailAtomResponse
@@ -421,7 +394,32 @@ class DispatchVMStartupTaskAtom @Autowired constructor(
             if (param.dispatchType is ThirdPartyAgentEnvDispatchType ||
                 param.dispatchType is ThirdPartyAgentIDDispatchType
             ) {
-                thirdPartyAgentMonitorPrint(task)
+                // #9910 环境构建时遇到启动错误时调度到一个新的Agent
+                // 通过获取task param一个固定的参数，重新发送启动请求
+                val retryThirdAgentEnv = task.taskParams["RETRY_THIRD_AGENT_ENV"]?.toString()
+                if (!retryThirdAgentEnv.isNullOrBlank()) {
+                    task.taskParams.remove("RETRY_THIRD_AGENT_ENV")
+                    pipelineTaskService.updateTaskParam(
+                        transactionContext = null,
+                        projectId = task.projectId,
+                        buildId = task.buildId,
+                        taskId = task.taskId,
+                        taskParam = JsonUtil.toJson(task.taskParams)
+                    )
+                    return execute(
+                        task = task,
+                        param = param,
+                        ignoreEnvAgentIds = retryThirdAgentEnv.split(",").filter { it.isNotBlank() }.toSet()
+                    )
+                }
+
+                try {
+                    thirdPartyAgentRollBackMonitor(task)
+                    // 修改轮训时间,3m30s方便命中dispath的3分钟频率
+                    task.taskParams[BS_ATOM_STATUS_REFRESH_DELAY_MILLS] = (3.5 * 60 * 1000).toInt()
+                } catch (ignore: Exception) {
+                    // 忽略掉因调用打印接口出错而导致调度失败的问题
+                }
             }
 
             AtomResponse(
@@ -433,26 +431,17 @@ class DispatchVMStartupTaskAtom @Autowired constructor(
         }
     }
 
-    private fun thirdPartyAgentMonitorPrint(task: PipelineBuildTask) {
-        // #5806 超过10秒，开始查询调度情况，并Log出来
-        val timePasses = System.currentTimeMillis() - (task.startTime?.timestampmilli() ?: 0L)
-        val modSeconds = TimeUnit.MILLISECONDS.toSeconds(timePasses) % 20
-
-        /*
-            此处说明： 在每20秒的前5秒内会执行一下以下逻辑。每5秒一次的本方法调用，在取4秒是防5秒在不断累计延迟可能会产生的最大限度不精准
-         */
-        if (modSeconds < 5) {
-
-            val agentMonitor = AgentStartMonitor(
-                projectId = task.projectId,
-                pipelineId = task.pipelineId,
-                buildId = task.buildId,
-                vmSeqId = task.containerId,
-                containerHashId = task.containerHashId,
-                userId = task.starter,
-                executeCount = task.executeCount
-            )
-            client.get(ServiceDispatchJobResource::class).monitor(agentStartMonitor = agentMonitor)
-        }
+    private fun thirdPartyAgentRollBackMonitor(task: PipelineBuildTask) {
+        val agentMonitor = AgentStartMonitor(
+            projectId = task.projectId,
+            pipelineId = task.pipelineId,
+            buildId = task.buildId,
+            vmSeqId = task.containerId,
+            containerHashId = task.containerHashId,
+            userId = task.starter,
+            executeCount = task.executeCount,
+            stepId = task.stepId
+        )
+        client.get(ServiceDispatchJobResource::class).monitor(agentStartMonitor = agentMonitor)
     }
 }

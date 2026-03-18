@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -34,6 +34,7 @@ import com.tencent.devops.common.expression.expression.functions.FromJson
 import com.tencent.devops.common.expression.expression.functions.Join
 import com.tencent.devops.common.expression.expression.functions.StartsWith
 import com.tencent.devops.common.expression.expression.functions.StrToTime
+import com.tencent.devops.common.expression.expression.functions.ToJson
 import com.tencent.devops.common.expression.expression.sdk.Function
 import java.util.TreeMap
 
@@ -46,6 +47,7 @@ object ExpressionConstants {
         addFunction(EndsWith.name, 2, 2, EndsWith())
         addFunction(StartsWith.name, 2, 2, StartsWith())
         addFunction(FromJson.name, 1, 1, FromJson())
+        addFunction(ToJson.name, 1, 1, ToJson())
         addFunction(StrToTime.name, 1, 1, StrToTime())
         addFunction(Join.name, 1, 2, Join())
         addFunction(Format.name, 1, Byte.MAX_VALUE.toInt(), Format())

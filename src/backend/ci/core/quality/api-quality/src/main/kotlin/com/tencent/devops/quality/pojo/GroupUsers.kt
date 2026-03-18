@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,13 +27,12 @@
 
 package com.tencent.devops.quality.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("质量红线-用户组用户")
+@Schema(title = "质量红线-用户组用户")
 data class GroupUsers(
-    @ApiModelProperty("内部人员")
+    @get:Schema(title = "内部人员")
     val innerUsers: Set<String>,
-    @ApiModelProperty("外部人员")
+    @get:Schema(title = "外部人员")
     val outerUsers: Set<String>
 )

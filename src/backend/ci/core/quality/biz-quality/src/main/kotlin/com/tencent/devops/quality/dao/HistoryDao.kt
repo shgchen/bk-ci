@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -279,6 +279,18 @@ class HistoryDao @Autowired constructor(
         endTime: LocalDateTime?
     ): Long {
         return count(dslContext, projectId, pipelineId, ruleId, RuleInterceptResult.FAIL.name, startTime, endTime)
+    }
+
+    fun batchUpdateHistoryResultById(
+        historyIds: Set<Long>,
+        result: RuleInterceptResult
+    ): Int {
+        return with(THistory.T_HISTORY) {
+            innerDslContext.update(this)
+                .set(RESULT, result.name)
+                .where(ID.`in`(historyIds))
+                .execute()
+        }
     }
 
     fun batchUpdateHistoryResult(

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -50,13 +50,15 @@ import com.tencent.devops.common.redis.RedisOperation
 import com.tencent.devops.common.service.utils.LogUtils
 import com.tencent.devops.common.web.utils.I18nUtil
 import com.tencent.devops.common.websocket.enum.RefreshType
+import com.tencent.devops.process.constant.ProcessMessageCode
 import com.tencent.devops.process.dao.record.BuildRecordModelDao
 import com.tencent.devops.process.engine.control.lock.PipelineBuildRecordLock
 import com.tencent.devops.process.engine.dao.PipelineBuildDao
-import com.tencent.devops.process.engine.dao.PipelineResDao
-import com.tencent.devops.process.engine.dao.PipelineResVersionDao
+import com.tencent.devops.process.engine.dao.PipelineResourceDao
+import com.tencent.devops.process.engine.dao.PipelineResourceVersionDao
+import com.tencent.devops.process.engine.pojo.BuildInfo
 import com.tencent.devops.process.engine.pojo.event.PipelineBuildWebSocketPushEvent
-import com.tencent.devops.process.engine.service.PipelineElementService
+import com.tencent.devops.process.engine.utils.PipelineUtils
 import com.tencent.devops.process.pojo.BuildStageStatus
 import com.tencent.devops.process.pojo.pipeline.record.BuildRecordModel
 import com.tencent.devops.process.pojo.pipeline.record.BuildRecordStage
@@ -67,19 +69,19 @@ import com.tencent.devops.process.utils.KEY_PIPELINE_ID
 import com.tencent.devops.process.utils.KEY_PROJECT_ID
 import org.jooq.DSLContext
 import org.slf4j.LoggerFactory
+import javax.ws.rs.core.Response
 
 @Suppress("LongParameterList", "MagicNumber", "ReturnCount", "ComplexMethod")
 open class BaseBuildRecordService(
     private val dslContext: DSLContext,
     private val buildRecordModelDao: BuildRecordModelDao,
-    private val pipelineBuildDao: PipelineBuildDao,
+    val pipelineBuildDao: PipelineBuildDao,
     private val pipelineEventDispatcher: PipelineEventDispatcher,
     private val redisOperation: RedisOperation,
     private val stageTagService: StageTagService,
     private val recordModelService: PipelineRecordModelService,
-    private val pipelineResDao: PipelineResDao,
-    private val pipelineResVersionDao: PipelineResVersionDao,
-    private val pipelineElementService: PipelineElementService
+    private val pipelineResourceDao: PipelineResourceDao,
+    private val pipelineResourceVersionDao: PipelineResourceVersionDao
 ) {
 
     protected fun update(
@@ -155,16 +157,95 @@ open class BaseBuildRecordService(
         pipelineId: String,
         version: Int,
         buildId: String,
+        executeCount: Int? = null,
+        queryDslContext: DSLContext? = null,
+        debug: Boolean? = null
+    ): Model? {
+        val fixedExecuteCount = fixedExecuteCount(
+            projectId = projectId,
+            buildId = buildId,
+            executeCount = executeCount,
+            queryDslContext = queryDslContext
+        )
+        val buildRecordModel = buildRecordModelDao.getRecord(
+            dslContext = queryDslContext ?: dslContext,
+            projectId = projectId,
+            pipelineId = pipelineId,
+            buildId = buildId,
+            executeCount = fixedExecuteCount
+        )
+        return if (buildRecordModel != null) {
+            getRecordModel(
+                projectId = projectId,
+                pipelineId = pipelineId,
+                version = version,
+                buildId = buildId,
+                fixedExecuteCount = fixedExecuteCount,
+                buildRecordModel = buildRecordModel,
+                queryDslContext = queryDslContext,
+                debug = debug
+            )
+        } else {
+            null
+        }
+    }
+
+    fun fixedExecuteCount(
+        projectId: String,
+        buildId: String,
+        executeCount: Int?,
+        queryDslContext: DSLContext? = null,
+        buildInfo: BuildInfo? = null
+    ): Int {
+        return if (executeCount == null || executeCount < 1) {
+            val dbBuildInfo = buildInfo ?: pipelineBuildDao.getBuildInfo(
+                dslContext = queryDslContext ?: dslContext, projectId = projectId, buildId = buildId
+            ) ?: throw ErrorCodeException(
+                statusCode = Response.Status.NOT_FOUND.statusCode,
+                errorCode = ProcessMessageCode.ERROR_NO_BUILD_EXISTS_BY_ID,
+                params = arrayOf(buildId)
+            )
+            logger.warn(
+                "[$buildId]|getRecordModel|the parameter executeCount($executeCount) passed in is " +
+                        "invalid (null or <1). query the latest executeCount(${dbBuildInfo.executeCount}) from " +
+                        "the database for correction."
+            )
+            dbBuildInfo.executeCount
+        } else {
+            executeCount
+        }
+    }
+
+    fun getRecordModel(
+        projectId: String,
+        pipelineId: String,
+        version: Int,
+        buildId: String,
         fixedExecuteCount: Int,
         buildRecordModel: BuildRecordModel,
-        executeCount: Int?
+        queryDslContext: DSLContext? = null,
+        debug: Boolean? = null
     ): Model? {
         val watcher = Watcher(id = "getRecordModel#$buildId")
         watcher.start("getVersionModelString")
-        val resourceStr = pipelineResVersionDao.getVersionModelString(
-            dslContext = dslContext, projectId = projectId, pipelineId = pipelineId, version = version
-        ) ?: pipelineResDao.getVersionModelString(
-            dslContext = dslContext,
+        val finalDSLContext = queryDslContext ?: dslContext
+        // 当debug没有传的时候，从数据库中获取数据判断是否是调试产生的构建
+        val debugFlag = debug ?: pipelineBuildDao.getDebugFlag(finalDSLContext, projectId, buildId)
+        val resourceStr = if (debugFlag) {
+            pipelineBuildDao.getDebugResourceStr(
+                dslContext = finalDSLContext,
+                projectId = projectId,
+                buildId = buildId
+            )
+        } else {
+            pipelineResourceVersionDao.getVersionModelString(
+                dslContext = finalDSLContext,
+                projectId = projectId,
+                pipelineId = pipelineId,
+                version = version
+            )
+        } ?: pipelineResourceDao.getVersionModelString(
+            dslContext = finalDSLContext,
             projectId = projectId,
             pipelineId = pipelineId,
             version = version
@@ -176,13 +257,9 @@ open class BaseBuildRecordService(
         return try {
             watcher.start("fillElementWhenNewBuild")
             val fullModel = JsonUtil.to(resourceStr, Model::class.java)
-            // 为model填充质量红线element
-            pipelineElementService.fillElementWhenNewBuild(
-                model = fullModel,
-                projectId = projectId,
-                pipelineId = pipelineId,
-                handlePostFlag = false
-            )
+            fullModel.stages.forEach {
+                PipelineUtils.transformUserIllegalReviewParams(it.checkIn?.reviewParams)
+            }
             val baseModelMap = JsonUtil.toMutableMap(bean = fullModel, skipEmpty = false)
             val mergeBuildRecordParam = MergeBuildRecordParam(
                 projectId = projectId,
@@ -193,7 +270,7 @@ open class BaseBuildRecordService(
                 pipelineBaseModelMap = baseModelMap
             )
             watcher.start("generateFieldRecordModelMap")
-            recordMap = recordModelService.generateFieldRecordModelMap(mergeBuildRecordParam)
+            recordMap = recordModelService.generateFieldRecordModelMap(mergeBuildRecordParam, queryDslContext)
             watcher.start("generatePipelineBuildModel")
             ModelUtils.generatePipelineBuildModel(
                 baseModelMap = baseModelMap,
@@ -201,8 +278,8 @@ open class BaseBuildRecordService(
             )
         } catch (ignore: Throwable) {
             logger.warn(
-                "RECORD|parse record($buildId)-recordMap(${JsonUtil.toJson(recordMap ?: "")})" +
-                    "-$executeCount with error: ",
+                "RECORD|parse record with error|$projectId|$pipelineId|$buildId|$fixedExecuteCount" +
+                    "|recordMap: ${JsonUtil.toJson(recordMap ?: "")}",
                 ignore
             )
             null
@@ -232,7 +309,7 @@ open class BaseBuildRecordService(
         executeCount: Int
     ) {
         val userId = startUser
-            ?: pipelineBuildDao.getBuildInfo(dslContext, projectId, buildId)?.startUser
+            ?: pipelineBuildDao.getUserBuildInfo(dslContext, projectId, buildId)?.startUser
             ?: return
         pipelineEventDispatcher.dispatch(
             PipelineBuildWebSocketPushEvent(

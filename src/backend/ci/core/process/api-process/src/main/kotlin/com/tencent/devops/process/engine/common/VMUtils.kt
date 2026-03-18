@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,6 +27,10 @@
 
 package com.tencent.devops.process.engine.common
 
+import com.tencent.devops.common.api.util.timestampmilli
+import java.time.LocalDateTime
+import kotlin.random.Random
+
 /**
  *
  * @version 1.0
@@ -35,6 +39,8 @@ package com.tencent.devops.process.engine.common
 object VMUtils {
 
     fun genStageId(seq: Int) = "stage-$seq"
+
+    fun genStageIdForUser(seq: Int) = "stage_$seq"
 
     fun genStopVMTaskId(seq: Int) = "${getStopVmLabel()}$seq"
 
@@ -59,6 +65,28 @@ object VMUtils {
     fun getWaitLabel() = "Wait_Finish_Job#"
 
     fun getEndLabel() = "end-"
+
+    fun getContainerJobId(randomSeed: Int, jobIdSet: MutableSet<String>): String {
+        val random = Random(randomSeed)
+        val sequence = StringBuilder()
+        for (i in 0 until 3) {
+            val randomChar = ('A'..'z').random(random)
+            sequence.append(randomChar)
+        }
+        val jobId = "job_$sequence"
+        return if (jobIdSet.contains(jobId)) {
+            "${jobId}_${LocalDateTime.now().timestampmilli()}"
+        } else {
+            jobId
+        }
+    }
+
+    fun getVmLabel(taskId: String) = when {
+        taskId.startsWith(getStartVmLabel()) -> getStartVmLabel()
+        taskId.startsWith(getStopVmLabel()) -> getStopVmLabel()
+        taskId.startsWith(getEndLabel()) -> getEndLabel()
+        else -> null
+    }
 
     fun isVMTask(taskId: String) = taskId.startsWith(getStartVmLabel()) ||
         taskId.startsWith(getStopVmLabel()) ||

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,12 +28,12 @@
 package com.tencent.devops.buildless.api.builds
 
 import com.tencent.devops.buildless.pojo.BuildLessTask
-import io.swagger.annotations.ApiParam
+import io.swagger.v3.oas.annotations.Parameter
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.context.request.async.DeferredResult
-import javax.ws.rs.QueryParam
+import jakarta.ws.rs.QueryParam
 
 @RestController
 @RequestMapping("/build")
@@ -41,7 +41,7 @@ interface BuildBuildLessMvcResource {
 
     @GetMapping("/task/claim", produces = [org.springframework.http.MediaType.APPLICATION_JSON_VALUE])
     fun claimBuildLessTask(
-        @ApiParam(value = "containerId", required = true)
+        @Parameter(description = "containerId", required = true)
         @QueryParam("containerId")
         containerId: String
     ): DeferredResult<BuildLessTask?>

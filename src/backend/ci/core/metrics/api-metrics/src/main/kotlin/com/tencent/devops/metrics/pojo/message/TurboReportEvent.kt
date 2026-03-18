@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,15 +27,19 @@
 
 package com.tencent.devops.metrics.pojo.message
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import com.tencent.devops.common.event.annotation.Event
+import com.tencent.devops.common.event.pojo.IEvent
+import com.tencent.devops.common.stream.constants.StreamBinder
+import com.tencent.devops.common.stream.constants.StreamBinding
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("Turbo上报消息")
+@Schema(title = "Turbo上报消息")
+@Event(destination = StreamBinding.METRICS_STATISTIC_TURBO_DAILY, binder = StreamBinder.EXTEND_RABBIT)
 data class TurboReportEvent(
-    @ApiModelProperty("统计日期")
+    @get:Schema(title = "统计日期")
     val statisticsTime: String,
-    @ApiModelProperty("项目ID")
+    @get:Schema(title = "项目ID")
     val projectId: String,
-    @ApiModelProperty("编译加速节省时间，单位：秒")
+    @get:Schema(title = "编译加速节省时间，单位：秒")
     val turboSaveTime: Double
-)
+) : IEvent()

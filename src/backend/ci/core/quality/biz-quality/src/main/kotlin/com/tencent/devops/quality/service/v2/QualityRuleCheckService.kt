@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -46,6 +46,7 @@ import com.tencent.devops.notify.PIPELINE_QUALITY_END_NOTIFY_TEMPLATE_V2
 import com.tencent.devops.notify.api.service.ServiceNotifyMessageTemplateResource
 import com.tencent.devops.notify.pojo.SendNotifyMessageTemplateRequest
 import com.tencent.devops.plugin.codecc.CodeccUtils
+import com.tencent.devops.process.api.service.ServiceVarResource
 import com.tencent.devops.process.utils.PIPELINE_NAME
 import com.tencent.devops.process.utils.PIPELINE_START_USER_ID
 import com.tencent.devops.process.utils.PIPELINE_START_USER_NAME
@@ -250,14 +251,14 @@ class QualityRuleCheckService @Autowired constructor(
             position = buildCheckParams.position,
             templateId = buildCheckParams.templateId,
             stageId = buildCheckParams.stageId ?: "",
-            runtimeVariable = buildCheckParams.runtimeVariable
+            runtimeVariable = buildCheckParams.runtimeVariable,
+            interceptTaskId = null
         )
         return doCheckRules(buildCheckParams = params, ruleList = ruleList)
     }
 
     private fun doCheckRules(buildCheckParams: BuildCheckParams, ruleList: List<QualityRule>): RuleCheckResult {
         with(buildCheckParams) {
-            logger.info("QUALITY|doCheckRules buildCheckParams is|$buildCheckParams")
             val filterRuleList = ruleList.filter { rule ->
                 logger.info("validate whether to check rule(${rule.name}) with gatewayId(${rule.gatewayId})")
                 if (buildCheckParams.taskId.isNotBlank() && rule.controlPoint.name != buildCheckParams.taskId) {
@@ -279,7 +280,8 @@ class QualityRuleCheckService @Autowired constructor(
                 pipelineId = pipelineId,
                 buildId = buildId,
                 filterRuleList = filterRuleList,
-                runtimeVariable = runtimeVariable
+                runtimeVariable = runtimeVariable,
+                interceptTaskId = buildCheckParams.interceptTaskId
             )
             val resultList = resultPair.first
             val ruleInterceptList = resultPair.second
@@ -301,7 +303,8 @@ class QualityRuleCheckService @Autowired constructor(
         pipelineId: String,
         buildId: String,
         filterRuleList: List<QualityRule>,
-        runtimeVariable: Map<String, String>?
+        runtimeVariable: Map<String, String>?,
+        interceptTaskId: String?
     ): Pair<List<RuleCheckSingleResult>, List<Triple<QualityRule, Boolean, List<QualityRuleInterceptRecord>>>> {
         val resultList = mutableListOf<RuleCheckSingleResult>()
         val ruleInterceptList = mutableListOf<Triple<QualityRule, Boolean, List<QualityRuleInterceptRecord>>>()
@@ -315,7 +318,8 @@ class QualityRuleCheckService @Autowired constructor(
                 rule.controlPoint.name,
                 rule.indicators,
                 metadataList,
-                rule.taskSteps
+                rule.taskSteps,
+                interceptTaskId
             )
             val interceptRecordList = result.second
             val interceptResult = result.first
@@ -325,9 +329,14 @@ class QualityRuleCheckService @Autowired constructor(
                 "buildId" to buildId,
                 CodeccUtils.BK_CI_CODECC_TASK_ID to
                         (runtimeVariable?.get(CodeccUtils.BK_CI_CODECC_TASK_ID) ?: "")
-            )
+            ).toMutableMap()
 
-            resultList.add(getRuleCheckSingleResult(rule.name, interceptRecordList, params))
+            // 指标详情链接支持占位符
+            interceptRecordList.forEach { record ->
+                record.logPrompt = runtimeVariable?.let { EnvUtils.parseEnv(record.logPrompt, it) } ?: record.logPrompt
+            }
+
+            resultList.add(getRuleCheckSingleResult(rule.name, interceptRecordList, params, result.third))
             ruleInterceptList.add(Triple(rule, interceptResult, interceptRecordList))
 
             val status = if (interceptResult) {
@@ -481,9 +490,11 @@ class QualityRuleCheckService @Autowired constructor(
         controlPointName: String,
         indicators: List<QualityIndicator>,
         metadataList: List<QualityHisMetadata>,
-        ruleTaskSteps: List<QualityRule.RuleTask>?
-    ): Pair<Boolean, MutableList<QualityRuleInterceptRecord>> {
+        ruleTaskSteps: List<QualityRule.RuleTask>?,
+        interceptTaskId: String?
+    ): Triple<Boolean, MutableList<QualityRuleInterceptRecord>, Set<String>> {
         var allCheckResult = true
+        var metadataMutableList = mutableListOf<QualityHisMetadata>()
         val interceptList = mutableListOf<QualityRuleInterceptRecord>()
         var ruleTaskStepsCopy = ruleTaskSteps?.toMutableList()
         // 借助临时list,把红线指标添加的控制点前缀塞进要判断的指标taskName
@@ -495,11 +506,45 @@ class QualityRuleCheckService @Autowired constructor(
             }
         }
 
-        logger.info("QUALITY|metadataList is: $metadataList, indicators is:$indicators")
+        // 如果是蓝盾拦截在某个插件上，则只检查该插件输出的指标值
+        // 以及非当前控制点插件的最后输出红线指标值（因为红线可以任意设置控制点，可能指标并不是在当前控制点输出）
+        interceptTaskId?.let {
+            indicators.forEach { indicator ->
+                val bCodeccElement = CodeccUtils.isCodeccAtom(indicator.elementType)
+                val metadata = if (bCodeccElement) {
+                    metadataList.filter { m ->
+                        m.taskId == it &&
+                        m.elementType in ElementUtils.QUALITY_CODECC_METATYPE &&
+                        indicator.metadataList.any { i -> i.enName == m.enName } }
+                } else {
+                    metadataList.filter { m -> m.enName == indicator.enName && m.taskId == it }
+                }
 
-        val (indicatorsCopy, metadataListCopy) = handleWithMultiIndicator(indicators, metadataList)
+                // 如果指标不是拦截的控制点上输出的，以最后输出的为准
+                if (metadata.isEmpty()) {
+                    if (bCodeccElement) {
+                        metadataList.filter { m ->
+                            m.elementType in ElementUtils.QUALITY_CODECC_METATYPE &&
+                            indicator.metadataList.any { i -> i.enName == m.enName }
+                        }.maxByOrNull { m -> m.createTime ?: 0L }?.let { m -> metadataMutableList.add(m) }
+                    } else {
+                        metadataList.filter { m ->
+                            m.enName == indicator.enName && m.elementType == indicator.elementType
+                        }.maxByOrNull { m -> m.createTime ?: 0L }?.let { m -> metadataMutableList.add(m) }
+                    }
+                } else {
+                    metadataMutableList.addAll(metadata)
+                }
+            }
+        } ?: run {
+            metadataMutableList = metadataList.toMutableList()
+        }
 
-        logger.info("QUALITY|indicatorsCopy is:$indicatorsCopy")
+        logger.info("QUALITY|metadataList is: $metadataMutableList, indicators is:$indicators")
+
+        val (indicatorsCopy, metadataListCopy, taskAtomMap) = handleWithMultiIndicator(indicators, metadataMutableList)
+
+        logger.info("QUALITY|indicatorsCopy is:$indicatorsCopy, task atom map is: $taskAtomMap")
         // 遍历每个指标
         indicatorsCopy.forEach { indicator ->
             val thresholdType = indicator.thresholdType
@@ -650,12 +695,13 @@ class QualityRuleCheckService @Autowired constructor(
                         actualValue = result,
                         pass = checkResult,
                         detail = elementDetail,
-                        logPrompt = logPrompt
+                        logPrompt = logPrompt,
+                        controlPointElementId = taskAtomMap[indicator.taskName]
                     )
                 )
             }
         }
-        return Pair(allCheckResult, interceptList)
+        return Triple(allCheckResult, interceptList, taskAtomMap.values.toSet())
     }
 
     /**
@@ -664,8 +710,20 @@ class QualityRuleCheckService @Autowired constructor(
     private fun getRuleCheckSingleResult(
         ruleName: String,
         interceptRecordList: List<QualityRuleInterceptRecord>,
-        params: Map<String, String>
+        params: MutableMap<String, String>,
+        elementIdSet: Set<String>
     ): RuleCheckSingleResult {
+        // 为防止相同插件的并发问题，在生成问题链接时从var表查询taskId
+        val variable = if (elementIdSet.isNotEmpty()) {
+            client.get(ServiceVarResource::class).getBuildVars(
+                projectId = params["projectId"]!!,
+                pipelineId = params["pipelineId"]!!,
+                buildId = params["buildId"]!!,
+                keys = elementIdSet.map { CodeccUtils.BK_CI_CODECC_ATOM_ID_TO_TASK_ID + "_" + it }.toSet()
+            ).data
+        } else null
+        params.putAll(variable ?: mapOf())
+        logger.info("rule check result param is: $params")
         val messageList = interceptRecordList.map {
             val thresholdOperationName = ThresholdOperationUtil.getOperationName(it.operation)
 
@@ -702,8 +760,9 @@ class QualityRuleCheckService @Autowired constructor(
             val projectId = params["projectId"] ?: ""
             val pipelineId = params["pipelineId"] ?: ""
             val buildId = params["buildId"] ?: ""
-            val taskId = params[CodeccUtils.BK_CI_CODECC_TASK_ID] ?: ""
-            if (taskId.isBlank()) {
+            val codeccAtomKey = "${CodeccUtils.BK_CI_CODECC_ATOM_ID_TO_TASK_ID}_${record.controlPointElementId}"
+            val taskId = params[codeccAtomKey] ?: params[CodeccUtils.BK_CI_CODECC_TASK_ID]
+            if (taskId.isNullOrBlank()) {
                 logger.warn("taskId is null or blank for project($projectId) pipeline($pipelineId)")
                 return ""
             }
@@ -949,9 +1008,10 @@ class QualityRuleCheckService @Autowired constructor(
     private fun handleWithMultiIndicator(
         indicators: List<QualityIndicator>,
         metadataList: List<QualityHisMetadata>
-    ): Pair<List<QualityIndicator>, List<QualityHisMetadata>> {
+    ): Triple<List<QualityIndicator>, List<QualityHisMetadata>, Map<String, String>> {
         val indicatorsCopy = indicators.toMutableList()
         val metadataListCopy = metadataList.map { it.clone() }
+        val taskAtomMap = mutableMapOf<String, String>()
 
         // // CodeCC插件一个指标的元数据对应多条，先对多个CodeCC插件提前做标识
         val codeccMetaList = metadataListCopy.filter {
@@ -959,7 +1019,10 @@ class QualityRuleCheckService @Autowired constructor(
         }.groupBy { it.taskId }
         if (codeccMetaList.size > 1) {
             codeccMetaList.values.forEachIndexed { index, codeccMeta ->
-                codeccMeta.map { it.taskName = "${it.taskName}+$index" }
+                codeccMeta.map {
+                    it.taskName = "${it.taskName}+$index"
+                    taskAtomMap.put(it.taskName, it.taskId)
+                }
             }
         }
 
@@ -1007,7 +1070,7 @@ class QualityRuleCheckService @Autowired constructor(
                 }
             }
         }
-        return Pair(indicatorsCopy, metadataListCopy)
+        return Triple(indicatorsCopy, metadataListCopy, taskAtomMap)
     }
 
     private fun handleScriptAndThirdPlugin(

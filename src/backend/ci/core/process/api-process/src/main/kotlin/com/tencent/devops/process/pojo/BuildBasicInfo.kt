@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,17 +27,19 @@
 
 package com.tencent.devops.process.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import com.tencent.devops.common.pipeline.enums.BuildStatus
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("构建模型-基础信息")
+@Schema(title = "构建模型-基础信息")
 data class BuildBasicInfo(
-    @ApiModelProperty("构建ID", required = true)
+    @get:Schema(title = "构建ID", required = true)
     val buildId: String,
-    @ApiModelProperty("项目ID", required = true)
+    @get:Schema(title = "项目ID", required = true)
     val projectId: String,
-    @ApiModelProperty("流水线ID", required = true)
+    @get:Schema(title = "流水线ID", required = true)
     val pipelineId: String,
-    @ApiModelProperty("流水线版本", required = true)
-    val pipelineVersion: Int
+    @get:Schema(title = "流水线版本", required = true)
+    val pipelineVersion: Int,
+    @get:Schema(title = "构建状态", required = false)
+    val status: BuildStatus?
 )

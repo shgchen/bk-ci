@@ -1,16 +1,33 @@
 <template>
-    <ul class="param-main" v-bkloading="{ isLoading }">
-        <li class="param-input" v-for="(parameter, paramIndex) in parameters" :key="paramIndex">
-            <parameter-input v-for="(model, index) in parameter.paramModels"
-                :style="{ maxWidth: `calc(${100 / parameter.paramModels.length}% - ${58 / parameter.paramModels.length}px)` }"
+    <ul
+        class="param-main"
+        v-bkloading="{ isLoading }"
+    >
+        <li
+            class="param-input"
+            v-for="(parameter, paramIndex) in parameters"
+            :key="paramIndex"
+        >
+            <parameter-input
+                v-for="model in parameter.paramModels"
                 :key="model.id"
-                :class="[{ 'last-child': index === parameter.paramModels.length - 1 }, 'input-com']"
+                class="input-com"
                 @update-value="(newValue) => updateValue(model, newValue)"
                 :param-values="paramValues"
+                :pipeline-dialect="pipelineDialect"
                 v-bind="model"
             ></parameter-input>
-            <i class="bk-icon icon-plus-circle" @click="plusParam(parameter, paramIndex)"></i>
-            <i class="bk-icon icon-minus-circle" v-if="parameters.length > 1" @click="minusParam(paramIndex)"></i>
+            <div :class="parameter.paramModels?.[0].label ? 'label-icon' : 'simple-label-icon'">
+                <i
+                    class="bk-icon icon-plus-circle"
+                    @click="plusParam(parameter, paramIndex)"
+                ></i>
+                <i
+                    class="bk-icon icon-minus-circle"
+                    v-if="parameters.length > 1"
+                    @click="minusParam(paramIndex)"
+                ></i>
+            </div>
         </li>
     </ul>
 </template>
@@ -163,16 +180,22 @@
         }
         .param-input {
             margin-bottom: 10px;
+            margin-right: 10px;
             display: flex;
             align-items: center;
+            grid-gap: 10px;
+            grid-auto-flow: column;
+            line-height: 0;
             .input-com {
-                flex: 1;
-                margin-right: 10px;
-                &.last-child {
-                    margin-right: 0;
-                }
+                min-width: 0;
             }
         }
+    }
+    .label-icon {
+        margin-top: 12px;
+    }
+    .simple-label-icon {
+        margin-bottom: 12px;
     }
     .bk-icon {
         margin-left: 5px;

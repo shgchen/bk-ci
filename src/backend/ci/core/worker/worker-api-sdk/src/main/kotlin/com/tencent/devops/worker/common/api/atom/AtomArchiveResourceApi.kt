@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -43,8 +43,8 @@ import com.tencent.devops.process.utils.PIPELINE_START_USER_ID
 import com.tencent.devops.store.pojo.atom.AtomDevLanguageEnvVar
 import com.tencent.devops.store.pojo.atom.AtomEnv
 import com.tencent.devops.store.pojo.atom.AtomEnvRequest
-import com.tencent.devops.store.pojo.common.SensitiveConfResp
-import com.tencent.devops.store.pojo.common.StorePkgRunEnvInfo
+import com.tencent.devops.store.pojo.common.sensitive.SensitiveConfResp
+import com.tencent.devops.store.pojo.common.env.StorePkgRunEnvInfo
 import com.tencent.devops.worker.common.api.AbstractBuildResourceApi
 import com.tencent.devops.worker.common.api.archive.ARCHIVE_PROPS_BUILD_ID
 import com.tencent.devops.worker.common.api.archive.ARCHIVE_PROPS_BUILD_NO
@@ -159,7 +159,7 @@ class AtomArchiveResourceApi : AbstractBuildResourceApi(), AtomArchiveSDKApi {
             destPath = destPath,
             buildVariables = buildVariables
         )
-        return file.inputStream().use { ShaUtils.sha1InputStream(it) }
+        return file.inputStream().use { ShaUtils.sha256InputStream(it) }
     }
 
     override fun uploadAtomPkgFile(
@@ -244,7 +244,9 @@ class AtomArchiveResourceApi : AbstractBuildResourceApi(), AtomArchiveSDKApi {
         projectId: String,
         atomFilePath: String,
         file: File,
-        authFlag: Boolean
+        authFlag: Boolean,
+        queryCacheFlag: Boolean,
+        containerType: String?
     ) {
         val filePath = when (realm) {
             REALM_LOCAL -> "$BK_CI_ATOM_DIR/$atomFilePath"
@@ -265,7 +267,7 @@ class AtomArchiveResourceApi : AbstractBuildResourceApi(), AtomArchiveSDKApi {
                 filePath,
                 "UTF-8"
             )
-        }&authFlag=$authFlag"
+        }&authFlag=$authFlag&queryCacheFlag=$queryCacheFlag"
         val request = buildGet(path)
         download(request, file)
     }

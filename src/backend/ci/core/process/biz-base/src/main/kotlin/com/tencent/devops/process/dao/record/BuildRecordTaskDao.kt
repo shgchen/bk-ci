@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -40,7 +40,7 @@ import com.tencent.devops.process.pojo.KEY_TASK_ID
 import com.tencent.devops.process.pojo.pipeline.record.BuildRecordTask
 import org.jooq.Condition
 import org.jooq.DSLContext
-import org.jooq.Record18
+import org.jooq.Record19
 import org.jooq.RecordMapper
 import org.jooq.impl.DSL
 import org.jooq.util.mysql.MySQLDSL
@@ -71,7 +71,9 @@ class BuildRecordTaskDao {
                 TASK_SEQ,
                 ATOM_CODE,
                 TIMESTAMPS,
-                POST_INFO
+                POST_INFO,
+                START_TIME,
+                END_TIME
             ).also { insert ->
                 records.forEach { record ->
                     insert.values(
@@ -90,7 +92,9 @@ class BuildRecordTaskDao {
                         record.taskSeq,
                         record.atomCode,
                         JsonUtil.toJson(record.timestamps, false),
-                        record.elementPostInfo?.let { JsonUtil.toJson(it, false) }
+                        record.elementPostInfo?.let { JsonUtil.toJson(it, false) },
+                        record.startTime,
+                        record.endTime
                     )
                 }
             }.onDuplicateKeyUpdate()
@@ -141,7 +145,8 @@ class BuildRecordTaskDao {
         executeCount: Int,
         buildStatus: BuildStatus,
         stageId: String? = null,
-        containerId: String? = null
+        containerId: String? = null,
+        taskIds: Set<String>? = null
     ) {
         with(TPipelineBuildRecordTask.T_PIPELINE_BUILD_RECORD_TASK) {
             val update = dslContext.update(this)
@@ -154,6 +159,7 @@ class BuildRecordTaskDao {
                 )
             stageId?.let { update.and(STAGE_ID.eq(stageId)) }
             containerId?.let { update.and(CONTAINER_ID.eq(containerId)) }
+            taskIds?.let { update.and(TASK_ID.`in`(taskIds)) }
             update.execute()
         }
     }
@@ -165,7 +171,8 @@ class BuildRecordTaskDao {
         buildId: String,
         executeCount: Int,
         containerId: String? = null,
-        buildStatusSet: Set<BuildStatus>? = null
+        buildStatusSet: Set<BuildStatus>? = null,
+        queryPostTaskFlag: Boolean? = null
     ): List<BuildRecordTask> {
         with(TPipelineBuildRecordTask.T_PIPELINE_BUILD_RECORD_TASK) {
             val conditions = mutableListOf<Condition>()
@@ -175,8 +182,12 @@ class BuildRecordTaskDao {
             conditions.add(EXECUTE_COUNT.eq(executeCount))
             containerId?.let { conditions.add(CONTAINER_ID.eq(containerId)) }
             buildStatusSet?.let { conditions.add(STATUS.`in`(it.map { status -> status.name })) }
-            return dslContext.selectFrom(this)
-                .where(conditions).orderBy(TASK_SEQ.asc()).fetch(mapper)
+            if (queryPostTaskFlag == true) {
+                conditions.add(POST_INFO.isNotNull)
+            } else if (queryPostTaskFlag == false) {
+                conditions.add(POST_INFO.isNull)
+            }
+            return dslContext.selectFrom(this).where(conditions).orderBy(TASK_SEQ.asc()).fetch(mapper)
         }
     }
 
@@ -185,7 +196,8 @@ class BuildRecordTaskDao {
         projectId: String,
         buildId: String,
         executeCount: Int,
-        matrixContainerIds: List<String>
+        matrixContainerIds: List<String>,
+        stageId: String? = null
     ): List<BuildRecordTask> {
         with(TPipelineBuildRecordTask.T_PIPELINE_BUILD_RECORD_TASK) {
             val conditions = mutableListOf<Condition>()
@@ -195,6 +207,9 @@ class BuildRecordTaskDao {
             if (matrixContainerIds.isNotEmpty()) {
                 conditions.add(CONTAINER_ID.notIn(matrixContainerIds))
             }
+            if (stageId != null) {
+                conditions.add(STAGE_ID.eq(stageId))
+            }
             // 获取每个最大执行次数
             val max = DSL.select(
                 TASK_ID.`as`(KEY_TASK_ID),
@@ -203,7 +218,7 @@ class BuildRecordTaskDao {
             val result = dslContext.select(
                 BUILD_ID, PROJECT_ID, PIPELINE_ID, RESOURCE_VERSION, STAGE_ID, CONTAINER_ID, TASK_ID,
                 TASK_SEQ, EXECUTE_COUNT, TASK_VAR, CLASS_TYPE, ATOM_CODE, STATUS, ORIGIN_CLASS_TYPE,
-                START_TIME, END_TIME, TIMESTAMPS, POST_INFO
+                START_TIME, END_TIME, TIMESTAMPS, POST_INFO, ASYNC_STATUS
             ).from(this).join(max).on(
                 TASK_ID.eq(max.field(KEY_TASK_ID, String::class.java))
                     .and(EXECUTE_COUNT.eq(max.field(KEY_EXECUTE_COUNT, Int::class.java)))
@@ -230,7 +245,7 @@ class BuildRecordTaskDao {
             val result = dslContext.select(
                 BUILD_ID, PROJECT_ID, PIPELINE_ID, RESOURCE_VERSION, STAGE_ID, CONTAINER_ID, TASK_ID,
                 TASK_SEQ, EXECUTE_COUNT, TASK_VAR, CLASS_TYPE, ATOM_CODE, STATUS, ORIGIN_CLASS_TYPE,
-                START_TIME, END_TIME, TIMESTAMPS, POST_INFO
+                START_TIME, END_TIME, TIMESTAMPS, POST_INFO, ASYNC_STATUS
             ).from(this).where(conditions).orderBy(TASK_SEQ.asc()).fetch()
             return result.map { record ->
                 generateBuildRecordTask(record)
@@ -239,9 +254,9 @@ class BuildRecordTaskDao {
     }
 
     private fun TPipelineBuildRecordTask.generateBuildRecordTask(
-        record: Record18<String, String, String, Int, String,
-            String, String, Int, Int, String, String, String,
-            String, String, LocalDateTime, LocalDateTime, String, String>
+        record: Record19<String, String, String, Int, String,
+                String, String, Int, Int, String, String, String,
+                String, String, LocalDateTime, LocalDateTime, String, String, String>
     ) =
         BuildRecordTask(
             buildId = record[BUILD_ID],
@@ -267,7 +282,8 @@ class BuildRecordTaskDao {
             } ?: mapOf(),
             elementPostInfo = record[POST_INFO]?.let {
                 JsonUtil.to(it, object : TypeReference<ElementPostInfo>() {})
-            }
+            },
+            asyncStatus = record[ASYNC_STATUS]
         )
 
     fun getRecord(
@@ -287,6 +303,49 @@ class BuildRecordTaskDao {
                         .and(TASK_ID.eq(taskId))
                         .and(EXECUTE_COUNT.eq(executeCount))
                 ).fetchOne(mapper)
+        }
+    }
+
+    fun updateAsyncStatus(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String,
+        buildId: String,
+        taskId: String,
+        executeCount: Int,
+        asyncStatus: String
+    ) {
+        with(TPipelineBuildRecordTask.T_PIPELINE_BUILD_RECORD_TASK) {
+            dslContext.update(this)
+                .set(ASYNC_STATUS, asyncStatus)
+                .where(
+                    BUILD_ID.eq(buildId)
+                        .and(PROJECT_ID.eq(projectId))
+                        .and(PIPELINE_ID.eq(pipelineId))
+                        .and(TASK_ID.eq(taskId))
+                        .and(EXECUTE_COUNT.eq(executeCount))
+                ).execute()
+        }
+    }
+
+    fun flushEndTimeWhenRetry(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String,
+        buildId: String,
+        taskId: String,
+        executeCount: Int
+    ) {
+        with(TPipelineBuildRecordTask.T_PIPELINE_BUILD_RECORD_TASK) {
+            dslContext.update(this)
+                .setNull(END_TIME)
+                .where(
+                    BUILD_ID.eq(buildId)
+                        .and(PROJECT_ID.eq(projectId))
+                        .and(PIPELINE_ID.eq(pipelineId))
+                        .and(EXECUTE_COUNT.eq(executeCount))
+                        .and(TASK_ID.eq(taskId))
+                ).execute()
         }
     }
 

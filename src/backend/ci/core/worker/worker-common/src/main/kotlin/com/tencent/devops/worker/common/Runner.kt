@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,19 +27,26 @@
 
 package com.tencent.devops.worker.common
 
+import com.fasterxml.jackson.core.type.TypeReference
 import com.tencent.devops.common.api.check.Preconditions
 import com.tencent.devops.common.api.exception.RemoteServiceException
-import com.tencent.devops.common.api.exception.TaskExecuteException
 import com.tencent.devops.common.api.pojo.ErrorCode
 import com.tencent.devops.common.api.pojo.ErrorInfo
 import com.tencent.devops.common.api.pojo.ErrorType
+import com.tencent.devops.common.api.util.JsonUtil
 import com.tencent.devops.common.api.util.MessageUtil
+import com.tencent.devops.common.pipeline.EnvReplacementParser
+import com.tencent.devops.common.pipeline.NameAndValue
+import com.tencent.devops.common.pipeline.dialect.PipelineDialectUtil
 import com.tencent.devops.common.pipeline.enums.BuildFormPropertyType
 import com.tencent.devops.common.pipeline.enums.BuildTaskStatus
 import com.tencent.devops.common.pipeline.pojo.BuildParameters
+import com.tencent.devops.common.pipeline.pojo.element.Element
 import com.tencent.devops.process.engine.common.VMUtils
+import com.tencent.devops.process.pojo.BuildJobResult
 import com.tencent.devops.process.pojo.BuildTask
 import com.tencent.devops.process.pojo.BuildVariables
+import com.tencent.devops.process.utils.PIPELINE_DIALECT
 import com.tencent.devops.process.utils.PIPELINE_RETRY_COUNT
 import com.tencent.devops.process.utils.PipelineVarUtil
 import com.tencent.devops.worker.common.constants.WorkerMessageCode.BK_PREPARE_TO_BUILD
@@ -49,25 +56,27 @@ import com.tencent.devops.worker.common.constants.WorkerMessageCode.UNKNOWN_ERRO
 import com.tencent.devops.worker.common.env.AgentEnv
 import com.tencent.devops.worker.common.env.BuildEnv
 import com.tencent.devops.worker.common.env.BuildType
-import com.tencent.devops.worker.common.env.DockerEnv
+import com.tencent.devops.worker.common.exception.TaskExecuteExceptionDecorator
+import com.tencent.devops.worker.common.expression.SpecialFunctions
 import com.tencent.devops.worker.common.heartbeat.Heartbeat
 import com.tencent.devops.worker.common.logger.LoggerService
 import com.tencent.devops.worker.common.service.EngineService
 import com.tencent.devops.worker.common.service.QuotaService
+import com.tencent.devops.worker.common.service.SensitiveValueService
 import com.tencent.devops.worker.common.task.TaskDaemon
 import com.tencent.devops.worker.common.task.TaskFactory
 import com.tencent.devops.worker.common.utils.CredentialUtils
 import com.tencent.devops.worker.common.utils.KillBuildProcessTree
 import com.tencent.devops.worker.common.utils.ShellUtil
+import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
-import org.slf4j.LoggerFactory
 import kotlin.system.exitProcess
 
 object Runner {
 
-    private const val maxSleepStep = 50L
+    private const val maxSleepStep = 80L
     private const val windows = 5L
     private const val millsStep = 100L
     private val logger = LoggerFactory.getLogger(Runner::class.java)
@@ -78,6 +87,7 @@ object Runner {
         var workspacePathFile: File? = null
         val buildVariables = getBuildVariables()
         var failed = false
+        var errMsg: String? = null
         try {
             BuildEnv.setBuildId(buildVariables.buildId)
 
@@ -102,12 +112,13 @@ object Runner {
         } catch (ignore: Exception) {
             failed = true
             logger.warn("Catch unknown exceptions", ignore)
-            val errMsg = when (ignore) {
+            errMsg = when (ignore) {
                 is java.lang.IllegalArgumentException ->
                     MessageUtil.getMessageByLocale(
                         messageCode = PARAMETER_ERROR,
                         language = AgentEnv.getLocaleLanguage()
                     ) + "：${ignore.message}"
+
                 is FileNotFoundException, is IOException -> {
                     MessageUtil.getMessageByLocale(
                         messageCode = RUN_AGENT_WITHOUT_PERMISSION,
@@ -115,6 +126,7 @@ object Runner {
                         params = arrayOf("${ignore.message}")
                     )
                 }
+
                 else -> MessageUtil.getMessageByLocale(
                     messageCode = UNKNOWN_ERROR,
                     language = AgentEnv.getLocaleLanguage()
@@ -136,7 +148,7 @@ object Runner {
             throw ignore
         } finally {
             // 对应prepareWorker的兜底动作
-            finishWorker(buildVariables)
+            finishWorker(buildVariables, errMsg)
             finally(workspacePathFile, failed)
 
             if (systemExit) {
@@ -149,15 +161,29 @@ object Runner {
         try {
             // 启动成功, 报告process我已经启动了
             return EngineService.setStarted()
-        } catch (e: Exception) {
-            logger.warn("Set started catch unknown exceptions", e)
+        } catch (ignored: Exception) {
+            logger.warn("Set started catch unknown exceptions", ignored)
+            handleStartException(ignored)
+            throw ignored
+        }
+    }
+
+    private fun handleStartException(ignored: Exception) {
+        var endBuildFlag = true
+        if (ignored is RemoteServiceException) {
+            val errorCode = ignored.errorCode
+            if (errorCode == 2101182 || errorCode == 2101255) {
+                // 当构建已结束或者已经启动构建机时则不需要调结束构建接口
+                endBuildFlag = false
+            }
+        }
+        if (endBuildFlag) {
             // 启动失败，尝试结束构建
             try {
-                EngineService.endBuild(emptyMap(), DockerEnv.getBuildId())
-            } catch (e: Exception) {
-                logger.warn("End build catch unknown exceptions", e)
+                EngineService.endBuild(emptyMap(), "", BuildJobResult(ignored.message))
+            } catch (ignored: Exception) {
+                logger.warn("End build catch unknown exceptions", ignored)
             }
-            throw e
         }
     }
 
@@ -175,15 +201,17 @@ object Runner {
         val retryCount = variables[PIPELINE_RETRY_COUNT] ?: "0"
         val executeCount = retryCount.toInt() + 1
         LoggerService.executeCount = executeCount
-        LoggerService.jobId = buildVariables.containerHashId
+        LoggerService.containerHashId = buildVariables.containerHashId
+        LoggerService.jobId = buildVariables.jobId ?: ""
         LoggerService.elementId = VMUtils.genStartVMTaskId(buildVariables.containerId)
+        LoggerService.stepId = VMUtils.genStartVMTaskId(buildVariables.containerId)
         LoggerService.buildVariables = buildVariables
 
+        addSensitiveValues(buildVariables.variablesWithType)
         showBuildStartupLog(buildVariables.buildId, buildVariables.vmSeqId)
         showMachineLog(buildVariables.vmName)
         showSystemLog()
         showRuntimeEnvs(buildVariables.variablesWithType)
-
         Heartbeat.start(buildVariables.timeoutMills, executeCount) // #2043 添加Job超时监控
 
         val workspaceAndLogPath = workspaceInterface.getWorkspaceAndLogDir(
@@ -194,9 +222,9 @@ object Runner {
         return workspaceAndLogPath.first
     }
 
-    private fun finishWorker(buildVariables: BuildVariables) {
+    private fun finishWorker(buildVariables: BuildVariables, errMsg: String? = null) {
         LoggerService.stop()
-        EngineService.endBuild(buildVariables.variables)
+        EngineService.endBuild(variables = buildVariables.variables, result = BuildJobResult(errMsg))
         Heartbeat.stop()
     }
 
@@ -212,16 +240,19 @@ object Runner {
             logger.info("Start to execute the task($buildTask)")
             when (buildTask.status) {
                 BuildTaskStatus.DO -> {
-                    Preconditions.checkNotNull(
-                        obj = buildTask.taskId,
-                        exception = RemoteServiceException("Not valid build elementId")
-                    )
-
+                    Preconditions.checkNotNull(buildTask.taskId) {
+                        RemoteServiceException("Not valid build elementId")
+                    }
+                    // 处理task和job级别的上下文
+                    combineVariables(buildTask, buildVariables)
                     val task = TaskFactory.create(buildTask.type ?: "empty")
                     val taskDaemon = TaskDaemon(task, buildTask, buildVariables, workspacePathFile)
                     try {
                         LoggerService.elementId = buildTask.taskId!!
+                        LoggerService.stepId = buildTask.stepId ?: ""
                         LoggerService.elementName = buildTask.elementName ?: LoggerService.elementId
+                        LoggerService.loggingLineLimit = buildVariables.loggingLineLimit?.coerceIn(1, 100)
+                            ?.times(10000) ?: LOG_TASK_LINE_LIMIT
                         CredentialUtils.signToken = buildTask.signToken ?: ""
 
                         // 开始Task执行
@@ -243,9 +274,12 @@ object Runner {
                         LoggerService.finishTask()
                         LoggerService.elementId = ""
                         LoggerService.elementName = ""
+                        LoggerService.stepId = ""
+                        LoggerService.loggingLineLimit = LOG_TASK_LINE_LIMIT
                         waitCount = 0
                     }
                 }
+
                 BuildTaskStatus.WAIT -> {
                     var sleepStep = waitCount++ / windows
                     if (sleepStep <= 0) {
@@ -255,6 +289,7 @@ object Runner {
                     logger.info("WAIT $sleepMills ms")
                     Thread.sleep(sleepMills)
                 }
+
                 BuildTaskStatus.END -> break@loop
             }
         }
@@ -301,45 +336,14 @@ object Runner {
     }
 
     private fun dealException(exception: Throwable, buildTask: BuildTask, taskDaemon: TaskDaemon) {
-
-        val message: String
-        val errorType: String
-        val errorCode: Int
-
-        val trueException = when {
-            exception is TaskExecuteException -> exception
-            exception.cause is TaskExecuteException -> exception.cause as TaskExecuteException
-            else -> null
-        }
-        if (trueException != null) {
-            // Worker内插件执行出错处理
-            logger.warn("[Task Error] Fail to execute the task($buildTask) with task error", exception)
-            message = trueException.errorMsg
-            errorType = trueException.errorType.name
-            errorCode = trueException.errorCode
-        } else {
-            // Worker执行的错误处理
-            logger.warn("[Worker Error] Fail to execute the task($buildTask)", exception)
-            val defaultMessage =
-                StringBuilder("Unknown system error has occurred with StackTrace:\n")
-            defaultMessage.append(exception.toString())
-            exception.stackTrace.forEach {
-                with(it) {
-                    defaultMessage.append(
-                        "\n    at $className.$methodName($fileName:$lineNumber)"
-                    )
-                }
-            }
-            message = exception.message ?: defaultMessage.toString()
-            errorType = ErrorType.SYSTEM.name
-            errorCode = ErrorCode.SYSTEM_WORKER_LOADING_ERROR
-        }
+        logger.warn("[Task Error] Fail to execute the task($buildTask) with task error", exception)
+        val trueException = TaskExecuteExceptionDecorator.decorate(exception)
 
         val buildResult = taskDaemon.getBuildResult(
             isSuccess = false,
-            errorMessage = message,
-            errorType = errorType,
-            errorCode = errorCode
+            errorMessage = trueException.errorMsg,
+            errorType = trueException.errorType.name,
+            errorCode = trueException.errorCode
         )
 
         EngineService.completeTask(buildResult)
@@ -352,6 +356,19 @@ object Runner {
         }
 
         return System.getProperty(CLEAN_WORKSPACE)?.trim()?.toBoolean() ?: false
+    }
+
+    private fun addSensitiveValues(variables: List<BuildParameters>) {
+        try {
+            variables.asSequence()
+                .filter { it.sensitive == true }
+                .map { it.value.toString() }
+                .toList()
+                .takeIf { it.isNotEmpty() }
+                ?.let { SensitiveValueService.addSensitiveValues(it) }
+        } catch (ex: Exception) {
+            logger.warn("add sensitive values failed!", ex)
+        }
     }
 
     /**
@@ -423,5 +440,57 @@ object Runner {
         }
         LoggerService.addFoldEndLine("-----")
         LoggerService.addNormalLine("")
+    }
+
+    /**
+     *  为插件级变量填充Job前序产生的流水线变量，以及插件级的ENV
+     */
+    private fun combineVariables(
+        buildTask: BuildTask,
+        jobBuildVariables: BuildVariables
+    ) {
+        // 如果之前的插件不是在构建机执行, 会缺少环境变量
+        val taskBuildVariable = buildTask.buildVariable?.toMutableMap() ?: mutableMapOf()
+        val variablesWithType = jobBuildVariables.variablesWithType
+            .associateBy { it.key }
+        // job 变量能取到真实readonly，保证task 变量readOnly属性不会改变
+        val taskBuildParameters = taskBuildVariable.map { (key, value) ->
+            BuildParameters(key = key, value = value, readOnly = variablesWithType[key]?.readOnly)
+        }.associateBy { it.key }
+        jobBuildVariables.variables = jobBuildVariables.variables.plus(taskBuildVariable)
+        // 以key去重, 并以buildTask中的为准
+        jobBuildVariables.variablesWithType = variablesWithType
+            .plus(taskBuildParameters)
+            .values.toList()
+
+        // 填充插件级的ENV参数
+        val customEnvStr = buildTask.params?.get(Element::customEnv.name)
+        val dialect = PipelineDialectUtil.getPipelineDialect(jobBuildVariables.variables[PIPELINE_DIALECT])
+        if (customEnvStr != null) {
+            val customEnv = try {
+                JsonUtil.toOrNull(customEnvStr, object : TypeReference<List<NameAndValue>>() {})
+            } catch (ignore: Throwable) {
+                logger.warn("Parse customEnv with error: ", ignore)
+                null
+            }
+            if (customEnv.isNullOrEmpty()) return
+            val jobVariables = jobBuildVariables.variables.toMutableMap()
+            customEnv.forEach {
+                if (!it.key.isNullOrBlank()) {
+                    // 解决BUG:93319235,将Task的env变量key加env.前缀塞入variables，塞入之前需要对value做替换
+                    val value = EnvReplacementParser.parse(
+                        value = it.value ?: "",
+                        contextMap = jobVariables,
+                        onlyExpression = dialect.supportUseExpression(),
+                        functions = SpecialFunctions.functions,
+                        output = SpecialFunctions.output
+                    )
+                    jobVariables["envs.${it.key}"] = value
+                    taskBuildVariable[it.key!!] = value
+                }
+            }
+            buildTask.buildVariable = taskBuildVariable
+            jobBuildVariables.variables = jobVariables
+        }
     }
 }

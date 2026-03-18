@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -188,14 +188,14 @@ class AuthResourceDao {
         dslContext: DSLContext,
         projectCode: String,
         resourceName: String?,
-        resourceType: String,
+        resourceType: String?,
         offset: Int,
         limit: Int
     ): Result<TAuthResourceRecord> {
         with(TAuthResource.T_AUTH_RESOURCE) {
             return dslContext.selectFrom(this)
                 .where(PROJECT_CODE.eq(projectCode))
-                .and(RESOURCE_TYPE.eq(resourceType))
+                .let { if (resourceType == null) it else it.and(RESOURCE_TYPE.eq(resourceType)) }
                 .let { if (resourceName == null) it else it.and(RESOURCE_NAME.like("%$resourceName%")) }
                 .limit(limit)
                 .offset(offset)
@@ -222,6 +222,35 @@ class AuthResourceDao {
                 .limit(limit)
                 .offset(offset)
                 .fetch()
+        }
+    }
+
+    fun list(
+        dslContext: DSLContext,
+        projectCode: String,
+        resourceType: String,
+        createUser: String
+    ): List<String> {
+        with(TAuthResource.T_AUTH_RESOURCE) {
+            return dslContext.select(RESOURCE_CODE).from(this)
+                .where(PROJECT_CODE.eq(projectCode))
+                .and(RESOURCE_TYPE.eq(resourceType))
+                .and(CREATE_USER.eq(createUser))
+                .and(CREATE_TIME.ge(LocalDateTime.now().minusMinutes(1)))
+                .fetch(0, String::class.java)
+        }
+    }
+
+    fun listResourcesCreator(
+        dslContext: DSLContext,
+        projectCode: String,
+        resourceCodes: List<String>
+    ): List<String> {
+        with(TAuthResource.T_AUTH_RESOURCE) {
+            return dslContext.select(CREATE_USER).from(this)
+                .where(PROJECT_CODE.eq(projectCode))
+                .and(RESOURCE_CODE.`in`(resourceCodes))
+                .fetch(0, String::class.java)
         }
     }
 
@@ -261,13 +290,14 @@ class AuthResourceDao {
         projectCode: String,
         resourceType: String,
         resourceCodes: List<String>
-    ): List<String> {
+    ): Map<String, String> {
         return with(TAuthResource.T_AUTH_RESOURCE) {
-            dslContext.select(RESOURCE_CODE).from(this)
+            dslContext.select(RESOURCE_CODE, IAM_RESOURCE_CODE)
+                .from(this)
                 .where(PROJECT_CODE.eq(projectCode))
                 .and(RESOURCE_TYPE.eq(resourceType))
                 .and(RESOURCE_CODE.`in`(resourceCodes))
-                .fetch(0, String::class.java)
+                .fetchMap(RESOURCE_CODE, IAM_RESOURCE_CODE)
         }
     }
 
@@ -281,6 +311,34 @@ class AuthResourceDao {
                 .where(RESOURCE_TYPE.eq(resourceType))
                 .and(IAM_RESOURCE_CODE.`in`(iamResourceCodes))
                 .fetch()
+        }
+    }
+
+    fun listByResourceCodes(
+        dslContext: DSLContext,
+        projectCode: String,
+        resourceType: String,
+        resourceCodes: List<String>
+    ): List<AuthResourceInfo> {
+        return with(TAuthResource.T_AUTH_RESOURCE) {
+            dslContext.selectFrom(this)
+                .where(RESOURCE_TYPE.eq(resourceType))
+                .and(PROJECT_CODE.eq(projectCode))
+                .and(RESOURCE_CODE.`in`(resourceCodes))
+                .fetch().map { convert(it) }
+        }
+    }
+
+    fun listByResourceCodes(
+        dslContext: DSLContext,
+        resourceType: String,
+        resourceCodes: List<String>
+    ): List<AuthResourceInfo> {
+        return with(TAuthResource.T_AUTH_RESOURCE) {
+            dslContext.selectFrom(this)
+                .where(RESOURCE_TYPE.eq(resourceType))
+                .and(RESOURCE_CODE.`in`(resourceCodes))
+                .fetch().map { convert(it) }
         }
     }
 
@@ -363,9 +421,7 @@ class AuthResourceDao {
         dslContext: DSLContext,
         resourceType: String,
         projectCode: String?,
-        creator: String,
-        offset: Int,
-        limit: Int
+        creator: String
     ): Result<TAuthResourceRecord> {
         with(TAuthResource.T_AUTH_RESOURCE) {
             return dslContext.selectFrom(this)
@@ -374,8 +430,6 @@ class AuthResourceDao {
                 .and(RESOURCE_TYPE.eq(resourceType))
                 .and(CREATE_USER.eq(creator))
                 .orderBy(CREATE_TIME)
-                .limit(limit)
-                .offset(offset)
                 .fetch()
         }
     }
@@ -393,6 +447,7 @@ class AuthResourceDao {
                 relationId = relationId,
                 createUser = createUser,
                 updateUser = updateUser,
+                iamGradeManagerId = relationId,
                 createTime = createTime,
                 updateTime = updateTime
             )

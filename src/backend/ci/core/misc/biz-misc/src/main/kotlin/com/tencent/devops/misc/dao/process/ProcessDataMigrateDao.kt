@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -31,6 +31,9 @@ import com.tencent.devops.model.process.tables.TAuditResource
 import com.tencent.devops.model.process.tables.TPipelineBuildContainer
 import com.tencent.devops.model.process.tables.TPipelineBuildDetail
 import com.tencent.devops.model.process.tables.TPipelineBuildHistory
+import com.tencent.devops.model.process.tables.TPipelineBuildHistoryDebug
+import com.tencent.devops.model.process.tables.TPipelineBuildParamCombination
+import com.tencent.devops.model.process.tables.TPipelineBuildParamCombinationDetail
 import com.tencent.devops.model.process.tables.TPipelineBuildRecordContainer
 import com.tencent.devops.model.process.tables.TPipelineBuildRecordModel
 import com.tencent.devops.model.process.tables.TPipelineBuildRecordStage
@@ -40,6 +43,7 @@ import com.tencent.devops.model.process.tables.TPipelineBuildSummary
 import com.tencent.devops.model.process.tables.TPipelineBuildTask
 import com.tencent.devops.model.process.tables.TPipelineBuildTemplateAcrossInfo
 import com.tencent.devops.model.process.tables.TPipelineBuildVar
+import com.tencent.devops.model.process.tables.TPipelineCallback
 import com.tencent.devops.model.process.tables.TPipelineFavor
 import com.tencent.devops.model.process.tables.TPipelineGroup
 import com.tencent.devops.model.process.tables.TPipelineInfo
@@ -47,29 +51,40 @@ import com.tencent.devops.model.process.tables.TPipelineJobMutexGroup
 import com.tencent.devops.model.process.tables.TPipelineLabel
 import com.tencent.devops.model.process.tables.TPipelineLabelPipeline
 import com.tencent.devops.model.process.tables.TPipelineModelTask
+import com.tencent.devops.model.process.tables.TPipelineOperationLog
 import com.tencent.devops.model.process.tables.TPipelinePauseValue
 import com.tencent.devops.model.process.tables.TPipelineRecentUse
 import com.tencent.devops.model.process.tables.TPipelineResource
 import com.tencent.devops.model.process.tables.TPipelineResourceVersion
 import com.tencent.devops.model.process.tables.TPipelineSetting
 import com.tencent.devops.model.process.tables.TPipelineSettingVersion
+import com.tencent.devops.model.process.tables.TPipelineSubRef
+import com.tencent.devops.model.process.tables.TPipelineTimerBranch
+import com.tencent.devops.model.process.tables.TPipelineTriggerReview
 import com.tencent.devops.model.process.tables.TPipelineView
 import com.tencent.devops.model.process.tables.TPipelineViewGroup
 import com.tencent.devops.model.process.tables.TPipelineViewTop
 import com.tencent.devops.model.process.tables.TPipelineViewUserLastView
 import com.tencent.devops.model.process.tables.TPipelineViewUserSettings
-import com.tencent.devops.model.process.tables.TPipelineWebhookBuildLogDetail
 import com.tencent.devops.model.process.tables.TPipelineWebhookBuildParameter
 import com.tencent.devops.model.process.tables.TPipelineWebhookQueue
+import com.tencent.devops.model.process.tables.TPipelineWebhookVersion
+import com.tencent.devops.model.process.tables.TPipelineYamlBranchFile
+import com.tencent.devops.model.process.tables.TPipelineYamlInfo
+import com.tencent.devops.model.process.tables.TPipelineYamlSync
+import com.tencent.devops.model.process.tables.TPipelineYamlVersion
+import com.tencent.devops.model.process.tables.TPipelineYamlView
 import com.tencent.devops.model.process.tables.TProjectPipelineCallback
-import com.tencent.devops.model.process.tables.TProjectPipelineCallbackHistory
 import com.tencent.devops.model.process.tables.TReport
 import com.tencent.devops.model.process.tables.TTemplate
 import com.tencent.devops.model.process.tables.TTemplatePipeline
 import com.tencent.devops.model.process.tables.records.TAuditResourceRecord
 import com.tencent.devops.model.process.tables.records.TPipelineBuildContainerRecord
 import com.tencent.devops.model.process.tables.records.TPipelineBuildDetailRecord
+import com.tencent.devops.model.process.tables.records.TPipelineBuildHistoryDebugRecord
 import com.tencent.devops.model.process.tables.records.TPipelineBuildHistoryRecord
+import com.tencent.devops.model.process.tables.records.TPipelineBuildParamCombinationDetailRecord
+import com.tencent.devops.model.process.tables.records.TPipelineBuildParamCombinationRecord
 import com.tencent.devops.model.process.tables.records.TPipelineBuildRecordContainerRecord
 import com.tencent.devops.model.process.tables.records.TPipelineBuildRecordModelRecord
 import com.tencent.devops.model.process.tables.records.TPipelineBuildRecordStageRecord
@@ -79,6 +94,7 @@ import com.tencent.devops.model.process.tables.records.TPipelineBuildSummaryReco
 import com.tencent.devops.model.process.tables.records.TPipelineBuildTaskRecord
 import com.tencent.devops.model.process.tables.records.TPipelineBuildTemplateAcrossInfoRecord
 import com.tencent.devops.model.process.tables.records.TPipelineBuildVarRecord
+import com.tencent.devops.model.process.tables.records.TPipelineCallbackRecord
 import com.tencent.devops.model.process.tables.records.TPipelineFavorRecord
 import com.tencent.devops.model.process.tables.records.TPipelineGroupRecord
 import com.tencent.devops.model.process.tables.records.TPipelineInfoRecord
@@ -86,21 +102,29 @@ import com.tencent.devops.model.process.tables.records.TPipelineJobMutexGroupRec
 import com.tencent.devops.model.process.tables.records.TPipelineLabelPipelineRecord
 import com.tencent.devops.model.process.tables.records.TPipelineLabelRecord
 import com.tencent.devops.model.process.tables.records.TPipelineModelTaskRecord
+import com.tencent.devops.model.process.tables.records.TPipelineOperationLogRecord
 import com.tencent.devops.model.process.tables.records.TPipelinePauseValueRecord
 import com.tencent.devops.model.process.tables.records.TPipelineRecentUseRecord
 import com.tencent.devops.model.process.tables.records.TPipelineResourceRecord
 import com.tencent.devops.model.process.tables.records.TPipelineResourceVersionRecord
 import com.tencent.devops.model.process.tables.records.TPipelineSettingRecord
 import com.tencent.devops.model.process.tables.records.TPipelineSettingVersionRecord
+import com.tencent.devops.model.process.tables.records.TPipelineSubRefRecord
+import com.tencent.devops.model.process.tables.records.TPipelineTimerBranchRecord
+import com.tencent.devops.model.process.tables.records.TPipelineTriggerReviewRecord
 import com.tencent.devops.model.process.tables.records.TPipelineViewGroupRecord
 import com.tencent.devops.model.process.tables.records.TPipelineViewRecord
 import com.tencent.devops.model.process.tables.records.TPipelineViewTopRecord
 import com.tencent.devops.model.process.tables.records.TPipelineViewUserLastViewRecord
 import com.tencent.devops.model.process.tables.records.TPipelineViewUserSettingsRecord
-import com.tencent.devops.model.process.tables.records.TPipelineWebhookBuildLogDetailRecord
 import com.tencent.devops.model.process.tables.records.TPipelineWebhookBuildParameterRecord
 import com.tencent.devops.model.process.tables.records.TPipelineWebhookQueueRecord
-import com.tencent.devops.model.process.tables.records.TProjectPipelineCallbackHistoryRecord
+import com.tencent.devops.model.process.tables.records.TPipelineWebhookVersionRecord
+import com.tencent.devops.model.process.tables.records.TPipelineYamlBranchFileRecord
+import com.tencent.devops.model.process.tables.records.TPipelineYamlInfoRecord
+import com.tencent.devops.model.process.tables.records.TPipelineYamlSyncRecord
+import com.tencent.devops.model.process.tables.records.TPipelineYamlVersionRecord
+import com.tencent.devops.model.process.tables.records.TPipelineYamlViewRecord
 import com.tencent.devops.model.process.tables.records.TProjectPipelineCallbackRecord
 import com.tencent.devops.model.process.tables.records.TReportRecord
 import com.tencent.devops.model.process.tables.records.TTemplatePipelineRecord
@@ -108,20 +132,26 @@ import com.tencent.devops.model.process.tables.records.TTemplateRecord
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 
-@Suppress("TooManyFunctions", "LargeClass")
+@Suppress("TooManyFunctions", "LargeClass", "LongParameterList")
 @Repository
 class ProcessDataMigrateDao {
 
     fun getAuditResourceRecords(
         dslContext: DSLContext,
         projectId: String,
+        resourceType: String? = null,
+        resourceId: String? = null,
         limit: Int,
         offset: Int
     ): List<TAuditResourceRecord> {
         with(TAuditResource.T_AUDIT_RESOURCE) {
+            val conditions = mutableListOf(PROJECT_ID.eq(projectId)).apply {
+                resourceType?.takeIf { it.isNotBlank() }?.let { add(RESOURCE_TYPE.eq(it)) }
+                resourceId?.takeIf { it.isNotBlank() }?.let { add(RESOURCE_ID.eq(it)) }
+            }
             return dslContext.selectFrom(this)
-                .where(PROJECT_ID.eq(projectId))
-                .orderBy(CREATED_TIME.asc(), ID.asc())
+                .where(conditions)
+                .orderBy(ID.asc())
                 .limit(limit).offset(offset).fetchInto(TAuditResourceRecord::class.java)
         }
     }
@@ -139,15 +169,12 @@ class ProcessDataMigrateDao {
     fun getPipelineBuildContainerRecords(
         dslContext: DSLContext,
         projectId: String,
-        pipelineId: String,
-        limit: Int,
-        offset: Int
+        buildIds: List<String>
     ): List<TPipelineBuildContainerRecord> {
         with(TPipelineBuildContainer.T_PIPELINE_BUILD_CONTAINER) {
             return dslContext.selectFrom(this)
-                .where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
-                .orderBy(BUILD_ID.asc())
-                .limit(limit).offset(offset).fetchInto(TPipelineBuildContainerRecord::class.java)
+                .where(PROJECT_ID.eq(projectId).and(BUILD_ID.`in`(buildIds)))
+                .fetchInto(TPipelineBuildContainerRecord::class.java)
         }
     }
 
@@ -186,6 +213,31 @@ class ProcessDataMigrateDao {
         }
     }
 
+    fun getPipelineBuildHistoryDebugRecords(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String,
+        limit: Int,
+        offset: Int
+    ): List<TPipelineBuildHistoryDebugRecord> {
+        with(TPipelineBuildHistoryDebug.T_PIPELINE_BUILD_HISTORY_DEBUG) {
+            return dslContext.selectFrom(this)
+                .where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
+                .orderBy(BUILD_ID.asc())
+                .limit(limit).offset(offset).fetchInto(TPipelineBuildHistoryDebugRecord::class.java)
+        }
+    }
+
+    fun migratePipelineBuildHistoryDebugData(
+        migratingShardingDslContext: DSLContext,
+        pipelineBuildHistoryDebugRecords: List<TPipelineBuildHistoryDebugRecord>
+    ) {
+        with(TPipelineBuildHistoryDebug.T_PIPELINE_BUILD_HISTORY_DEBUG) {
+            val insertRecords = pipelineBuildHistoryDebugRecords.map { migratingShardingDslContext.newRecord(this, it) }
+            migratingShardingDslContext.batchInsert(insertRecords).execute()
+        }
+    }
+
     fun getPipelineBuildDetailRecords(
         dslContext: DSLContext,
         projectId: String,
@@ -211,15 +263,12 @@ class ProcessDataMigrateDao {
     fun getPipelineBuildStageRecords(
         dslContext: DSLContext,
         projectId: String,
-        pipelineId: String,
-        limit: Int,
-        offset: Int
+        buildIds: List<String>
     ): List<TPipelineBuildStageRecord> {
         with(TPipelineBuildStage.T_PIPELINE_BUILD_STAGE) {
             return dslContext.selectFrom(this)
-                .where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
-                .orderBy(BUILD_ID.asc())
-                .limit(limit).offset(offset).fetchInto(TPipelineBuildStageRecord::class.java)
+                .where(PROJECT_ID.eq(projectId).and(BUILD_ID.`in`(buildIds)))
+                .fetchInto(TPipelineBuildStageRecord::class.java)
         }
     }
 
@@ -236,15 +285,12 @@ class ProcessDataMigrateDao {
     fun getPipelineBuildTaskRecords(
         dslContext: DSLContext,
         projectId: String,
-        pipelineId: String,
-        limit: Int,
-        offset: Int
+        buildIds: List<String>
     ): List<TPipelineBuildTaskRecord> {
         with(TPipelineBuildTask.T_PIPELINE_BUILD_TASK) {
             return dslContext.selectFrom(this)
-                .where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
-                .orderBy(BUILD_ID.asc())
-                .limit(limit).offset(offset).fetchInto(TPipelineBuildTaskRecord::class.java)
+                .where(PROJECT_ID.eq(projectId).and(BUILD_ID.`in`(buildIds)))
+                .fetchInto(TPipelineBuildTaskRecord::class.java)
         }
     }
 
@@ -336,7 +382,7 @@ class ProcessDataMigrateDao {
         with(TPipelineGroup.T_PIPELINE_GROUP) {
             return dslContext.selectFrom(this)
                 .where(PROJECT_ID.eq(projectId))
-                .orderBy(CREATE_TIME.asc(), ID.asc())
+                .orderBy(ID.asc())
                 .limit(limit).offset(offset).fetchInto(TPipelineGroupRecord::class.java)
         }
     }
@@ -375,12 +421,15 @@ class ProcessDataMigrateDao {
 
     fun getPipelineJobMutexGroupRecords(
         dslContext: DSLContext,
-        projectId: String
+        projectId: String,
+        limit: Int,
+        offset: Int
     ): List<TPipelineJobMutexGroupRecord> {
         with(TPipelineJobMutexGroup.T_PIPELINE_JOB_MUTEX_GROUP) {
             return dslContext.selectFrom(this)
                 .where(PROJECT_ID.eq(projectId))
-                .fetchInto(TPipelineJobMutexGroupRecord::class.java)
+                .orderBy(JOB_MUTEX_GROUP_NAME.asc())
+                .limit(limit).offset(offset).fetchInto(TPipelineJobMutexGroupRecord::class.java)
         }
     }
 
@@ -403,7 +452,7 @@ class ProcessDataMigrateDao {
         with(TPipelineLabel.T_PIPELINE_LABEL) {
             return dslContext.selectFrom(this)
                 .where(PROJECT_ID.eq(projectId))
-                .orderBy(CREATE_TIME.asc(), ID.asc())
+                .orderBy(ID.asc())
                 .limit(limit).offset(offset).fetchInto(TPipelineLabelRecord::class.java)
         }
     }
@@ -428,7 +477,7 @@ class ProcessDataMigrateDao {
         with(TPipelineLabelPipeline.T_PIPELINE_LABEL_PIPELINE) {
             return dslContext.selectFrom(this)
                 .where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
-                .orderBy(LABEL_ID.asc())
+                .orderBy(ID.asc())
                 .limit(limit).offset(offset).fetchInto(TPipelineLabelPipelineRecord::class.java)
         }
     }
@@ -590,7 +639,7 @@ class ProcessDataMigrateDao {
         with(TPipelineView.T_PIPELINE_VIEW) {
             return dslContext.selectFrom(this)
                 .where(PROJECT_ID.eq(projectId))
-                .orderBy(CREATE_TIME.asc(), ID.asc())
+                .orderBy(ID.asc())
                 .limit(limit).offset(offset).fetchInto(TPipelineViewRecord::class.java)
         }
     }
@@ -653,31 +702,6 @@ class ProcessDataMigrateDao {
         }
     }
 
-    fun getPipelineWebhookBuildLogDetailRecords(
-        dslContext: DSLContext,
-        projectId: String,
-        pipelineId: String,
-        limit: Int,
-        offset: Int
-    ): List<TPipelineWebhookBuildLogDetailRecord> {
-        with(TPipelineWebhookBuildLogDetail.T_PIPELINE_WEBHOOK_BUILD_LOG_DETAIL) {
-            return dslContext.selectFrom(this)
-                .where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
-                .orderBy(ID.asc())
-                .limit(limit).offset(offset).fetchInto(TPipelineWebhookBuildLogDetailRecord::class.java)
-        }
-    }
-
-    fun migratePipelineWebhookBuildLogDetailData(
-        migratingShardingDslContext: DSLContext,
-        webhookBuildLogDetailRecords: List<TPipelineWebhookBuildLogDetailRecord>
-    ) {
-        with(TPipelineWebhookBuildLogDetail.T_PIPELINE_WEBHOOK_BUILD_LOG_DETAIL) {
-            val insertRecords = webhookBuildLogDetailRecords.map { migratingShardingDslContext.newRecord(this, it) }
-            migratingShardingDslContext.batchInsert(insertRecords).execute()
-        }
-    }
-
     fun getPipelineWebhookQueueRecords(
         dslContext: DSLContext,
         projectId: String,
@@ -727,30 +751,6 @@ class ProcessDataMigrateDao {
         }
     }
 
-    fun getProjectPipelineCallbackHistoryRecords(
-        dslContext: DSLContext,
-        projectId: String,
-        limit: Int,
-        offset: Int
-    ): List<TProjectPipelineCallbackHistoryRecord> {
-        with(TProjectPipelineCallbackHistory.T_PROJECT_PIPELINE_CALLBACK_HISTORY) {
-            return dslContext.selectFrom(this)
-                .where(PROJECT_ID.eq(projectId))
-                .orderBy(ID.asc())
-                .limit(limit).offset(offset).fetchInto(TProjectPipelineCallbackHistoryRecord::class.java)
-        }
-    }
-
-    fun migrateProjectPipelineCallbackHistoryData(
-        migratingShardingDslContext: DSLContext,
-        pipelineCallbackHistoryRecords: List<TProjectPipelineCallbackHistoryRecord>
-    ) {
-        with(TProjectPipelineCallbackHistory.T_PROJECT_PIPELINE_CALLBACK_HISTORY) {
-            val insertRecords = pipelineCallbackHistoryRecords.map { migratingShardingDslContext.newRecord(this, it) }
-            migratingShardingDslContext.batchInsert(insertRecords).execute()
-        }
-    }
-
     fun getReportRecords(
         dslContext: DSLContext,
         projectId: String,
@@ -785,7 +785,7 @@ class ProcessDataMigrateDao {
         with(TTemplate.T_TEMPLATE) {
             return dslContext.selectFrom(this)
                 .where(PROJECT_ID.eq(projectId))
-                .orderBy(ID.asc())
+                .orderBy(VERSION.asc())
                 .limit(limit).offset(offset).fetchInto(TTemplateRecord::class.java)
         }
     }
@@ -800,27 +800,73 @@ class ProcessDataMigrateDao {
         }
     }
 
-    fun getTemplatePipelineRecords(
+    fun getTemplateSettingRecords(
         dslContext: DSLContext,
         projectId: String,
         limit: Int,
         offset: Int
-    ): List<TTemplatePipelineRecord> {
+    ): List<TPipelineSettingRecord> {
+        with(TPipelineSetting.T_PIPELINE_SETTING) {
+            return dslContext.selectFrom(this)
+                .where(PROJECT_ID.eq(projectId).and(IS_TEMPLATE.eq(true)))
+                .orderBy(PIPELINE_ID.asc())
+                .limit(limit).offset(offset).fetchInto(TPipelineSettingRecord::class.java)
+        }
+    }
+
+    fun migrateTemplateSettingData(
+        migratingShardingDslContext: DSLContext,
+        templateSettingRecords: List<TPipelineSettingRecord>
+    ) {
+        with(TPipelineSetting.T_PIPELINE_SETTING) {
+            val insertRecords = templateSettingRecords.map { migratingShardingDslContext.newRecord(this, it) }
+            migratingShardingDslContext.batchInsert(insertRecords).execute()
+        }
+    }
+
+    fun getTemplateSettingVersionRecords(
+        dslContext: DSLContext,
+        projectId: String,
+        limit: Int,
+        offset: Int
+    ): List<TPipelineSettingVersionRecord> {
+        with(TPipelineSettingVersion.T_PIPELINE_SETTING_VERSION) {
+            return dslContext.selectFrom(this)
+                .where(PROJECT_ID.eq(projectId).and(IS_TEMPLATE.eq(true)))
+                .orderBy(ID.asc())
+                .limit(limit).offset(offset).fetchInto(TPipelineSettingVersionRecord::class.java)
+        }
+    }
+
+    fun migrateTemplateSettingVersionData(
+        migratingShardingDslContext: DSLContext,
+        templateSettingVersionRecords: List<TPipelineSettingVersionRecord>
+    ) {
+        with(TPipelineSettingVersion.T_PIPELINE_SETTING_VERSION) {
+            val insertRecords = templateSettingVersionRecords.map { migratingShardingDslContext.newRecord(this, it) }
+            migratingShardingDslContext.batchInsert(insertRecords).execute()
+        }
+    }
+
+    fun getTemplatePipelineRecord(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String
+    ): TTemplatePipelineRecord? {
         with(TTemplatePipeline.T_TEMPLATE_PIPELINE) {
             return dslContext.selectFrom(this)
-                .where(PROJECT_ID.eq(projectId))
-                .orderBy(PIPELINE_ID.asc())
-                .limit(limit).offset(offset).fetchInto(TTemplatePipelineRecord::class.java)
+                .where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
+                .fetchOne()
         }
     }
 
     fun migrateTemplatePipelineData(
         migratingShardingDslContext: DSLContext,
-        templatePipelineRecords: List<TTemplatePipelineRecord>
+        tTemplatePipelineRecord: TTemplatePipelineRecord
     ) {
         with(TTemplatePipeline.T_TEMPLATE_PIPELINE) {
-            val insertRecords = templatePipelineRecords.map { migratingShardingDslContext.newRecord(this, it) }
-            migratingShardingDslContext.batchInsert(insertRecords).execute()
+            val insertRecord = migratingShardingDslContext.newRecord(this, tTemplatePipelineRecord)
+            migratingShardingDslContext.executeInsert(insertRecord)
         }
     }
 
@@ -874,12 +920,13 @@ class ProcessDataMigrateDao {
     fun getPipelineViewGroupRecords(
         dslContext: DSLContext,
         projectId: String,
+        pipelineId: String,
         limit: Int,
         offset: Int
     ): List<TPipelineViewGroupRecord> {
         with(TPipelineViewGroup.T_PIPELINE_VIEW_GROUP) {
             return dslContext.selectFrom(this)
-                .where(PROJECT_ID.eq(projectId))
+                .where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
                 .orderBy(ID.asc())
                 .limit(limit).offset(offset).fetchInto(TPipelineViewGroupRecord::class.java)
         }
@@ -922,13 +969,14 @@ class ProcessDataMigrateDao {
     fun getPipelineRecentUseRecords(
         dslContext: DSLContext,
         projectId: String,
+        pipelineId: String,
         limit: Int,
         offset: Int
     ): List<TPipelineRecentUseRecord> {
         with(TPipelineRecentUse.T_PIPELINE_RECENT_USE) {
             return dslContext.selectFrom(this)
-                .where(PROJECT_ID.eq(projectId))
-                .orderBy(USER_ID.asc(), PIPELINE_ID.asc())
+                .where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
+                .orderBy(USER_ID.asc())
                 .limit(limit).offset(offset).fetchInto(TPipelineRecentUseRecord::class.java)
         }
     }
@@ -1027,6 +1075,318 @@ class ProcessDataMigrateDao {
     ) {
         with(TPipelineBuildRecordTask.T_PIPELINE_BUILD_RECORD_TASK) {
             val insertRecords = buildRecordTaskRecords.map { migratingShardingDslContext.newRecord(this, it) }
+            migratingShardingDslContext.batchInsert(insertRecords).execute()
+        }
+    }
+
+    fun getPipelineTriggerReviewRecords(
+        dslContext: DSLContext,
+        projectId: String,
+        buildIds: List<String>
+    ): List<TPipelineTriggerReviewRecord> {
+        with(TPipelineTriggerReview.T_PIPELINE_TRIGGER_REVIEW) {
+            return dslContext.selectFrom(this)
+                .where(PROJECT_ID.eq(projectId).and(BUILD_ID.`in`(buildIds)))
+                .fetchInto(TPipelineTriggerReviewRecord::class.java)
+        }
+    }
+
+    fun migratePipelineTriggerReviewData(
+        migratingShardingDslContext: DSLContext,
+        pipelineTriggerReviewRecords: List<TPipelineTriggerReviewRecord>
+    ) {
+        with(TPipelineTriggerReview.T_PIPELINE_TRIGGER_REVIEW) {
+            val insertRecords = pipelineTriggerReviewRecords.map { migratingShardingDslContext.newRecord(this, it) }
+            migratingShardingDslContext.batchInsert(insertRecords).execute()
+        }
+    }
+
+    fun getPipelineTimerBranchRecords(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String,
+        limit: Int,
+        offset: Int
+    ): List<TPipelineTimerBranchRecord> {
+        with(TPipelineTimerBranch.T_PIPELINE_TIMER_BRANCH) {
+            return dslContext.selectFrom(this)
+                .where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
+                .orderBy(TASK_ID.asc(), REPO_HASH_ID.asc(), BRANCH.asc())
+                .limit(limit).offset(offset).fetchInto(TPipelineTimerBranchRecord::class.java)
+        }
+    }
+
+    fun migratePipelineTimerBranchData(
+        migratingShardingDslContext: DSLContext,
+        pipelineTimerBranchRecords: List<TPipelineTimerBranchRecord>
+    ) {
+        with(TPipelineTimerBranch.T_PIPELINE_TIMER_BRANCH) {
+            val insertRecords = pipelineTimerBranchRecords.map { migratingShardingDslContext.newRecord(this, it) }
+            migratingShardingDslContext.batchInsert(insertRecords).execute()
+        }
+    }
+
+    fun getPipelineYamlInfoRecord(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String
+    ): TPipelineYamlInfoRecord? {
+        with(TPipelineYamlInfo.T_PIPELINE_YAML_INFO) {
+            return dslContext.selectFrom(this)
+                .where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
+                .fetchOne()
+        }
+    }
+
+    fun migratePipelineYamlInfoData(
+        migratingShardingDslContext: DSLContext,
+        pipelineYamlInfoRecord: TPipelineYamlInfoRecord
+    ) {
+        with(TPipelineYamlInfo.T_PIPELINE_YAML_INFO) {
+            val insertRecord = migratingShardingDslContext.newRecord(this, pipelineYamlInfoRecord)
+            migratingShardingDslContext.executeInsert(insertRecord)
+        }
+    }
+
+    fun getPipelineYamlVersionRecords(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String,
+        limit: Int,
+        offset: Int
+    ): List<TPipelineYamlVersionRecord> {
+        with(TPipelineYamlVersion.T_PIPELINE_YAML_VERSION) {
+            return dslContext.selectFrom(this)
+                .where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
+                .orderBy(ID.asc())
+                .limit(limit).offset(offset).fetchInto(TPipelineYamlVersionRecord::class.java)
+        }
+    }
+
+    fun migratePipelineYamlVersionData(
+        migratingShardingDslContext: DSLContext,
+        pipelineYamlVersionRecords: List<TPipelineYamlVersionRecord>
+    ) {
+        with(TPipelineYamlVersion.T_PIPELINE_YAML_VERSION) {
+            val insertRecords = pipelineYamlVersionRecords.map { migratingShardingDslContext.newRecord(this, it) }
+            migratingShardingDslContext.batchInsert(insertRecords).execute()
+        }
+    }
+
+    fun getProjectPipelineYamlSyncRecords(
+        dslContext: DSLContext,
+        projectId: String,
+        limit: Int,
+        offset: Int
+    ): List<TPipelineYamlSyncRecord> {
+        with(TPipelineYamlSync.T_PIPELINE_YAML_SYNC) {
+            return dslContext.selectFrom(this).where(PROJECT_ID.eq(projectId))
+                .orderBy(REPO_HASH_ID.asc(), FILE_PATH.asc()).limit(limit).offset(offset)
+                .fetchInto(TPipelineYamlSyncRecord::class.java)
+        }
+    }
+
+    fun migrateProjectPipelineYamlSyncData(
+        migratingShardingDslContext: DSLContext,
+        pipelineYamlSyncRecords: List<TPipelineYamlSyncRecord>
+    ) {
+        with(TPipelineYamlSync.T_PIPELINE_YAML_SYNC) {
+            val insertRecords = pipelineYamlSyncRecords.map { migratingShardingDslContext.newRecord(this, it) }
+            migratingShardingDslContext.batchInsert(insertRecords).execute()
+        }
+    }
+
+    fun getProjectPipelineYamlBranchFileRecords(
+        dslContext: DSLContext,
+        projectId: String,
+        limit: Int,
+        offset: Int
+    ): List<TPipelineYamlBranchFileRecord> {
+        with(TPipelineYamlBranchFile.T_PIPELINE_YAML_BRANCH_FILE) {
+            return dslContext.selectFrom(this).where(PROJECT_ID.eq(projectId))
+                .orderBy(REPO_HASH_ID.asc(), BRANCH.asc(), FILE_PATH_MD5.asc()).limit(limit).offset(offset)
+                .fetchInto(TPipelineYamlBranchFileRecord::class.java)
+        }
+    }
+
+    fun migrateProjectPipelineYamlBranchFileData(
+        migratingShardingDslContext: DSLContext,
+        pipelineYamlBranchFileRecords: List<TPipelineYamlBranchFileRecord>
+    ) {
+        with(TPipelineYamlBranchFile.T_PIPELINE_YAML_BRANCH_FILE) {
+            val insertRecords = pipelineYamlBranchFileRecords.map { migratingShardingDslContext.newRecord(this, it) }
+            migratingShardingDslContext.batchInsert(insertRecords).execute()
+        }
+    }
+
+    fun getProjectPipelineYamlViewRecords(
+        dslContext: DSLContext,
+        projectId: String,
+        limit: Int,
+        offset: Int
+    ): List<TPipelineYamlViewRecord> {
+        with(TPipelineYamlView.T_PIPELINE_YAML_VIEW) {
+            return dslContext.selectFrom(this).where(PROJECT_ID.eq(projectId))
+                .orderBy(REPO_HASH_ID.asc(), DIRECTORY.asc()).limit(limit).offset(offset)
+                .fetchInto(TPipelineYamlViewRecord::class.java)
+        }
+    }
+
+    fun migrateProjectPipelineYamlViewData(
+        migratingShardingDslContext: DSLContext,
+        pipelineYamlViewRecords: List<TPipelineYamlViewRecord>
+    ) {
+        with(TPipelineYamlView.T_PIPELINE_YAML_VIEW) {
+            val insertRecords = pipelineYamlViewRecords.map { migratingShardingDslContext.newRecord(this, it) }
+            migratingShardingDslContext.batchInsert(insertRecords).execute()
+        }
+    }
+
+    fun getPipelineOperationLogRecords(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String,
+        limit: Int,
+        offset: Int
+    ): List<TPipelineOperationLogRecord> {
+        with(TPipelineOperationLog.T_PIPELINE_OPERATION_LOG) {
+            return dslContext.selectFrom(this)
+                .where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
+                .orderBy(ID.asc())
+                .limit(limit).offset(offset).fetchInto(TPipelineOperationLogRecord::class.java)
+        }
+    }
+
+    fun migratePipelineOperationLogData(
+        migratingShardingDslContext: DSLContext,
+        pipelineOperationLogRecords: List<TPipelineOperationLogRecord>
+    ) {
+        with(TPipelineOperationLog.T_PIPELINE_OPERATION_LOG) {
+            val insertRecords = pipelineOperationLogRecords.map { migratingShardingDslContext.newRecord(this, it) }
+            migratingShardingDslContext.batchInsert(insertRecords).execute()
+        }
+    }
+
+    fun getPipelineWebhookVersionRecords(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String,
+        limit: Int,
+        offset: Int
+    ): List<TPipelineWebhookVersionRecord> {
+        with(TPipelineWebhookVersion.T_PIPELINE_WEBHOOK_VERSION) {
+            return dslContext.selectFrom(this).where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
+                .orderBy(VERSION.asc(), TASK_ID.asc()).limit(limit).offset(offset)
+                .fetchInto(TPipelineWebhookVersionRecord::class.java)
+        }
+    }
+
+    fun migratePipelineWebhookVersionData(
+        migratingShardingDslContext: DSLContext,
+        pipelineWebhookVersionRecords: List<TPipelineWebhookVersionRecord>
+    ) {
+        with(TPipelineWebhookVersion.T_PIPELINE_WEBHOOK_VERSION) {
+            val insertRecords = pipelineWebhookVersionRecords.map { migratingShardingDslContext.newRecord(this, it) }
+            migratingShardingDslContext.batchInsert(insertRecords).execute()
+        }
+    }
+
+    fun getPipelineCallbackRecords(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String,
+        limit: Int,
+        offset: Int
+    ): List<TPipelineCallbackRecord> {
+        with(TPipelineCallback.T_PIPELINE_CALLBACK) {
+            return dslContext.selectFrom(this).where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
+                .orderBy(NAME.asc()).limit(limit).offset(offset)
+                .fetchInto(TPipelineCallbackRecord::class.java)
+        }
+    }
+
+    fun migratePipelineCallbackData(
+        migratingShardingDslContext: DSLContext,
+        pipelineCallbackRecords: List<TPipelineCallbackRecord>
+    ) {
+        with(TPipelineCallback.T_PIPELINE_CALLBACK) {
+            val insertRecords = pipelineCallbackRecords.map { migratingShardingDslContext.newRecord(this, it) }
+            migratingShardingDslContext.batchInsert(insertRecords).execute()
+        }
+    }
+
+    fun getPipelineSubRefRecords(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String,
+        limit: Int,
+        offset: Int
+    ): List<TPipelineSubRefRecord> {
+        with(TPipelineSubRef.T_PIPELINE_SUB_REF) {
+            return dslContext.selectFrom(this).where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
+                .orderBy(TASK_ID.asc()).limit(limit).offset(offset)
+                .fetchInto(TPipelineSubRefRecord::class.java)
+        }
+    }
+
+    fun migratePipelineSubRefData(
+        migratingShardingDslContext: DSLContext,
+        pipelineSubRefRecords: List<TPipelineSubRefRecord>
+    ) {
+        with(TPipelineSubRef.T_PIPELINE_SUB_REF) {
+            val insertRecords = pipelineSubRefRecords.map { migratingShardingDslContext.newRecord(this, it) }
+            migratingShardingDslContext.batchInsert(insertRecords).execute()
+        }
+    }
+
+    fun getPipelineBuildParamCombinationRecords(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String,
+        limit: Int,
+        offset: Int
+    ): List<TPipelineBuildParamCombinationRecord> {
+        with(TPipelineBuildParamCombination.T_PIPELINE_BUILD_PARAM_COMBINATION) {
+            return dslContext.selectFrom(this).where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
+                .orderBy(CREATE_TIME.asc()).limit(limit).offset(offset)
+                .fetchInto(TPipelineBuildParamCombinationRecord::class.java)
+        }
+    }
+
+    fun migratePipelineBuildParamCombinationData(
+        migratingShardingDslContext: DSLContext,
+        pipelineBuildParamCombinationRecords: List<TPipelineBuildParamCombinationRecord>
+    ) {
+        with(TPipelineBuildParamCombination.T_PIPELINE_BUILD_PARAM_COMBINATION) {
+            val insertRecords = pipelineBuildParamCombinationRecords.map {
+                migratingShardingDslContext.newRecord(this, it)
+            }
+            migratingShardingDslContext.batchInsert(insertRecords).execute()
+        }
+    }
+
+    fun getPipelineBuildParamCombinationDetailRecords(
+        dslContext: DSLContext,
+        projectId: String,
+        pipelineId: String,
+        limit: Int,
+        offset: Int
+    ): List<TPipelineBuildParamCombinationDetailRecord> {
+        with(TPipelineBuildParamCombinationDetail.T_PIPELINE_BUILD_PARAM_COMBINATION_DETAIL) {
+            return dslContext.selectFrom(this).where(PROJECT_ID.eq(projectId).and(PIPELINE_ID.eq(pipelineId)))
+                .orderBy(CREATE_TIME.asc()).limit(limit).offset(offset)
+                .fetchInto(TPipelineBuildParamCombinationDetailRecord::class.java)
+        }
+    }
+
+    fun migratePipelineBuildParamCombinationDetailData(
+        migratingShardingDslContext: DSLContext,
+        pipelineBuildParamCombinationDetailRecords: List<TPipelineBuildParamCombinationDetailRecord>
+    ) {
+        with(TPipelineBuildParamCombinationDetail.T_PIPELINE_BUILD_PARAM_COMBINATION_DETAIL) {
+            val insertRecords = pipelineBuildParamCombinationDetailRecords.map {
+                migratingShardingDslContext.newRecord(this, it)
+            }
             migratingShardingDslContext.batchInsert(insertRecords).execute()
         }
     }

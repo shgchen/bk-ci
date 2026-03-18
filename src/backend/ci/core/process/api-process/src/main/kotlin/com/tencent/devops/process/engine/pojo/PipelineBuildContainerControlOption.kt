@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,6 +27,7 @@
 
 package com.tencent.devops.process.engine.pojo
 
+import com.tencent.devops.common.pipeline.container.AgentReuseMutex
 import com.tencent.devops.common.pipeline.container.MutexGroup
 import com.tencent.devops.common.pipeline.option.JobControlOption
 import com.tencent.devops.common.pipeline.option.MatrixControlOption
@@ -40,5 +41,7 @@ data class PipelineBuildContainerControlOption(
     val matrixControlOption: MatrixControlOption? = null,
     val inFinallyStage: Boolean = false,
     var mutexGroup: MutexGroup? = null,
-    var containPostTaskFlag: Boolean? = null // 是否包含post任务
+    var containPostTaskFlag: Boolean? = null, // 是否包含post任务
+    // 是否包含构建机复用互斥
+    var agentReuseMutex: AgentReuseMutex? = null
 )

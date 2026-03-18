@@ -1,94 +1,195 @@
 <template>
-    <div v-if="pipelineSetting" class="bkdevops-base-info-setting-tab">
-        <bk-form>
-            <bk-form-item :label="$t('pipelineName')" :required="true">
-                <vuex-input :placeholder="$t('pipelineNameInputTips')" name="pipelineName" :value="pipelineSetting.pipelineName" v-validate.initial="'required|max:40'" max-length="40" :handle-change="handleBaseInfoChange" />
+    <div
+        v-if="pipelineSetting"
+        class="bkdevops-base-info-setting-tab"
+    >
+        <div class="pipeline-setting-title">{{ $t('settings.baseInfo') }}</div>
+        <bk-form
+            form-type="vertical"
+            :label-width="300"
+            class="new-ui-form"
+        >
+            <bk-form-item
+                :label="nameLabel"
+                :required="true"
+            >
+                <vuex-input
+                    v-bk-focus
+                    :placeholder="namePlaceholder"
+                    name="pipelineName"
+                    :value="pipelineSetting.pipelineName"
+                    v-validate.initial="'required|max:128'"
+                    :disabled="!(editable || $route.meta.edit)"
+                    :max-length="128"
+                    :handle-change="handleBaseInfoChange"
+                />
+            </bk-form-item>
+            <bk-form-item
+                v-if="isTemplate"
+                :label="$t('template.type')"
+                disabled
+                :required="true"
+            >
+                <bk-radio-group
+                    :value="pipelineInfo?.type"
+                    disabled
+                >
+                    <bk-radio-button
+                        v-for="item in templateTypeList"
+                        :key="item.value"
+                        :value="item.value"
+                    >
+                        <span class="template-type-radio">
+                            <logo :name="item.icon" />
+                            {{ item.label }}
+                        </span>
+                    </bk-radio-button>
+                </bk-radio-group>
+            </bk-form-item>
+            
+            <bk-form-item :required="false">
+                <constraint-wraper
+                    :classify="CLASSIFY_ENUM.SETTING"
+                    field="labels"
+                >
+                    <template v-slot:constraint-title>
+                        <div class="pipeline-label-selector-title">
+                            <label class="ui-inner-label">
+                                {{ $t('settings.label') }}
+                            </label>
+                            <span
+                                v-if="editable"
+                                @click="toManageLabel"
+                                :class="['pipeline-label-selector-title-manage', {
+                                    'pipeline-label-selector-title-manage-divider': instanceFromTemplate
+                                }]"
+                            >{{ $t('settings.manageLabel') }}</span>
+                        </div>
+                    </template>
+                    <template v-slot:constraint-area="{ props: { isOverride } }">
+                        <ul
+                            class="pipeline-label-selector"
+                        >
+                            <template v-if="tagGroupList.length > 0">
+                                <li
+                                    v-for="(item, index) in tagGroupList"
+                                    :key="item.id"
+                                >
+                                    <label
+                                        :title="item.name"
+                                        class="pipeline-selector-label"
+                                    > {{ item.name }} </label>
+                                    <bk-select
+                                        class="sub-label-select"
+                                        :disabled="!(editable || isOverride)"
+                                        :value="labelValues[index]"
+                                        @selected="handleLabelSelect(index, arguments)"
+                                        @clear="handleLabelSelect(index, [[]])"
+                                        multiple
+                                    >
+                                        <bk-option
+                                            v-for="label in item.labels"
+                                            :key="label.id"
+                                            :id="label.id"
+                                            :name="label.name"
+                                        >
+                                        </bk-option>
+                                    </bk-select>
+                                </li>
+                            </template>
+                            <span
+                                class="no-label-placeholder"
+                                v-else
+                            >
+                                {{ $t('noLabels') }}
+                            </span>
+                        </ul>
+                    </template>
+                </constraint-wraper>
             </bk-form-item>
 
-            <bk-form-item :required="false" :label="$t('settings.label')" v-if="tagGroupList.length">
-                <div class="tag-group-row">
-                    <div class="group-col" v-for="(filter, index) in tagGroupList" :key="index">
-                        <label class="group-title">{{filter.name}}</label>
-                        <bk-select
-                            :value="labelValues[index]"
-                            @selected="handleLabelSelect(index, arguments)"
-                            @clear="handleLabelSelect(index, [[]])"
-                            multiple>
-                            <bk-option v-for="item in filter.labels" :key="item.id" :id="item.id" :name="item.name"
-                            ></bk-option>
-                        </bk-select>
-                    </div>
-                </div>
+            <bk-form-item
+                :label="$t('desc')"
+                :is-error="errors.has('desc')"
+                :error-msg="errors.first('desc')"
+            >
+                <vuex-textarea
+                    name="desc"
+                    :value="pipelineSetting.desc"
+                    :maxlength="100"
+                    :disabled="!(editable || $route.meta.edit)"
+                    :placeholder="$t('pipelineDescInputTips')"
+                    v-validate.initial="'max:100'"
+                    :handle-change="handleBaseInfoChange"
+                />
             </bk-form-item>
-            <bk-form-item :label="$t('desc')" :is-error="errors.has('desc')" :error-msg="errors.first('desc')">
-                <vuex-textarea name="desc" :value="pipelineSetting.desc" :placeholder="$t('pipelineDescInputTips')" v-validate.initial="'max:100'" :handle-change="handleBaseInfoChange" />
-            </bk-form-item>
-            <bk-form-item :label="$t('settings.buildNumberFormat')" :is-error="errors.has('buildNumRule')" :error-msg="errors.first('buildNumRule')">
-                <vuex-input style="max-width: 350px;" name="buildNumRule" :value="pipelineSetting.buildNumRule" :placeholder="$t('buildDescInputTips')" v-validate.initial="{ buildNumRule: true }" max-length="256" :handle-change="handleBaseInfoChange" />
-                <span @click="handleGoDocumentInfo">
-                    <logo size="16" class="build-num-rule-warn" name="feedback" v-bk-tooltips="$t('buildNumRuleWarn')" />
-                </span>
-                <p class="error-tips"
-                    v-show="errors.has('buildNumRule')">
-                    {{ $t('settings.validatebuildNum') }}
-                </p>
-            </bk-form-item>
-            <bk-form-item class="item-badge" :label="$t('settings.badge')" v-if="routeName !== 'templateSetting'">
-                <img class="image-url" :src="badgeImageUrl">
-                <div v-for="copyUrl in urlList" :key="copyUrl.url">
-                    <label>{{copyUrl.label}}</label>
-                    <p class="badge-item">
-                        <bk-input readonly :value="copyUrl.url" disabled />
-                        <span class="devops-icon icon-clipboard copy-icon" :data-clipboard-text="copyUrl.url"></span>
-                    </p>
-                </div>
+
+            <bk-form-item ext-cls="namingConvention">
+                <syntax-style-configuration
+                    :inherited-dialect="settings.inheritedDialect"
+                    :pipeline-dialect="settings.pipelineDialect ?? defaultPipelineDialect"
+                    @inherited-change="inheritedChange"
+                    @pipeline-dialect-change="pipelineDialectChange"
+                />
             </bk-form-item>
         </bk-form>
     </div>
 </template>
 
 <script>
-    import Logo from '@/components/Logo'
-    import VuexTextarea from '@/components/atomFormField/VuexTextarea/index.vue'
     import VuexInput from '@/components/atomFormField/VuexInput/index.vue'
-    import { mapGetters } from 'vuex'
-    import Clipboard from 'clipboard'
+    import VuexTextarea from '@/components/atomFormField/VuexTextarea/index.vue'
+    import ConstraintWraper from '@/components/ConstraintWraper.vue'
+    import Logo from '@/components/Logo'
+    import SyntaxStyleConfiguration from '@/components/syntaxStyleConfiguration'
+    import { CLASSIFY_ENUM } from '@/hook/useTemplateConstraint'
+    import { TEMPLATE_TYPE } from '@/utils/pipelineConst'
+    import { mapGetters, mapState } from 'vuex'
 
     export default {
         name: 'bkdevops-base-info-setting-tab',
         components: {
             Logo,
             VuexTextarea,
-            VuexInput
+            VuexInput,
+            SyntaxStyleConfiguration,
+            ConstraintWraper
         },
+
         props: {
             pipelineSetting: Object,
+            editable: {
+                type: Boolean,
+                default: true
+            },
             handleBaseInfoChange: Function
         },
+        data () {
+            return {
+                CLASSIFY_ENUM,
+                settings: {}
+            }
+        },
         computed: {
+            ...mapState('atom', [
+                'pipelineInfo'
+            ]),
             ...mapGetters({
-                tagGroupList: 'pipelines/getTagGroupList'
+                tagGroupList: 'pipelines/getTagGroupList',
+                isTemplate: 'atom/isTemplate',
+                instanceFromTemplate: 'atom/instanceFromTemplate'
             }),
+            nameLabel () {
+                return this.isTemplate ? this.$t('template.name') : this.$t('pipelineName')
+            },
+            namePlaceholder () {
+                return this.isTemplate ? this.$t('template.nameInputTips') : this.$t('pipelineNameInputTips')
+            },
             projectId () {
                 return this.$route.params.projectId
             },
             pipelineId () {
                 return this.$route.params.pipelineId
-            },
-            badgeImageUrl () {
-                return `${BADGE_URL_PREFIX}/process/api/external/pipelines/projects/${this.projectId}/${this.pipelineId}/badge?X-DEVOPS-PROJECT-ID=${this.projectId}`
-            },
-            badgeMarkdownLink () {
-                return `[![BK Pipelines Status](${BADGE_URL_PREFIX}/process/api/external/pipelines/projects/${this.projectId}/${this.pipelineId}/badge?X-DEVOPS-PROJECT-ID=${this.projectId})](${location.origin}/process/api-html/user/builds/projects/${this.projectId}/pipelines/${this.pipelineId}/latestFinished?X-DEVOPS-PROJECT-ID=${this.projectId})`
-            },
-            urlList () {
-                return [{
-                    label: this.$t('settings.imgUrl'),
-                    url: this.badgeImageUrl
-                }, {
-                    label: this.$t('settings.mdLink'),
-                    url: this.badgeMarkdownLink
-                }]
             },
             labelValues () {
                 const labels = this.pipelineSetting.labels || []
@@ -101,19 +202,39 @@
                     })
                     return value
                 })
+            },
+            curProject () {
+                return this.$store.state.curProject
+            },
+            defaultPipelineDialect () {
+                return this.curProject?.properties?.pipelineDialect
+            },
+            templateTypeList () {
+                return Object.keys(TEMPLATE_TYPE).map((key) => {
+                    return {
+                        value: TEMPLATE_TYPE[key],
+                        label: this.$t(`template.${key}`),
+                        icon: `${TEMPLATE_TYPE[key].toLowerCase()}-template`
+                    }
+                })
+            }
+        },
+        watch: {
+            'pipelineSetting.pipelineAsCodeSettings': {
+                handler (val) {
+                    if (val) {
+                        const { inheritedDialect, pipelineDialect, projectDialect } = this.pipelineSetting.pipelineAsCodeSettings
+                        this.settings = {
+                            ...this.pipelineSetting.pipelineAsCodeSettings,
+                            pipelineDialect: inheritedDialect ? projectDialect : pipelineDialect
+                        }
+                    }
+                },
+                immediate: true
             }
         },
         created () {
-            this.clipboard = new Clipboard('.copy-icon').on('success', e => {
-                this.$showTips({
-                    theme: 'success',
-                    message: this.$t('settings.conCopySuc')
-                })
-            })
             this.requestGrouptLists()
-        },
-        beforeDestroy () {
-            this.clipboard.destroy()
         },
         methods: {
             /** *
@@ -126,7 +247,7 @@
                     })
 
                     this.$store.commit('pipelines/updateGroupLists', res)
-                    // this.dataList = this.tagGroupList
+                    // 获取当前项目语法风格
                 } catch (err) {
                     this.$showTips({
                         message: err.message || err,
@@ -142,67 +263,121 @@
                 })
                 this.handleBaseInfoChange('labels', labels)
             },
-            handleGoDocumentInfo () {
-                window.open(this.$pipelineDocs.ALIAS_BUILD_NO_DOC)
+            toManageLabel () {
+                const url = `${WEB_URL_PREFIX}/pipeline/${this.projectId}/group`
+                window.open(url, '_blank')
+            },
+            inheritedChange (value) {
+                this.settings = {
+                    ...this.settings,
+                    inheritedDialect: value,
+                    ...value && { pipelineDialect: this.defaultPipelineDialect }
+                }
+                this.handleBaseInfoChange('pipelineAsCodeSettings', this.settings)
+            },
+            pipelineDialectChange (value) {
+                this.settings.pipelineDialect = value
+                this.handleBaseInfoChange('pipelineAsCodeSettings', this.settings)
             }
         }
     }
 </script>
 
 <style lang="scss">
+    @import '@/scss/conf';
+    @import '@/scss/mixins/ellipsis';
+
     .bkdevops-base-info-setting-tab {
-        .form-group {
-            margin-bottom: 12px;
-            > label {
-                margin-bottom: 5px;
-                display: block;
+        .pipeline-setting-title {
+            font-size: 14px;
+            font-weight: bold;
+            border-bottom: 1px solid #DCDEE5;
+            padding-bottom: 4px;
+            margin-bottom: 16px;
+        }
+        .bk-form-content {
+            max-width: 560px;
+            .bk-form-radio-button .bk-radio-button-text {
+                height: 44px;
+                line-height: 44px;
             }
-            > p {
+            .template-type-radio {
                 display: flex;
                 align-items: center;
-                > span {
-                    margin-left: 12px;
-                }
+                font-size: 12px;
+                cursor: pointer;
+                grid-gap: 6px;
             }
         }
-        .tag-group-row {
+        .layout-label {
+            height: 24px;
             display: flex;
-            justify-content: space-around;
-            .group-col {
-                flex: 1;
-                margin-right:8px;
-                .group-title {
-                    font-size: 12px;
-                    line-height: 34px;
-                }
-                &:last-child {
-                    margin-right: 0;
+            justify-content: space-between;
+            font-size: 12px;
+            .link-text {
+                color: #3A84FF;
+                cursor: pointer;
+            }
+        }
+        .pipeline-label-selector-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            align-items: center;
+            font-size: 12px;
+            flex: 1;
+            .pipeline-label-selector-title-manage {
+                color: #3A84FF;
+                cursor: pointer;
+                &.pipeline-label-selector-title-manage-divider:after {
+                    content: '|';
+                    display: inline-block;
+                    width: 1px;
+                    height: 16px;
+                    padding: 0 8px;
                 }
             }
         }
-        .item-badge {
-            font-size: 12px;
-            .image-url {
-                margin: 7px 0
+        .pipeline-label-selector {
+            border-radius: 2px;
+            border: 1px solid #DCDEE5;
+            padding: 16px;
+            > li {
+                display: flex;
+                width: 100%;
+                overflow: hidden;
+                &:not(:last-child) {
+                    padding-bottom: 16px;
+                }
+                .pipeline-selector-label {
+                    font-size: 12px;
+                    color: #63656E;
+                    width: 80px;
+                    text-align: right;
+                    @include ellipsis();
+                    margin-right: 22px;
+                }
+                .sub-label-select {
+                    flex: 1;
+                    overflow: hidden;
+                }
+
             }
-            label {
-                margin: 8px 0 0 0;
-                display: block;
-            }
-            .badge-item {
+            .no-label-placeholder {
                 display: flex;
                 align-items: center;
-                .devops-icon {
-                    font-size: 14px;
-                    margin-left: 10px;
-                }
+                justify-content: center;
+                color: #979BA5;
+                font-size: 12px;
             }
         }
-        .build-num-rule-warn {
-            cursor: pointer;
+        .namingConvention {
             position: relative;
-            top: 5px;
-            left: 5px;
+            .bk-form-control {
+                display: flex;
+                grid-gap: 16px;
+                margin-top: 8px;
+            }
         }
     }
 </style>

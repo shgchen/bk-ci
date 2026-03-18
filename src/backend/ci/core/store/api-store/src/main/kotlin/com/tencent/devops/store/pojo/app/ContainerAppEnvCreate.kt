@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,17 +27,16 @@
 
 package com.tencent.devops.store.pojo.app
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("容器软件编译环境变量-创建")
+@Schema(title = "容器软件编译环境变量-创建")
 data class ContainerAppEnvCreate(
-    @ApiModelProperty("编译环境ID", required = true)
+    @get:Schema(title = "编译环境ID", required = true)
     val appId: Int,
-    @ApiModelProperty("路径", required = true)
+    @get:Schema(title = "路径", required = true)
     val path: String,
-    @ApiModelProperty("环境变量名称", required = true)
+    @get:Schema(title = "环境变量名称", required = true)
     val name: String,
-    @ApiModelProperty("描述", required = true)
+    @get:Schema(title = "描述", required = true)
     val description: String
 )

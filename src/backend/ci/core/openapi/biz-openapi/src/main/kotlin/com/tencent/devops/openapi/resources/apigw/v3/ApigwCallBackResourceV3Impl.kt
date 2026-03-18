@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -38,6 +38,7 @@ import com.tencent.devops.openapi.api.apigw.v3.ApigwCallBackResourceV3
 import com.tencent.devops.process.api.service.ServiceCallBackResource
 import com.tencent.devops.process.pojo.CreateCallBackResult
 import com.tencent.devops.common.pipeline.event.ProjectPipelineCallBack
+import com.tencent.devops.openapi.utils.ApigwParamUtil
 import com.tencent.devops.process.pojo.ProjectPipelineCallBackHistory
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -101,7 +102,7 @@ class ApigwCallBackResourceV3Impl @Autowired constructor(
             userId = userId,
             projectId = projectId,
             page = page ?: 1,
-            pageSize = pageSize ?: 20
+            pageSize = ApigwParamUtil.standardSize(pageSize) ?: 20
         )
     }
 
@@ -152,7 +153,7 @@ class ApigwCallBackResourceV3Impl @Autowired constructor(
                 DateTimeUtil.stringToLocalDateTime(endTime).timestampmilli()
             },
             page = page ?: 1,
-            pageSize = pageSize ?: 20
+            pageSize = ApigwParamUtil.standardSize(pageSize) ?: 20
         )
     }
 

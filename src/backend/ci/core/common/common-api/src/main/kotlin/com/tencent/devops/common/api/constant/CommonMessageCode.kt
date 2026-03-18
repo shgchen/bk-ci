@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -101,8 +101,6 @@ object CommonMessageCode {
     const val USERS_EXCEEDS_THE_LIMIT = "2100048" // 授权用户数越界:{0}
     const val FAILED_TO_QUERY_GSE_AGENT_STATUS = "2100049" // 查询 Gse Agent 状态失败
     const val FAILED_TO_GET_AGENT_STATUS = "2100050" // 获取agent状态失败
-    const val FAILED_TO_GET_CMDB_NODE = "2100051" // 获取 CMDB 节点失败
-    const val FAILED_TO_GET_CMDB_LIST = "2100052" // 获取CMDB列表失败
     const val STAGES_AND_STEPS_CANNOT_EXIST_BY_SIDE = "2100053" // stages和steps不能并列存在!
 
     const val USER_NOT_PERMISSIONS_OPERATE_PIPELINE = "2100054" // 用户({0})无权限在工程({1})下{2}流水线{3}
@@ -131,7 +129,7 @@ object CommonMessageCode {
     const val GIT_TOKEN_EMPTY = "2100076" // Git Token为空
     const val GIT_HOOK_URL_EMPTY = "2100077" // Git hook url为空
     const val TGIT_LOGIN_FAIL = "2100078" // TGit 用户名或者密码不对
-    const val TGIT_TOKEN_EMPTY = "2100079" // TGit Token 不正确
+    const val TGIT_TOKEN_FAIL = "2100079" // TGit Token 不正确
     const val TGIT_SECRET_WRONG = "2100080" // TGit 私钥不对
     const val SVN_SECRET_OR_PATH_ERROR = "2100081" // SVN 私钥不正确 或者 SVN 路径没有权限
     const val SVN_CREATE_HOOK_FAIL = "2100082" // 添加SVN WEB hook 失败
@@ -172,10 +170,30 @@ object CommonMessageCode {
     const val ERROR_YAML_FORMAT_EXCEPTION_ENV_VARIABLE_LENGTH_LIMIT_EXCEEDED = "2100121"
     const val ERROR_PROJECT_API_ACCESS_NO_PERMISSION = "2100122" // 项目[{0}]没有接口[{1}]的访问权限
     const val ERROR_INTERFACE_RETRY_NUM_EXCEEDED = "2100123" // 接口连续重试次数超过{0}次，请稍后再试
+    const val ERROR_PIPELINE_API_ACCESS_NO_PERMISSION = "2100124" // 流水线[{0}]没有接口[{1}]的访问权限
+    const val TEMPLATE_PLUGIN_NOT_ALLOWED_USE = "2100125" // 模板中插件【{0}】的【{1}】版本的状态是【{2}】，不允许使用
+    const val ADD_MR_FAIL = "2100126" // 添加MR失败
+
+    // 互转使用
+    const val ELEMENT_UPDATE_WRONG_PATH = "2100127" // 更新插件的标注位置有误
+    const val ELEMENT_NOT_SUPPORT_TRANSFER = "2100128" // 如下插件在 Code 方式下已不支持，请修改后再切换: \n[{0}]
+    const val DISPATCH_NOT_SUPPORT_TRANSFER = "2100129" // 如下构建环境在 Code 方式下不支持转换，请修改后再切换: \n[{0}]
+    const val YAML_NOT_VALID = "2100130" // yaml不合法 {0}
+    const val GIT_INVALID_PRIVATE_KEY = "2100131" // 不支持的SSH私钥格式，仅支持rsa格式私钥
+    const val THIRD_PARTY_SERVICE_OPERATION_FAILED = "2100132" // 第三方服务[{0}]操作失败，失败详情：{1}
+
+    const val SVN_TOKEN_FAIL = "2100135" // SVN Token 不正确
+    const val SVN_TOKEN_EMPTY = "2100136" // SVN Token 为空, 请检查代码库的凭证类型
+    const val ERROR_VARIABLE_NOT_FOUND = "2100137" // SVN Token 为空, 请检查代码库的凭证类型
+    const val CUSTOM_MESSAGE_EXCEPTION = "2100138" // 自定义错误信息异常
+    const val ERROR_ARCHIVE_PAC_PIPELINE_YAML_EXIST = "2100139" // 已开启PAC模式的流水线[{0}]进行归档需将默认分支上的yaml文件删除
+    const val ERROR_USER_NOT_EXIST_IN_PROJECT = "2100140" // 项目{0}中不存在用户{1}
+    const val ERROR_QUERY_COUNT_RANGE = "2100142" // 查询条数需要在{}到{}之间
 
     const val BK_CONTAINER_TIMED_OUT = "bkContainerTimedOut" // 创建容器超时
     const val BK_CREATION_FAILED_EXCEPTION_INFORMATION = "bkCreationFailedExceptionInformation" // 创建失败，异常信息
 
+    const val BK_JOB_MATRIX_STR_ERROR = "bkJobMatrixStrError" // 当前矩阵YAML/JSON配置有误，请仔细检查格式、语法是否符合要求。当前配置为: {0}
     const val BK_FILE_NAME = "bkFileName" // 文件名
     const val BK_BELONG_TO_THE_PROJECT = "bkBelongToTheProject" // 所属项目
     const val BK_OPERATING = "bkOperating" // 操作
@@ -220,6 +238,8 @@ object CommonMessageCode {
 
     const val GET_PROJECT_INFO = "bkGetProjectInfo" // 获取项目详情
     const val GET_COMMIT_REVIEW_INFO = "bkGetCommitReviewInfo" // 获取Commit Review详情
+    const val GET_SESSION_INFO = "bkGetSessionInfo" // 获取会话详情
+    const val GET_TAG_INFO = "bkGetSessionInfo" // 获取Tag详情
 
     const val OPERATION_BRANCH = "bkOperationBranch" // 拉分支
     const val OPERATION_TAG = "bkOperationTag" // 拉标签
@@ -228,6 +248,8 @@ object CommonMessageCode {
     const val OPERATION_LIST_WEBHOOK = "bkOperationListWebhook" // 查询WEBHOOK
     const val OPERATION_ADD_COMMIT_CHECK = "bkOperationAddCommitCheck" // 添加COMMIT CHECK
     const val OPERATION_ADD_MR_COMMENT = "bkOperationAddMrComment" // 添加MR COMMENT
+    const val OPERATION_LIST_MR = "bkOperationListMr" // 添加MR
+    const val OPERATION_ADD_MR = "bkOperationAddMr" // 添加MR
     const val OPERATION_COMMIT = "bkOperationCommit" // 拉提交记录
     const val OPERATION_COMMIT_DIFF = "bkOperationCommitDiff" // 查询commit变化
     const val OPERATION_UNLOCK_HOOK_LOCK = "bkOperationUnlockHookLock" // 解锁hook锁
@@ -245,7 +267,20 @@ object CommonMessageCode {
     const val BK_USER_REQUESTS_THE_PROJECT = "bkUserRequestsTheProject"
     const val BK_ENV_NOT_YET_SUPPORTED = "bkEnvNotYetSupported" // 尚未支持 {0} {1}，请联系 管理员 添加对应版本
 
+    // 插件{0}输出变量命名空间功能已不推荐使用，请去掉命名空间，通过jobs上下文访问插件输出
+    const val BK_ELEMENT_NAMESPACE_NOT_SUPPORT = "bkElementNamespaceNotSupport"
+    // 插件{0}不支持执行前暂停，请去掉相关配置后再保存。
+    const val BK_ELEMENT_CAN_PAUSE_BEFORE_RUN_NOT_SUPPORT = "bkElementCanPauseBeforeRunNotSupport"
+
     const val BK_BUILD_ENV_TYPE = "BUILD_ENV_TYPE_" // 构建环境-
     const val BK_BUILD_ENV_TYPE_BUILDLESS = "BUILD_ENV_TYPE_BUILDLESS" // 无编译环境
     const val BK_BUILD_ENV_TYPE_BUILD_TRIGGERS = "BUILD_ENV_TYPE_BUILD_TRIGGER" // 构建触发
+    const val TRANSFER_ERROR_CHECK_AGENT_ID_FAILED = "transferErrorCheckAgentIdFailed" // 当前私有构建机数据有误或不存在
+    const val TRANSFER_ERROR_CHECK_ENV_ID_FAILED = "transferErrorCheckEnvIdFailed" // 当前私有构建机集群数据有误或不存在
+
+    const val ERROR_LOGO_FORMAT_UNSUPPORTED = "logoFormatUnsupported" // logo不支持{0}类型，可以上传{1}类型
+    const val ERROR_LOGO_DIMENSION_REQUIREMENT = "logoDimensionRequirement" // logo的尺寸应为大于{0}x{1}的正方形
+    const val ERROR_LOGO_FILE_SIZE_EXCEEDED = "logoFileSizeExceeded" // 上传的logo文件不能超过{0}
+    const val ERROR_USER_NO_PLATFORM_ADMIN_PERMISSION =
+        "userNoPlatformAdminPermission" // 当前用户没有平台管理权限，请联系管理员添加操作权限
 }

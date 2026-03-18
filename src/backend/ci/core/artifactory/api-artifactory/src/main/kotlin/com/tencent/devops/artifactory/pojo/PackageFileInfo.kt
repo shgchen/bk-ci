@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,17 +27,18 @@
 
 package com.tencent.devops.artifactory.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("插件市场-重新归档插件包请求报文体")
+@Schema(title = "重新归档组件包请求报文体")
 data class PackageFileInfo(
-    @ApiModelProperty("包文件名", required = true)
+    @get:Schema(title = "包文件名", required = true)
     val packageFileName: String,
-    @ApiModelProperty("包文件路径", required = true)
+    @get:Schema(title = "包文件路径", required = true)
     val packageFilePath: String,
-    @ApiModelProperty("包文件大小", required = true)
+    @get:Schema(title = "包文件大小", required = true)
     val packageFileSize: Long,
-    @ApiModelProperty("sha摘要值", required = true)
-    val shaContent: String
+    @get:Schema(title = "sha1摘要值", required = true)
+    val shaContent: String = "",
+    @get:Schema(title = "sha256摘要值", required = true)
+    val sha256Content: String
 )

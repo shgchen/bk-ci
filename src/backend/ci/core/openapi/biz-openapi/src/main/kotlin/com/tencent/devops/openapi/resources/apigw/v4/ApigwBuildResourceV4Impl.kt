@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,6 +28,7 @@ package com.tencent.devops.openapi.resources.apigw.v4
 
 import com.tencent.devops.common.api.exception.ParamBlankException
 import com.tencent.devops.common.api.pojo.BuildHistoryPage
+import com.tencent.devops.common.api.pojo.Page
 import com.tencent.devops.common.api.pojo.Result
 import com.tencent.devops.common.client.Client
 import com.tencent.devops.common.pipeline.enums.BuildStatus
@@ -40,6 +41,7 @@ import com.tencent.devops.common.web.RestResource
 import com.tencent.devops.openapi.api.apigw.v4.ApigwBuildResourceV4
 import com.tencent.devops.openapi.service.IndexService
 import com.tencent.devops.openapi.utils.ApiGatewayUtil
+import com.tencent.devops.openapi.utils.ApigwParamUtil
 import com.tencent.devops.process.api.service.ServiceBuildResource
 import com.tencent.devops.process.pojo.BuildHistory
 import com.tencent.devops.process.pojo.BuildHistoryRemark
@@ -47,6 +49,7 @@ import com.tencent.devops.process.pojo.BuildHistoryWithVars
 import com.tencent.devops.process.pojo.BuildId
 import com.tencent.devops.process.pojo.BuildManualStartupInfo
 import com.tencent.devops.process.pojo.BuildTaskPauseInfo
+import com.tencent.devops.process.pojo.LightBuildHistory
 import com.tencent.devops.process.pojo.ReviewParam
 import com.tencent.devops.process.pojo.pipeline.ModelRecord
 import org.slf4j.LoggerFactory
@@ -63,13 +66,15 @@ class ApigwBuildResourceV4Impl @Autowired constructor(
         apigwType: String?,
         userId: String,
         projectId: String,
-        pipelineId: String
+        pipelineId: String,
+        debugVersion: Int?
     ): Result<BuildManualStartupInfo> {
         logger.info("OPENAPI_BUILD_V4|$userId|manual startup info|$projectId|$pipelineId")
         return client.get(ServiceBuildResource::class).manualStartupInfo(
             userId = userId,
             projectId = projectId,
             pipelineId = pipelineId,
+            version = debugVersion,
             channelCode = apiGatewayUtil.getChannelCode()
         )
     }
@@ -81,7 +86,8 @@ class ApigwBuildResourceV4Impl @Autowired constructor(
         projectId: String,
         pipelineId: String?,
         buildId: String,
-        executeCount: Int?
+        executeCount: Int?,
+        archiveFlag: Boolean?
     ): Result<ModelRecord> {
         logger.info("OPENAPI_BUILD_V4|$userId|detail|$projectId|$pipelineId|$buildId")
         return client.get(ServiceBuildResource::class).getBuildRecordByExecuteCount(
@@ -90,7 +96,8 @@ class ApigwBuildResourceV4Impl @Autowired constructor(
             pipelineId = checkPipelineId(projectId, pipelineId, buildId),
             buildId = buildId,
             executeCount = executeCount,
-            channelCode = apiGatewayUtil.getChannelCode()
+            channelCode = apiGatewayUtil.getChannelCode(),
+            archiveFlag = archiveFlag
         )
     }
 
@@ -122,21 +129,24 @@ class ApigwBuildResourceV4Impl @Autowired constructor(
         buildNoStart: Int?,
         buildNoEnd: Int?,
         buildMsg: String?,
-        startUser: List<String>?
+        startUser: List<String>?,
+        archiveFlag: Boolean?,
+        triggerAlias: List<String>?,
+        triggerBranch: List<String>?
     ): Result<BuildHistoryPage<BuildHistory>> {
         logger.info(
             "OPENAPI_BUILD_V4|$userId|get history build|$projectId|$pipelineId|$page|$pageSize" +
-                "|$updateTimeDesc|materialAlias=$materialAlias|$materialUrl|$materialBranch|$materialCommitId" +
-                "|$materialCommitMessage|status=$status|$trigger|$queueTimeStartTime|$queueTimeEndTime" +
-                "|$startTimeStartTime|startTimeEndTime=$startTimeEndTime|$endTimeStartTime|$endTimeEndTime" +
-                "|$totalTimeMin|$totalTimeMax|remark=$remark|$buildNoStart|$buildNoEnd|$buildMsg|$startUser"
+                    "|$updateTimeDesc|materialAlias=$materialAlias|$materialUrl|$materialBranch|$materialCommitId" +
+                    "|$materialCommitMessage|status=$status|$trigger|$queueTimeStartTime|$queueTimeEndTime" +
+                    "|$startTimeStartTime|startTimeEndTime=$startTimeEndTime|$endTimeStartTime|$endTimeEndTime" +
+                    "|$totalTimeMin|$totalTimeMax|remark=$remark|$buildNoStart|$buildNoEnd|$buildMsg|$startUser"
         )
         return client.get(ServiceBuildResource::class).getHistoryBuild(
             userId = userId,
             projectId = projectId,
             pipelineId = pipelineId,
             page = page ?: 1,
-            pageSize = pageSize ?: 20,
+            pageSize = ApigwParamUtil.standardSize(pageSize) ?: 20,
             channelCode = apiGatewayUtil.getChannelCode(),
             updateTimeDesc = updateTimeDesc,
             materialAlias = materialAlias,
@@ -158,7 +168,10 @@ class ApigwBuildResourceV4Impl @Autowired constructor(
             buildNoStart = buildNoStart,
             buildNoEnd = buildNoEnd,
             buildMsg = buildMsg,
-            startUser = startUser
+            startUser = startUser,
+            archiveFlag = archiveFlag,
+            triggerAlias = triggerAlias,
+            triggerBranch = triggerBranch
         )
     }
 
@@ -215,7 +228,7 @@ class ApigwBuildResourceV4Impl @Autowired constructor(
     ): Result<BuildId> {
         logger.info(
             "OPENAPI_BUILD_V4|$userId|retry|$projectId|$pipelineId|$buildId|$taskId|$failedContainer" +
-                "|$skipFailedTask"
+                    "|$skipFailedTask"
         )
 
         val checkPipelineId = if (buildId.isNullOrBlank()) {
@@ -259,6 +272,28 @@ class ApigwBuildResourceV4Impl @Autowired constructor(
         )
     }
 
+    override fun batchGetBuildStatus(
+        appCode: String?,
+        apigwType: String?,
+        userId: String,
+        projectId: String,
+        pipelineId: String,
+        startBeginTime: String?,
+        endBeginTime: String?,
+        buildIdSet: Set<String>
+    ): Result<List<BuildHistory>> {
+        logger.info("OPENAPI_BUILD_V4|$userId|batch get build status|$projectId|$pipelineId")
+        return client.get(ServiceBuildResource::class).batchGetBuildStatus(
+            userId = userId,
+            projectId = projectId,
+            pipelineId = pipelineId,
+            startBeginTime = startBeginTime,
+            endBeginTime = endBeginTime,
+            buildIdSet = buildIdSet,
+            channelCode = apiGatewayUtil.getChannelCode()
+        )
+    }
+
     override fun manualStartStage(
         appCode: String?,
         apigwType: String?,
@@ -272,7 +307,7 @@ class ApigwBuildResourceV4Impl @Autowired constructor(
     ): Result<Boolean> {
         logger.info(
             "OPENAPI_BUILD_V4|$userId|manual start stage|$projectId|$pipelineId|$buildId|$stageId|$cancel" +
-                "|$reviewRequest"
+                    "|$reviewRequest"
         )
         return client.get(ServiceBuildResource::class).manualStartStage(
             userId = userId,
@@ -358,8 +393,9 @@ class ApigwBuildResourceV4Impl @Autowired constructor(
         projectId: String,
         pipelineId: String?,
         buildId: String,
-        elementId: String,
-        params: ReviewParam
+        elementId: String?,
+        params: ReviewParam,
+        stepId: String?
     ): Result<Boolean> {
         logger.info("OPENAPI_BUILD_V4|$userId|manual review|$projectId|$pipelineId|$buildId|$elementId|$params")
         return client.get(ServiceBuildResource::class).manualReview(
@@ -369,7 +405,8 @@ class ApigwBuildResourceV4Impl @Autowired constructor(
             buildId = buildId,
             elementId = elementId,
             params = params,
-            channelCode = ChannelCode.BS
+            channelCode = ChannelCode.BS,
+            stepId = stepId
         )
     }
 
@@ -426,6 +463,38 @@ class ApigwBuildResourceV4Impl @Autowired constructor(
         return client.get(ServiceBuildResource::class)
             .getBuildIdFromBuildNumber(projectId, pipelineId, buildNumber).data
             ?: throw ParamBlankException("Invalid buildNumber")
+    }
+
+    override fun getLightHistoryBuild(
+        appCode: String?,
+        apigwType: String?,
+        userId: String,
+        projectId: String,
+        pipelineId: String,
+        page: Int,
+        pageSize: Int,
+        status: List<BuildStatus>?,
+        startTimeFrom: String?,
+        startTimeTo: String?,
+        endTimeFrom: String?,
+        endTimeTo: String?,
+        buildNoStart: Int?,
+        buildNoEnd: Int?
+    ): Result<Page<LightBuildHistory>> {
+        return client.get(ServiceBuildResource::class).getLightHistoryBuild(
+            userId = userId,
+            projectId = projectId,
+            pipelineId = pipelineId,
+            page = page,
+            pageSize = ApigwParamUtil.standardSize(pageSize) ?: 20,
+            status = status,
+            startTimeFrom = startTimeFrom,
+            startTimeTo = startTimeTo,
+            endTimeFrom = endTimeFrom,
+            endTimeTo = endTimeTo,
+            buildNoStart = buildNoStart,
+            buildNoEnd = buildNoEnd,
+        )
     }
 
     companion object {

@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -29,9 +29,10 @@ package com.tencent.devops.repository.pojo
 
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
-import io.swagger.annotations.ApiModel
+import com.tencent.devops.common.api.enums.ScmType
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("代码库模型-多态基类")
+@Schema(title = "代码库模型-多态基类")
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "@type")
 @JsonSubTypes(
     JsonSubTypes.Type(value = CodeSvnRepository::class, name = CodeSvnRepository.classType),
@@ -39,7 +40,9 @@ import io.swagger.annotations.ApiModel
     JsonSubTypes.Type(value = CodeGitlabRepository::class, name = CodeGitlabRepository.classType),
     JsonSubTypes.Type(value = GithubRepository::class, name = GithubRepository.classType),
     JsonSubTypes.Type(value = CodeTGitRepository::class, name = CodeTGitRepository.classType),
-    JsonSubTypes.Type(value = CodeP4Repository::class, name = CodeP4Repository.classType)
+    JsonSubTypes.Type(value = CodeP4Repository::class, name = CodeP4Repository.classType),
+    JsonSubTypes.Type(value = ScmGitRepository::class, name = ScmGitRepository.classType),
+    JsonSubTypes.Type(value = ScmSvnRepository::class, name = ScmSvnRepository.classType)
 )
 interface Repository {
     val aliasName: String
@@ -49,10 +52,17 @@ interface Repository {
     var userName: String
     val projectId: String?
     val repoHashId: String?
+    val enablePac: Boolean?
+    val yamlSyncStatus: String?
+    val scmCode: String
 
     fun isLegal() = url.startsWith(getStartPrefix())
 
     fun getStartPrefix(): String
 
     fun getFormatURL() = url
+
+    fun getScmType(): ScmType
+
+    fun getExternalId(): String = projectName
 }

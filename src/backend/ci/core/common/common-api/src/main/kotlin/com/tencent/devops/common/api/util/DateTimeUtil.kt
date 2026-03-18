@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -51,6 +51,14 @@ fun LocalDateTime.timestampmilli(): Long {
     return this.atZone(zoneId).toInstant().toEpochMilli()
 }
 
+fun Long?.toLocalDateTimeOrDefault(): LocalDateTime {
+    return this?.let { DateTimeUtil.convertTimestampToLocalDateTime(it / 1000) } ?: LocalDateTime.now()
+}
+
+fun Long?.toLocalDateTime(): LocalDateTime? {
+    return this?.let { DateTimeUtil.convertTimestampToLocalDateTime(it / 1000) }
+}
+
 @Suppress("ALL")
 object DateTimeUtil {
 
@@ -69,6 +77,36 @@ object DateTimeUtil {
     const val YYYY_MM_DD_T_HH_MM_SSZ = "yyyy-MM-dd'T'HH:mm:ssZ"
 
     const val YYYYMMDD = "yyyyMMdd"
+
+    const val YYYYMMDDHHMMSS = "yyyyMMddHHmmss"
+
+    const val ONE_THOUSAND_MS = 1000L
+
+    /**
+     * 获取时间列表里面的最小值
+     */
+    fun min(vararg localDateTimes: LocalDateTime): LocalDateTime {
+        var result = localDateTimes[0]
+        for (i in 1 until localDateTimes.size) {
+            if (localDateTimes[i].isBefore(result)) {
+                result = localDateTimes[i]
+            }
+        }
+        return result
+    }
+
+    /**
+     * 获取时间列表里面的最大值
+     */
+    fun max(vararg localDateTimes: LocalDateTime): LocalDateTime {
+        var result = localDateTimes[0]
+        for (i in 1 until localDateTimes.size) {
+            if (localDateTimes[i].isAfter(result)) {
+                result = localDateTimes[i]
+            }
+        }
+        return result
+    }
 
     /**
      * 单位转换，分钟转换秒
@@ -109,6 +147,10 @@ object DateTimeUtil {
         return cd.time
     }
 
+    fun getFutureTimestamp(seconds: Long): Long {
+        return System.currentTimeMillis() / 1000 + seconds
+    }
+
     /**
      * 按指定日期时间格式格式化日期时间
      * @param date 日期时间
@@ -129,6 +171,9 @@ object DateTimeUtil {
         return localDateTime?.toEpochSecond(ZoneOffset.ofHours(8)) ?: 0L
     }
 
+    /*
+    * 用于转化秒级时间戳，非毫秒级
+    * */
     fun convertTimestampToLocalDateTime(timestamp: Long): LocalDateTime {
         return LocalDateTime.ofInstant(Instant.ofEpochSecond(timestamp), ZoneId.systemDefault())
     }
@@ -237,7 +282,7 @@ object DateTimeUtil {
      */
     fun formatDay(mss: Long): String {
         if (mss == 0L) return "0"
-        return (mss / (1000 * 60 * 60 * 24)).toString()
+        return ((mss / (1000 * 60 * 60 * 24)) + 1).toString()
     }
 
     /**

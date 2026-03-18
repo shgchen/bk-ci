@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -80,6 +80,7 @@ class V2BuildParametersCompatibilityTransformerTest {
             "illegalStartParam" to "i will be delete after call it"
         )
         val startBuildParameter = buildParametersCompatibilityTransformer.parseTriggerParam(
+            userId = "", projectId = "", pipelineId = "",
             paramProperties = paramProperties, paramValues = paramValues
         )
         assertEquals(2, startBuildParameter.size)

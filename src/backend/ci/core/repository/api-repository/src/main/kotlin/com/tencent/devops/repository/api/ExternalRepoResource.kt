@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,59 +27,75 @@
 
 package com.tencent.devops.repository.api
 
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.ApiParam
-import javax.ws.rs.Consumes
-import javax.ws.rs.GET
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.QueryParam
-import javax.ws.rs.core.MediaType
-import javax.ws.rs.core.Response
+import io.swagger.v3.oas.annotations.tags.Tag
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.Parameter
+import jakarta.ws.rs.Consumes
+import jakarta.ws.rs.GET
+import jakarta.ws.rs.Path
+import jakarta.ws.rs.PathParam
+import jakarta.ws.rs.Produces
+import jakarta.ws.rs.QueryParam
+import jakarta.ws.rs.core.MediaType
+import jakarta.ws.rs.core.Response
 
-@Api(tags = ["EXTERNAL_REPO"], description = "外部-仓库资源")
+@Tag(name = "EXTERNAL_REPO", description = "外部-仓库资源")
 @Path("/external/repo/")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 interface ExternalRepoResource {
 
-    @ApiOperation("git oauth 授权回调")
+    @Operation(summary = "git oauth 授权回调")
     @GET
     @Path("/git/callback")
     fun gitCallback(
-        @ApiParam(value = "code")
+        @Parameter(description = "code")
         @QueryParam("code")
         code: String,
-        @ApiParam(value = "state")
+        @Parameter(description = "state")
         @QueryParam("state")
         state: String
     ): Response
 
-    @ApiOperation("tgit oauth 授权回调")
+    @Operation(summary = "tgit oauth 授权回调")
     @GET
     @Path("/tgit/callback")
     fun tGitCallback(
-        @ApiParam(value = "code")
+        @Parameter(description = "code")
         @QueryParam("code")
         code: String,
-        @ApiParam(value = "state")
+        @Parameter(description = "state")
         @QueryParam("state")
         state: String
     ): Response
 
-    @ApiOperation("tapd回调重定向url")
+    @Operation(summary = "tapd回调重定向url")
     @GET
     @Path("/tapd/callback")
     fun tapdCallback(
-        @ApiParam(value = "code")
+        @Parameter(description = "code")
         @QueryParam("code")
         code: String,
-        @ApiParam(value = "state")
+        @Parameter(description = "state")
         @QueryParam("state")
         state: String,
-        @ApiParam(value = "resource")
+        @Parameter(description = "resource")
         @QueryParam("resource")
         resource: String
+    ): Response
+
+    @Operation(summary = "源码管理oauth授权回调")
+    @GET
+    @Path("/{scmCode}/oauth/callback")
+    fun scmCallback(
+        @Parameter(description = "scmCode")
+        @PathParam("scmCode")
+        scmCode: String,
+        @Parameter(description = "code")
+        @QueryParam("code")
+        code: String,
+        @Parameter(description = "state")
+        @QueryParam("state")
+        state: String
     ): Response
 }

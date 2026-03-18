@@ -24,7 +24,7 @@
                     v-if="isVmContainer(container)"
                     class="show-build-resource"
                     :value="container.showBuildResource"
-                    :text="$t('editPage.showAliasName')"
+                    :text="$t('editPage.showAlias')"
                     name="showBuildResource"
                     :handle-change="handleContainerChange"
                     :disabled="!editable"
@@ -49,14 +49,17 @@
                     <template>
                         <div
                             class="bk-selector-create-item cursor-pointer"
-                            @click.stop.prevent="addThridSlave"
+                            @click.stop.prevent="addThirdSlave"
                         >
                             <i class="devops-icon icon-plus-circle"></i>
                             <span class="text">{{ $t("editPage.addThirdSlave") }}</span>
                         </div>
                     </template>
                 </selector>
-                <span class="bk-form-help" v-if="isPublicResourceType">{{
+                <span
+                    class="bk-form-help"
+                    v-if="isPublicResourceType"
+                >{{
                     $t("editPage.publicResTips")
                 }}</span>
             </form-field>
@@ -77,7 +80,10 @@
                 >
                 </enum-input>
 
-                <section v-if="buildImageType === 'BKSTORE'" class="bk-image">
+                <section
+                    v-if="isBkStoreImageType"
+                    class="bk-image"
+                >
                     <section class="image-name">
                         <span
                             :class="[
@@ -85,16 +91,20 @@
                                 { 'not-recommend': buildImageRecommendFlag === false },
                                 'image-named'
                             ]"
-                            :title="
-                                buildImageRecommendFlag === false
-                                    ? $t('editPage.notRecomendImage')
-                                    : buildImageName
+                            :title="buildImageRecommendFlag === false
+                                ? $t('editPage.notRecomendImage')
+                                : buildImageName
                             "
-                        >{{ buildImageName || $t("editPage.chooseImage") }}</span
+                        >{{ buildImageName || $t("editPage.chooseImage") }}</span>
+                        <bk-button
+                            theme="primary"
+                            @click.stop="chooseImage"
+                            :disabled="!editable"
                         >
-                        <bk-button theme="primary" @click.stop="chooseImage" :disabled="!editable">{{
-                            buildImageCode ? $t("editPage.reElection") : $t("editPage.select")
-                        }}</bk-button>
+                            {{
+                                buildImageCode ? $t("editPage.reElection") : $t("editPage.select")
+                            }}
+                        </bk-button>
                     </section>
                     <bk-select
                         @change="changeImageVersion"
@@ -154,12 +164,31 @@
                     :agent-type="buildAgentType"
                     :toggle-visible="toggleVisible"
                     :handle-change="changeBuildResource"
-                    :add-thrid-slave="addThridSlave"
+                    :add-third-slave="addThirdSlave"
                     :value="buildResource"
                     :env-project-id="buildResourceProj"
+                    :pipeline="pipeline"
+                    :container-index="containerIndex"
+                    :pipeline-dialect="pipelineDialect"
+                    :stage-index="stageIndex"
+                    :stage="stage"
                     :has-error="errors.has('buildResource')"
                     v-validate.initial="'required'"
                     name="buildResource"
+                />
+            </form-field>
+
+            <form-field
+                v-if="isLinuxOsDockerImage"
+            >
+                <LinuxOsDockerImage
+                    :editable="editable"
+                    :container="container"
+                    :version-list="versionList"
+                    :is-version-loading="isVersionLoading"
+                    :image-type-list="imageTypeList"
+                    :choose-image="chooseImage"
+                    :handle-container-change="handleContainerChange"
                 />
             </form-field>
 
@@ -205,6 +234,7 @@
                         :loading="isLoadingMac"
                         name="systemVersion"
                         v-validate.initial="'required'"
+                        @change="toggleXcode"
                     >
                         <bk-option
                             v-for="item in systemVersionList"
@@ -222,32 +252,23 @@
                     :is-error="errors.has('xcodeVersion')"
                     :error-msg="errors.first(`xcodeVersion`)"
                 >
-                    <bk-select
-                        :disabled="!editable"
+                    <select-input
                         :value="xcodeVersion"
-                        searchable
-                        :loading="isLoadingMac"
                         name="xcodeVersion"
+                        :disabled="!editable"
+                        type="text"
+                        :options="xcodeVersionList"
+                        :handle-change="chooseXcode"
                         v-validate.initial="'required'"
-                        @toggle="toggleXcode"
                     >
-                        <bk-option
-                            v-for="item in xcodeVersionList"
-                            :key="item"
-                            :id="item"
-                            :name="item"
-                            @click.native="chooseXcode(item)"
-                        >
-                        </bk-option>
-                    </bk-select>
+                    </select-input>
                 </form-field>
             </template>
 
             <form-field
                 :label="$t('editPage.imageTicket')"
-                v-if="
-                    showImagePublicTypeList.includes(buildResourceType) &&
-                        buildImageType === 'THIRD'
+                v-if="showImagePublicTypeList.includes(buildResourceType) &&
+                    buildImageType === 'THIRD'
                 "
             >
                 <select-input
@@ -260,7 +281,10 @@
             </form-field>
 
             <section v-if="buildResourceType === 'DOCKER'">
-                <form-field :label="$t('editPage.performance')" v-show="isShowPerformance">
+                <form-field
+                    :label="$t('editPage.performance')"
+                    v-show="isShowPerformance"
+                >
                     <devcloud-option
                         :disabled="!editable"
                         :value="container.dispatchType.performanceConfigId"
@@ -272,7 +296,10 @@
                 </form-field>
             </section>
 
-            <form-field :label="$t('editPage.workspace')" v-if="isThirdParty">
+            <form-field
+                :label="$t('editPage.workspace')"
+                v-if="isThirdParty"
+            >
                 <vuex-input
                     :disabled="!editable"
                     name="workspace"
@@ -281,7 +308,10 @@
                     :placeholder="$t('editPage.workspaceTips')"
                 />
             </form-field>
-            <form-field class="container-app-field" v-if="isShowNFSDependencies">
+            <form-field
+                class="container-app-field"
+                v-if="isShowNFSDependencies"
+            >
                 <atom-checkbox
                     :value="nfsSwitch"
                     :text="$t('editPage.envDependency')"
@@ -302,29 +332,38 @@
                         :remove-container-app="removeContainerApp"
                         :add-container-app="containerAppList.length > 0 ? addContainerApp : null"
                     ></container-app-selector>
-                    <container-app-selector
-                        :disabled="!editable"
-                        v-else
-                        class="app-selector-item"
-                        v-for="(version, app) in container.buildEnv"
-                        :key="app"
-                        :app="app"
-                        :version="version"
-                        :handle-change="handleContainerAppChange"
-                        :envs="container.buildEnv"
-                        :apps="apps"
-                        :remove-container-app="removeContainerApp"
-                        :add-container-app="containerAppList.length > 0 ? addContainerApp : null"
-                    ></container-app-selector>
+
+                    <template v-else>
+                        <container-app-selector
+                            :disabled="!editable"
+                            class="app-selector-item"
+                            v-for="(version, app) in container.buildEnv"
+                            :key="app"
+                            :app="app"
+                            :version="version"
+                            :handle-change="handleContainerAppChange"
+                            :envs="container.buildEnv"
+                            :apps="apps"
+                            :remove-container-app="removeContainerApp"
+                            :add-container-app="containerAppList.length > 0 ? addContainerApp : null"
+                        />
+                    </template>
                 </template>
             </form-field>
 
-            <div class="build-path-tips" v-if="hasBuildEnv">
+            <div
+                class="build-path-tips"
+                v-if="hasBuildEnv"
+            >
                 <div class="tips-icon"><i class="bk-icon icon-info-circle-shape"></i></div>
                 <div class="tips-content">
                     <p class="tips-title">{{ $t("editPage.envDependencyTips") }}：</p>
                     <template v-for="(value, keys) in container.buildEnv">
-                        <div class="tips-list" v-if="value" :key="keys">
+                        <div
+                            class="tips-list"
+                            v-if="value"
+                            :key="keys"
+                        >
                             <p class="tips-item">{{ appBinPath(value, keys) }}</p>
                             <p
                                 class="tips-item"
@@ -339,49 +378,23 @@
             </div>
         </form>
 
-        <section v-if="isTriggerContainer(container)">
-            <version-config
-                :disabled="!editable"
-                :params="container.params"
-                :build-no="container.buildNo"
-                :set-parent-validate="setContainerValidate"
-                :update-container-params="handleContainerChange"
-            ></version-config>
-            <build-params
-                key="params"
-                :disabled="!editable"
-                :params="container.params"
-                :addition-params="container.templateParams"
-                setting-key="params"
-                :title="$t('template.pipelineVar')"
-                :build-no="container.buildNo"
-                :set-parent-validate="setContainerValidate"
-                :update-container-params="handleContainerChange"
-            ></build-params>
-            <build-params
-                v-if="routeName === 'templateEdit'"
-                key="templateParams"
-                :disabled="!editable"
-                :params="container.templateParams"
-                :addition-params="container.params"
-                setting-key="templateParams"
-                :title="$t('template.templateConst')"
-                :set-parent-validate="setContainerValidate"
-                :update-container-params="handleContainerChange"
-            ></build-params>
-        </section>
-
         <div>
+            <CustomEnvField
+                v-if="isVmContainer(container)"
+                :value="container.customEnv"
+                @change="handleContainerChange"
+                :disabled="!editable"
+            />
             <div class="job-matrix">
                 <job-matrix
                     v-if="!isTriggerContainer(container)"
-                    :enable-matrix="container.matrixGroupFlag || false"
+                    :enable-matrix="container.matrixGroupFlag"
+                    :pipeline-dialect="pipelineDialect"
                     :matrix-control-option="container.matrixControlOption"
                     :update-container-params="handleContainerChange"
                     :set-parent-validate="setContainerValidate"
                     :disabled="!editable"
-                >
-                </job-matrix>
+                />
             </div>
             <div class="job-option">
                 <job-option
@@ -390,28 +403,27 @@
                     :update-container-params="handleContainerChange"
                     :set-parent-validate="setContainerValidate"
                     @setKeyValueValidate="setContainerValidate"
+                    :pipeline-dialect="pipelineDialect"
                     :disabled="!editable"
                     :stage="stage"
                     :stage-index="stageIndex"
                     :container-index="containerIndex"
-                >
-                </job-option>
+                />
             </div>
             <div class="job-mutual">
                 <job-mutual
                     v-if="!isTriggerContainer(container)"
                     :mutex-group="container.mutexGroup"
+                    :pipeline-dialect="pipelineDialect"
                     :update-container-params="handleContainerChange"
                     :set-parent-validate="setContainerValidate"
                     :disabled="!editable"
-                >
-                </job-mutual>
+                />
             </div>
         </div>
-
         <image-selector
             :is-show.sync="showImageSelector"
-            v-if="showImagePublicTypeList.includes(buildResourceType)"
+            v-if="showImagePublicTypeList.includes(buildResourceType) || isLinuxOsDockerImage"
             :code="buildImageCode"
             :build-resource-type="buildResourceType"
             @choose="choose"
@@ -420,23 +432,23 @@
 </template>
 
 <script>
-    import { mapGetters, mapActions } from 'vuex'
-    import Vue from 'vue'
-    import EnumInput from '@/components/atomFormField/EnumInput'
-    import VuexInput from '@/components/atomFormField/VuexInput'
-    import Selector from '@/components/atomFormField/Selector'
+    import SelectInput from '@/components/AtomFormComponent/SelectInput'
     import FormField from '@/components/AtomPropertyPanel/FormField'
+    import ImageSelector from '@/components/AtomSelector/imageSelector'
+    import CustomEnvField from '@/components/CustomEnvField'
+    import AtomCheckbox from '@/components/atomFormField/AtomCheckbox'
+    import EnumInput from '@/components/atomFormField/EnumInput'
+    import Selector from '@/components/atomFormField/Selector'
+    import VuexInput from '@/components/atomFormField/VuexInput'
+    import Vue from 'vue'
+    import { mapActions, mapGetters, mapState } from 'vuex'
     import ContainerAppSelector from './ContainerAppSelector'
     import ContainerEnvNode from './ContainerEnvNode'
     import DevcloudOption from './DevcloudOption'
-    import BuildParams from './BuildParams'
-    import VersionConfig from './VersionConfig'
-    import JobOption from './JobOption'
-    import JobMutual from './JobMutual'
     import JobMatrix from './JobMatrix'
-    import AtomCheckbox from '@/components/atomFormField/AtomCheckbox'
-    import ImageSelector from '@/components/AtomSelector/imageSelector'
-    import SelectInput from '@/components/AtomFormComponent/SelectInput'
+    import JobMutual from './JobMutual'
+    import JobOption from './JobOption'
+    import LinuxOsDockerImage from './LinuxOsDockerImage'
 
     export default {
         name: 'container-content',
@@ -445,8 +457,6 @@
             VuexInput,
             FormField,
             ContainerAppSelector,
-            BuildParams,
-            VersionConfig,
             DevcloudOption,
             ContainerEnvNode,
             JobOption,
@@ -455,7 +465,9 @@
             Selector,
             AtomCheckbox,
             ImageSelector,
-            SelectInput
+            SelectInput,
+            CustomEnvField,
+            LinuxOsDockerImage
         },
         props: {
             containerIndex: Number,
@@ -463,7 +475,8 @@
             stageIndex: Number,
             stages: Array,
             editable: Boolean,
-            title: String
+            title: String,
+            pipeline: Object
         },
         data () {
             return {
@@ -501,6 +514,17 @@
                 'isDockerBuildResource',
                 'isPublicDevCloudContainer'
             ]),
+            ...mapState('atom', [
+                'pipelineSetting',
+            ]),
+            pipelineDialect () {
+                if (this.pipelineSetting?.pipelineAsCodeSettings) {
+                    const { inheritedDialect, pipelineDialect, projectDialect } = this.pipelineSetting?.pipelineAsCodeSettings
+                    return inheritedDialect ? projectDialect : pipelineDialect
+                } else {
+                    return 'CLASSIC'
+                }
+            },
             imageTypeList () {
                 return [
                     { label: this.$t('editPage.fromList'), value: 'BKSTORE' },
@@ -574,7 +598,7 @@
                 return this.container.dispatchType.xcodeVersion
             },
             systemVersion () {
-                return this.container.dispatchType.systemVersion
+                return this.container?.dispatchType?.systemVersion
             },
             buildResource () {
                 return this.container.dispatchType.value
@@ -585,8 +609,11 @@
             buildImageType () {
                 return this.container.dispatchType.imageType
             },
+            isBkStoreImageType () {
+                return this.buildImageType === 'BKSTORE' || this.linuxOsDockerBuildImageType === 'BKSTORE'
+            },
             buildImageCode () {
-                return this.container.dispatchType && this.container.dispatchType.imageCode
+                return this.container?.dispatchType?.imageCode || this.container?.dispatchType?.dockerInfo?.storeImage?.imageCode
             },
             buildImageVersion () {
                 return this.container.dispatchType.imageVersion
@@ -660,6 +687,15 @@
                     })
                 })
                 return jobIdList
+            },
+            isLinuxOsDockerImage () {
+                return this.container.baseOS === 'LINUX' && ['THIRD_PARTY_AGENT_ID', 'THIRD_PARTY_AGENT_ENV'].includes(this.buildResourceType)
+            },
+            dockerInfo () {
+                return this.container.dispatchType?.dockerInfo || {}
+            },
+            linuxOsDockerBuildImageType () {
+                return this.container.dispatchType?.dockerInfo?.imageType
             }
         },
         watch: {
@@ -667,6 +703,9 @@
                 deep: true,
                 handler: function (errors, old) {
                     // this.setContainerValidate()
+                    if (!this.editable) {
+                        return
+                    }
                     const isError = errors.any()
                     this.handleContainerChange('isError', isError)
                 }
@@ -674,32 +713,19 @@
         },
         created () {
             const { container } = this
-            if (
-                this.isTriggerContainer(container)
-                && this.container.templateParams === undefined
-            ) {
-                Vue.set(container, 'templateParams', [])
-            }
-            if (this.isTriggerContainer(container) && this.container.buildNo === undefined) {
-                Vue.set(container, 'buildNo', null)
-            }
-            if (
-                !this.isTriggerContainer(container)
-                && this.container.jobControlOption === undefined
-            ) {
-                Vue.set(container, 'jobControlOption', {})
-            }
-            if (!this.isTriggerContainer(container) && this.container.mutexGroup === undefined) {
-                Vue.set(container, 'mutexGroup', {})
-            }
-            if (!this.isTriggerContainer(container) && this.container.jobId === undefined) {
-                Vue.set(container, 'jobId', '')
-            }
-            if (
-                !this.isTriggerContainer(container)
-                && this.container.matrixGroupFlag === undefined
-            ) {
-                Vue.set(container, 'matrixGroupFlag', false)
+            if (!this.isTriggerContainer(container)) {
+                const defaultProperties = {
+                    jobControlOption: {},
+                    mutexGroup: {},
+                    jobId: '',
+                    matrixGroupFlag: false
+                }
+
+                Object.entries(defaultProperties).forEach(([key, value]) => {
+                    if (container[key] === undefined) {
+                        Vue.set(container, key, value)
+                    }
+                })
             }
             if (
                 this.buildResourceType === 'THIRD_PARTY_AGENT_ID'
@@ -713,8 +739,8 @@
                     })
                 )
             }
-            if (this.container.dispatchType && this.container.dispatchType.imageCode) {
-                this.getVersionList(this.container.dispatchType.imageCode)
+            if (this.buildImageCode) {
+                this.getVersionList(this.buildImageCode)
             }
             if (this.buildResourceType === 'MACOS') this.getMacOsData()
             if (this.buildResourceType === 'WINDOWS') this.getWinData()
@@ -754,8 +780,8 @@
                 )
                 if (val === 'MACOS') this.getMacOsData()
                 if (val === 'WINDOWS') this.getWinData()
-                if (this.container.dispatchType && this.container.dispatchType.imageCode) {
-                    this.getVersionList(this.container.dispatchType.imageCode)
+                if (this.container.dispatchType?.imageCode) {
+                    this.getVersionList(this.buildImageCode)
                 }
             },
 
@@ -770,44 +796,95 @@
             },
 
             changeImageVersion (value) {
-                this.handleContainerChange(
-                    'dispatchType',
-                    Object.assign({
-                        ...this.container.dispatchType,
-                        imageVersion: value,
-                        value: this.buildImageCode
-                    })
-                )
+                if (this.isLinuxOsDockerImage) {
+                    this.handleContainerChange(
+                        'dispatchType',
+                        Object.assign({
+                            ...this.container.dispatchType,
+                            dockerInfo: {
+                                ...this.container.dispatchType.dockerInfo,
+                                storeImage: {
+                                    ...this.container.dispatchType.dockerInfo.storeImage,
+                                    imageVersion: value
+                                }
+                            }
+                        })
+                    )
+                } else {
+                    this.handleContainerChange(
+                        'dispatchType',
+                        Object.assign({
+                            ...this.container.dispatchType,
+                            imageVersion: value,
+                            value: this.buildImageCode
+                        })
+                    )
+                }
             },
 
             choose (card) {
-                this.handleContainerChange(
-                    'dispatchType',
-                    Object.assign({
-                        ...this.container.dispatchType,
-                        imageCode: card.code,
-                        imageName: card.name,
-                        recommendFlag: card.recommendFlag
-                    })
-                )
+                if (this.isLinuxOsDockerImage) {
+                    this.handleContainerChange(
+                        'dispatchType',
+                        Object.assign({
+                            ...this.container.dispatchType,
+                            recommendFlag: card.recommendFlag,
+                            dockerInfo: {
+                                ...this.container.dispatchType.dockerInfo,
+                                storeImage: {
+                                    imageCode: card.code,
+                                    imageName: card.name
+                                }
+                            }
+                        })
+                    )
+                } else {
+                    this.handleContainerChange(
+                        'dispatchType',
+                        Object.assign({
+                            ...this.container.dispatchType,
+                            imageCode: card.code,
+                            imageName: card.name,
+                            recommendFlag: card.recommendFlag
+                        })
+                    )
+                }
+
                 return this.getVersionList(card.code).then(() => {
                     let chooseVersion = this.versionList[0] || {}
                     if (card.historyVersion) {
                         chooseVersion
                             = this.versionList.find((x) => x.versionValue === card.historyVersion) || {}
                     }
-                    this.handleContainerChange(
-                        'dispatchType',
-                        Object.assign({
-                            ...this.container.dispatchType,
-                            imageVersion: chooseVersion.versionValue,
-                            value: card.code
-                        })
-                    )
+                    if (this.isLinuxOsDockerImage) {
+                        this.handleContainerChange(
+                            'dispatchType',
+                            Object.assign({
+                                ...this.container.dispatchType,
+                                dockerInfo: {
+                                    ...this.container.dispatchType.dockerInfo,
+                                    storeImage: {
+                                        ...this.container.dispatchType.dockerInfo.storeImage,
+                                        imageVersion: chooseVersion.versionValue
+                                    }
+                                }
+                            })
+                        )
+                    } else {
+                        this.handleContainerChange(
+                            'dispatchType',
+                            Object.assign({
+                                ...this.container.dispatchType,
+                                imageVersion: chooseVersion.versionValue,
+                                value: card.code
+                            })
+                        )
+                    }
                 })
             },
 
             getVersionList (imageCode) {
+                if (!this.isBkStoreImageType) return
                 this.isVersionLoading = true
                 const data = {
                     projectCode: this.projectId,
@@ -832,14 +909,17 @@
                 this.isLoadingMac = true
                 Promise.all([this.getMacSysVersion(), this.getMacXcodeVersion(this.systemVersion)])
                     .then(([sysVersion, xcodeVersion]) => {
-                        this.xcodeVersionList = xcodeVersion.data?.versionList || []
+                        this.xcodeVersionList = xcodeVersion.data?.versionList.map(i => ({
+                            id: i,
+                            name: i
+                        })) || []
                         this.systemVersionList = sysVersion.data?.versionList || []
                         if (
-            this.container.dispatchType?.systemVersion === undefined
-            && this.container.dispatchType?.xcodeVersion === undefined
+                        this.container.dispatchType?.systemVersion === undefined
+                        && this.container.dispatchType?.xcodeVersion === undefined
                         ) {
                             this.chooseMacSystem(sysVersion.data?.defaultVersion)
-                            this.chooseXcode(xcodeVersion.data?.defaultVersion)
+                            this.chooseXcode('xcodeVersion', xcodeVersion.data?.defaultVersion)
                         }
                     })
                     .catch((err) => {
@@ -847,11 +927,12 @@
                     })
                     .finally(() => (this.isLoadingMac = false))
             },
-            async toggleXcode (show) {
-                if (show) {
-                    const res = await this.getMacXcodeVersion(this.systemVersion)
-                    this.xcodeVersionList = res.data?.versionList || []
-                }
+            async toggleXcode (version) {
+                const res = await this.getMacXcodeVersion(version)
+                this.xcodeVersionList = res.data?.versionList.map(i => ({
+                    id: i,
+                    name: i
+                })) || []
             },
             chooseMacSystem (item) {
                 if (item !== this.systemVersion) {
@@ -866,17 +947,20 @@
                     )
                 }
             },
-            chooseXcode (item) {
+            chooseXcode (item, value) {
                 this.handleContainerChange(
                     'dispatchType',
                     Object.assign({
                         ...this.container.dispatchType,
-                        xcodeVersion: item,
-                        value: `${this.systemVersion}:${item}`
+                        xcodeVersion: value,
+                        value: `${this.systemVersion}:${value}`
                     })
                 )
             },
             setContainerValidate (addErrors, removeErrors) {
+                if (!this.editable) {
+                    return
+                }
                 const { errors } = this
 
                 if (addErrors && addErrors.length) {
@@ -902,7 +986,7 @@
                     = name === 'imageType' || name === 'agentType'
                         ? { value: '', envProjectId: '' }
                         : {}
-                if (name === 'value' && envProjectId) {
+                if (name === 'value') {
                     emptyValueObj.envProjectId = envProjectId
                 }
                 this.handleContainerChange(
@@ -1022,8 +1106,8 @@
                     ? `export ${env.name}=/data/bkdevops/apps/${key}/${value}/${env.path}`
                     : `export ${env.name}=/data/soda/apps/${key}/${value}/${env.path}`
             },
-            addThridSlave () {
-                const url = `${WEB_URL_PREFIX}/environment/${this.projectId}/nodeList?type=${this.container.baseOS}`
+            addThirdSlave () {
+                const url = `${WEB_URL_PREFIX}/environment/${this.projectId}/node/allNode?type=${this.container.baseOS}`
                 window.open(url, '_blank')
             },
             changeShowPerformance (isShow = false) {
@@ -1035,186 +1119,137 @@
 
 <style lang="scss">
 @import "../AtomPropertyPanel/propertyPanel";
+
 .container-panel-header {
-  display: flex;
-  margin-right: 20px;
-  justify-content: space-between;
-}
-.container-property-panel {
-  font-size: 14px;
-  .bk-image {
     display: flex;
-    align-items: center;
-    margin-top: 15px;
-    .image-name {
-      width: 50%;
-      display: flex;
-      align-items: center;
-      .not-recommend {
-        text-decoration: line-through;
-      }
-      .image-named {
-        border: 1px solid #c4c6cc;
-        flex: 1;
-        height: 32px;
-        line-height: 32px;
-        font-size: 12px;
-        color: $fontWeightColor;
-        line-height: 32px;
-        padding-left: 10px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        &.disable {
-          color: #c4c6cc;
-          cursor: not-allowed;
-        }
-      }
-    }
-    .container-property-panel {
-      font-size: 14px;
-      .bk-image {
+    margin-right: 20px;
+    justify-content: space-between;
+}
+
+.container-property-panel {
+    font-size: 14px;
+
+    .bk-image {
         display: flex;
         align-items: center;
         margin-top: 15px;
+        grid-gap: 12px;
+
         .image-name {
-          width: 50%;
-          display: flex;
-          align-items: center;
-          .not-recommend {
-            text-decoration: line-through;
-          }
-          .image-named {
-            border: 1px solid #c4c6cc;
-            flex: 1;
-            height: 32px;
-            line-height: 32px;
-            font-size: 12px;
-            color: $fontWeightColor;
-            line-height: 32px;
-            padding-left: 10px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            &.disable {
-              color: #c4c6cc;
-              cursor: not-allowed;
+            width: 50%;
+            display: flex;
+            align-items: center;
+
+            .not-recommend {
+                text-decoration: line-through;
             }
-          }
+
+            .image-named {
+                border: 1px solid #c4c6cc;
+                flex: 1;
+                height: 32px;
+                line-height: 32px;
+                font-size: 12px;
+                color: $fontWeightColor;
+                line-height: 32px;
+                padding-left: 10px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+
+                &.disable {
+                    color: #c4c6cc;
+                    cursor: not-allowed;
+                }
+            }
         }
         .image-tag {
-          width: 50%;
-          margin-left: 10px;
+            flex: 1;
         }
-      }
-      .container-resource-name {
+    }
+
+    .container-resource-name {
         display: flex;
         align-items: center;
-        > input {
-          flex: 1;
+
+        >input {
+            flex: 1;
         }
+
         .show-build-resource {
-          margin-left: 10px;
+            margin-left: 10px;
         }
-      }
-      .control-bar {
+    }
+
+    .control-bar {
         position: absolute;
         right: 34px;
         top: 12px;
-      }
-      .debug-btn {
-        position: absolute;
-        right: 34px;
-        top: 12px;
-      }
-      .accordion-checkbox {
+    }
+
+    .accordion-checkbox {
         margin-left: auto;
-      }
-      .bk-form-content span.bk-form-help {
+    }
+
+    .bk-form-content span.bk-form-help {
         padding-top: 5px;
         display: inline-block;
+
         a {
-          color: #3c96ff;
-          &:hover {
             color: #3c96ff;
-          }
+
+            &:hover {
+                color: #3c96ff;
+            }
         }
-      }
-      form .bk-form-item {
-        margin-top: 8px;
-      }
     }
-  }
-  .container-resource-name {
-    display: flex;
-    align-items: center;
-    > input {
-      flex: 1;
-    }
-    .show-build-resource {
-      margin-left: 10px;
-    }
-  }
-  .control-bar {
-    position: absolute;
-    right: 34px;
-    top: 12px;
-  }
-  .accordion-checkbox {
-    margin-left: auto;
-  }
-  .bk-form-content span.bk-form-help {
-    padding-top: 5px;
-    display: inline-block;
-    a {
-      color: #3c96ff;
-      &:hover {
-        color: #3c96ff;
-      }
-    }
-  }
-  form .bk-form-item {
-    margin-top: 8px;
-  }
 }
+
 .app-selector-item {
-  margin: 10px 0;
-  &:last-child {
-    .devops-icon.icon-plus {
-      display: block;
+    margin: 10px 0;
+
+    &:last-child {
+        .devops-icon.icon-plus {
+            display: block;
+        }
     }
-  }
 }
+
 .build-path-tips {
-  display: flex;
-  min-height: 60px;
-  margin-top: 8px;
-  .tips-icon {
     display: flex;
-    width: 44px;
-    align-items: center;
-    text-align: center;
-    border: 1px solid #ffb400;
-    background-color: #ffb400;
-    i {
-      display: inline-block;
-      font-size: 18px;
-      color: #fff;
-      margin: 21px 13px;
+    min-height: 60px;
+    margin-top: 8px;
+
+    .tips-icon {
+        display: flex;
+        width: 44px;
+        align-items: center;
+        text-align: center;
+        border: 1px solid #ffb400;
+        background-color: #ffb400;
+
+        i {
+            display: inline-block;
+            font-size: 18px;
+            color: #fff;
+            margin: 21px 13px;
+        }
     }
-  }
-  .tips-content {
-    flex: 1;
-    padding: 0 20px;
-    border: 1px solid #e6e6e6;
-    border-left: none;
-    .tips-title {
-      margin: 15px 0;
-      font-weight: 600;
+
+    .tips-content {
+        flex: 1;
+        padding: 0 20px;
+        border: 1px solid #e6e6e6;
+        border-left: none;
+
+        .tips-title {
+            margin: 15px 0;
+            font-weight: 600;
+        }
+
+        .tips-list {
+            margin-bottom: 10px;
+        }
     }
-    .tips-list {
-      margin-bottom: 10px;
-    }
-  }
 }
 </style>

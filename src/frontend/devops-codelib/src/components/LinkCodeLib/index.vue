@@ -1,34 +1,52 @@
 <template>
-    <bk-dropdown-menu :class="{ 'devops-button-dropdown': true, 'disabled': disabled }">
-        <bk-button :disabled="disabled" theme="primary" slot="dropdown-trigger">
+    <bk-dropdown-menu
+        class="devops-button-dropdown"
+        :disabled="!isListReady"
+    >
+        <bk-button
+            theme="primary"
+            slot="dropdown-trigger"
+        >
             <i class="devops-icon icon-plus"></i>
             <span>{{ $t('codelib.linkCodelib') }}</span>
         </bk-button>
-        <ul class="devops-button-dropdown-menu" slot="dropdown-content">
-            <li v-for="typeLabel in codelibTypes" :key="typeLabel" @click="createCodelib(typeLabel)">
-                {{ $t('codelib.typeCodelib', [typeLabel])}}
+        <ul
+            class="devops-button-dropdown-menu"
+            slot="dropdown-content"
+        >
+            <li
+                v-for="item in codelibTypes"
+                :key="item.scmType"
+                @click="createCodelib(item.scmType, item.scmCode)"
+                :class="{
+                    'config-item': true,
+                    'disabled-codelib-type': item.status !== 'SUCCESS'
+                }"
+            >
+                <img :src="item.logoUrl" />
+                <span class="config-name">{{ item.name }}</span>
+                <span class="config-hosts">{{ item.hosts }}</span>
             </li>
         </ul>
     </bk-dropdown-menu>
 </template>
 
 <script>
-    import { codelibTypes } from '../../config'
+    import { mapState } from 'vuex'
     export default {
         name: 'link-code-lib',
         props: {
             createCodelib: {
                 type: Function,
                 required: true
-            },
-            disabled: {
-                type: Boolean,
-                default: false
             }
         },
         computed: {
-            codelibTypes () {
-                return codelibTypes
+            ...mapState('codelib', [
+                'codelibTypes'
+            ]),
+            isListReady () {
+                return this.codelibTypes?.length > 0 && !this.disabled
             }
         }
     }
@@ -42,11 +60,12 @@
         }
         &-menu {
             > li {
-                display: block;
-                line-height: 41px;
+                display: flex;
+                align-items: center;
+                line-height: 40px;
                 padding: 0 15px;
                 color: $fontColor;
-                font-size: 14px;
+                font-size: 12px;
                 text-decoration: none;
                 white-space: nowrap;
                 cursor: pointer;
@@ -54,6 +73,22 @@
                 &:hover {
                     background: $bgColor;
                     color: $primaryColor;
+                }
+                &.disabled-codelib-type {
+                    color: #c4c6cc;
+                    cursor: not-allowed;
+                }
+                img {
+                    width: 16px;
+                    height: 16px;
+                    margin-right: 12px;
+                }
+                .config-name {
+                    color: #313238;
+                }
+                .config-hosts {
+                    color: #979BA5;
+                    margin-left: 10px;
                 }
             }
         }

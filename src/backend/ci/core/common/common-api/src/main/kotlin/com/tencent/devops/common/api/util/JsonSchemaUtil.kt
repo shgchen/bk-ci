@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,6 +30,8 @@ package com.tencent.devops.common.api.util
 import com.fasterxml.jackson.databind.JsonNode
 import com.github.fge.jackson.JsonLoader
 import com.github.fge.jsonschema.main.JsonSchemaFactory
+import org.json.JSONArray
+import org.json.JSONObject
 
 object JsonSchemaUtil {
     fun validate(schema: String, json: String): Boolean {
@@ -50,5 +52,23 @@ object JsonSchemaUtil {
             return false
         }
         return true
+    }
+
+    fun isJsonArray(json: String): Boolean {
+        return try {
+            JSONArray(json)
+            true
+        } catch (ignore: Throwable) {
+            false
+        }
+    }
+
+    fun isJsonObject(json: String): Boolean {
+        return try {
+            JSONObject(json)
+            true
+        } catch (ignore: Throwable) {
+            false
+        }
     }
 }

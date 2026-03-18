@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,14 +27,14 @@
 
 package com.tencent.devops.common.log.pojo.enums
 
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
 enum class LogStorageMode {
-    @ApiModelProperty("上报服务")
+    @Schema(title = "上报服务")
     UPLOAD,
-    @ApiModelProperty("本地保存")
+    @Schema(title = "本地保存")
     LOCAL,
-    @ApiModelProperty("仓库已归档")
+    @Schema(title = "仓库已归档")
     ARCHIVED;
 
     companion object {

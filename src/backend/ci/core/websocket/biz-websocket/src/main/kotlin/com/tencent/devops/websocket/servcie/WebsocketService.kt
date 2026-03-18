@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -28,17 +28,14 @@
 package com.tencent.devops.websocket.servcie
 
 import com.tencent.devops.common.api.pojo.Result
+import com.tencent.devops.common.event.dispatcher.SampleEventDispatcher
 import com.tencent.devops.common.redis.RedisLock
 import com.tencent.devops.common.redis.RedisOperation
-import com.tencent.devops.common.websocket.dispatch.TransferDispatch
 import com.tencent.devops.common.websocket.utils.WsRedisUtils
-import com.tencent.devops.websocket.event.ChangePageTransferEvent
 import com.tencent.devops.websocket.event.ClearSessionEvent
-import com.tencent.devops.websocket.event.ClearUserSessionTransferEvent
-import com.tencent.devops.websocket.event.LoginOutTransferEvent
 import com.tencent.devops.websocket.keys.WebsocketKeys
 import com.tencent.devops.websocket.pojo.ChangePageDTO
-import com.tencent.devops.websocket.utils.PageUtils
+import com.tencent.devops.websocket.utils.WebsocketPageUtils
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -49,16 +46,12 @@ import java.util.concurrent.TimeUnit
 @Suppress("ALL")
 class WebsocketService @Autowired constructor(
     private val redisOperation: RedisOperation,
-    private val transferDispatch: TransferDispatch,
+    private val transferDispatch: SampleEventDispatcher,
     private val projectProxyService: ProjectProxyService
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(WebsocketService::class.java)
     }
-
-    @Value("\${transferData:false}")
-    private val needTransfer: Boolean = false
-
     @Value("\${session.timeout:5}")
     private val sessionTimeOut: Long? = null
 
@@ -76,16 +69,16 @@ class WebsocketService @Autowired constructor(
                 return
             }
         }
+        if (!checkParams(changePage.userId, changePage.sessionId)) {
+            logger.warn("changPage checkFail: userId:$changePage.userId,sessionId:$changePage.sessionId")
+            return
+        }
         val redisLock = lockUser(changePage.sessionId)
 
         redisLock.use {
             redisLock.lock()
-            if (!checkParams(changePage.userId, changePage.sessionId)) {
-                logger.warn("changPage checkFail: userId:$changePage.userId,sessionId:$changePage.sessionId")
-                return
-            }
 
-            val normalPage = PageUtils.buildNormalPage(changePage.page)
+            val normalPage = WebsocketPageUtils.buildNormalPage(changePage.page)
             WsRedisUtils.writeSessionIdByRedis(redisOperation, changePage.userId, changePage.sessionId)
 
             val oldPage = WsRedisUtils.getPageFromSessionPageBySession(redisOperation, changePage.sessionId)
@@ -96,15 +89,6 @@ class WebsocketService @Autowired constructor(
             WsRedisUtils.refreshPageSession(redisOperation, changePage.sessionId, normalPage)
 
             logger.info("sessionPage[session:$changePage.sessionId,page:$normalPage]")
-            if (needTransfer && !changePage.transferData.isNullOrEmpty()) {
-                transferDispatch.dispatch(
-                    ChangePageTransferEvent(
-                        userId = changePage.userId,
-                        page = changePage.page,
-                        transferData = changePage.transferData
-                    )
-                )
-            }
         }
     }
 
@@ -125,7 +109,7 @@ class WebsocketService @Autowired constructor(
             val redisPage = WsRedisUtils.getPageFromSessionPageBySession(redisOperation, sessionId)
             var clearPage = oldPage
             if (!oldPage.isNullOrEmpty() && redisPage != oldPage) {
-                clearPage = PageUtils.buildNormalPage(oldPage)
+                clearPage = WebsocketPageUtils.buildNormalPage(oldPage)
             }
 
             WsRedisUtils.cleanSessionPageBySessionId(redisOperation, sessionId)
@@ -134,22 +118,16 @@ class WebsocketService @Autowired constructor(
             } else if (redisPage != null) {
                 WsRedisUtils.cleanPageSessionBySessionId(redisOperation, redisPage, sessionId)
             }
-//            cleanUserSessionBySessionId(redisOperation, userId, sessionId)
-            if (needTransfer && transferData!!.isNotEmpty()) {
-                transferDispatch.dispatch(
-                    LoginOutTransferEvent(
-                        userId = userId,
-                        page = oldPage,
-                        transferData = transferData
-                    )
-                )
-            }
         } finally {
             redisLock.unlock()
         }
     }
 
-    fun clearUserSession(userId: String, sessionId: String, transferData: Map<String, Any>?) {
+    fun clearUserSession(
+        userId: String,
+        sessionId: String,
+        transferData: Map<String, Any>?
+    ) {
         val redisLock = lockUser(sessionId)
         try {
             redisLock.lock()
@@ -157,21 +135,15 @@ class WebsocketService @Autowired constructor(
             WsRedisUtils.deleteUserSessionBySession(redisOperation, sessionId)
             WsRedisUtils.cleanUserSessionBySessionId(redisOperation, userId, sessionId)
             removeCacheSession(sessionId)
-            if (needTransfer && transferData!!.isNotEmpty()) {
-                transferDispatch.dispatch(
-                    ClearUserSessionTransferEvent(
-                        userId = userId,
-                        page = "",
-                        transferData = transferData
-                    )
-                )
-            }
         } finally {
             redisLock.unlock()
         }
     }
 
-    fun clearAllBySession(userId: String, sessionId: String): Result<Boolean> {
+    fun clearAllBySession(
+        userId: String,
+        sessionId: String
+    ): Result<Boolean> {
         logger.info("clearSession| $userId| $sessionId")
         val page = WsRedisUtils.getPageFromSessionPageBySession(redisOperation, sessionId)
         clearUserSession(userId, sessionId, null)
@@ -248,11 +220,11 @@ class WebsocketService @Autowired constructor(
     }
 
     private fun checkParams(userId: String?, sessionId: String?): Boolean {
-        if (userId == null) {
+        if (userId.isNullOrBlank()) {
             return false
         }
 
-        if (sessionId == null) {
+        if (sessionId.isNullOrBlank()) {
             return false
         }
         return true

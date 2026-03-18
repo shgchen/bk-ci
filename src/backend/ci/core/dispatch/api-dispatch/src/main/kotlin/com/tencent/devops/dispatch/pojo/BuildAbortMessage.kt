@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,15 +27,14 @@
 
 package com.tencent.devops.dispatch.pojo
 
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
-@ApiModel("停止构建信息")
+@Schema(title = "停止构建信息")
 data class BuildAbortMessage(
-    @ApiModelProperty("构建ID", required = true)
+    @get:Schema(title = "构建ID", required = true)
     val buildId: String,
-    @ApiModelProperty("用户ID", required = true)
+    @get:Schema(title = "用户ID", required = true)
     val userId: String,
-    @ApiModelProperty("虚拟Hash ID", required = true)
+    @get:Schema(title = "虚拟Hash ID", required = true)
     val vmHashId: String
 )

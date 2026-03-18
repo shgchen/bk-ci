@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,11 +27,17 @@
 
 package com.tencent.devops.process.engine.control.command.stage.impl
 
+import com.fasterxml.jackson.core.type.TypeReference
+import com.tencent.devops.common.api.util.JsonUtil
+import com.tencent.devops.common.api.util.timestamp
 import com.tencent.devops.common.event.dispatcher.pipeline.PipelineEventDispatcher
 import com.tencent.devops.common.event.enums.ActionType
+import com.tencent.devops.common.event.enums.PipelineBuildStatusBroadCastEventType
 import com.tencent.devops.common.event.pojo.pipeline.PipelineBuildStatusBroadCastEvent
 import com.tencent.devops.common.log.utils.BuildLogPrinter
+import com.tencent.devops.common.pipeline.container.Stage
 import com.tencent.devops.common.pipeline.enums.BuildStatus
+import com.tencent.devops.common.pipeline.pojo.time.BuildRecordTimeCost
 import com.tencent.devops.process.engine.common.BS_CANCEL_BUILD_SOURCE
 import com.tencent.devops.process.engine.common.BS_QUALITY_ABORT_STAGE
 import com.tencent.devops.process.engine.common.BS_QUALITY_PASS_STAGE
@@ -47,11 +53,10 @@ import com.tencent.devops.process.engine.pojo.event.PipelineBuildStageEvent
 import com.tencent.devops.process.engine.service.PipelineContainerService
 import com.tencent.devops.process.engine.service.PipelineRuntimeService
 import com.tencent.devops.process.engine.service.PipelineStageService
-import com.tencent.devops.process.engine.service.detail.StageBuildDetailService
 import com.tencent.devops.process.engine.service.record.StageBuildRecordService
+import java.time.LocalDateTime
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import java.time.LocalDateTime
 
 /**
  * 每一个Stage结束后续命令处理
@@ -62,7 +67,6 @@ class UpdateStateForStageCmdFinally(
     private val pipelineStageService: PipelineStageService,
     private val pipelineRuntimeService: PipelineRuntimeService,
     private val pipelineContainerService: PipelineContainerService,
-    private val stageBuildDetailService: StageBuildDetailService,
     private val stageBuildRecordService: StageBuildRecordService,
     private val pipelineEventDispatcher: PipelineEventDispatcher,
     private val buildLogPrinter: BuildLogPrinter,
@@ -94,10 +98,10 @@ class UpdateStateForStageCmdFinally(
         if (commandContext.buildStatus == BuildStatus.STAGE_SUCCESS) {
             if (event.source != BS_STAGE_CANCELED_END_SOURCE && event.source != BS_CANCEL_BUILD_SOURCE) {
                 // 不是 stage cancel 或取消构建，则进行暂停逻辑
-                pipelineStageService.pauseStage(stage)
+                pipelineStageService.pauseStage(stage, commandContext.debug)
             } else {
                 nextOrFinish(event, stage, commandContext, false)
-                sendStageEndCallBack(stage, event)
+                sendStageEndCallBack(commandContext)
             }
         } else if (commandContext.buildStatus.isFinish()) { // 当前Stage结束
             if (commandContext.buildStatus == BuildStatus.SKIP) { // 跳过
@@ -106,15 +110,44 @@ class UpdateStateForStageCmdFinally(
                 pipelineStageService.refreshCheckStageStatus(userId = event.userId, buildStage = stage, inOrOut = false)
             }
             nextOrFinish(event, stage, commandContext, commandContext.buildStatus.isSuccess())
-            sendStageEndCallBack(stage, event)
+            sendStageEndCallBack(commandContext)
         }
     }
 
-    private fun sendStageEndCallBack(stage: PipelineBuildStage, event: PipelineBuildStageEvent) {
+    private fun sendStageEndCallBack(commandContext: StageContext) {
+        val event = commandContext.event
+        val stage = commandContext.stage
+        val record = stageBuildRecordService.getRecord(
+            transactionContext = null, projectId = stage.projectId, pipelineId = stage.pipelineId,
+            buildId = stage.buildId, stageId = stage.stageId, executeCount = stage.executeCount
+        ) ?: return
+        val timeCost = JsonUtil.anyToOrNull(
+            record.stageVar[Stage::timeCost.name],
+            object : TypeReference<BuildRecordTimeCost>() {})
+
         pipelineEventDispatcher.dispatch(
+            // stage 结束
             PipelineBuildStatusBroadCastEvent(
                 source = "UpdateStateForStageCmdFinally", projectId = stage.projectId, pipelineId = stage.pipelineId,
-                userId = event.userId, buildId = stage.buildId, stageId = stage.stageId, actionType = ActionType.END
+                userId = event.userId, buildId = stage.buildId, stageId = stage.stageId, actionType = ActionType.END,
+                buildStatus = commandContext.buildStatus.name, executeCount = stage.executeCount,
+                type = PipelineBuildStatusBroadCastEventType.BUILD_STAGE_END,
+                labels = mapOf(
+                    PipelineBuildStatusBroadCastEvent.Labels::startTime.name to
+                        record.startTime?.timestamp(),
+                    PipelineBuildStatusBroadCastEvent.Labels::duration.name to
+                        timeCost?.totalCost,
+                    PipelineBuildStatusBroadCastEvent.Labels::executeDuration.name to
+                        timeCost?.executeCost,
+                    PipelineBuildStatusBroadCastEvent.Labels::systemDuration.name to
+                        timeCost?.systemCost,
+                    PipelineBuildStatusBroadCastEvent.Labels::queueDuration.name to
+                        timeCost?.queueCost,
+                    PipelineBuildStatusBroadCastEvent.Labels::reviewDuration.name to
+                        timeCost?.waitCost,
+                    PipelineBuildStatusBroadCastEvent.Labels::stageSeq.name to
+                        stage.seq
+                )
             )
         )
     }
@@ -151,7 +184,23 @@ class UpdateStateForStageCmdFinally(
 
                 return finishBuild(commandContext = commandContext)
             }
-            event.actionType = ActionType.START // final 需要执行
+            if (nextStage.controlOption?.finally == true) {
+                val pendingStages = pipelineStageService.getPendingStages(event.projectId, event.buildId)
+                    .filter { it.stageId != nextStage.stageId }
+                pendingStages.forEach { pendingStage ->
+                    pendingStage.status = BuildStatus.UNEXEC
+                    stageBuildRecordService.updateStageStatus(
+                        projectId = pendingStage.projectId,
+                        pipelineId = pendingStage.pipelineId,
+                        buildId = pendingStage.buildId,
+                        stageId = pendingStage.stageId,
+                        executeCount = pendingStage.executeCount,
+                        buildStatus = BuildStatus.UNEXEC
+                    )
+                }
+                pipelineStageService.batchUpdate(transactionContext = null, stageList = pendingStages)
+                event.actionType = ActionType.START // final 需要执行
+            }
         } else {
             nextStage = pipelineStageService.getNextStage(
                 projectId = event.projectId,
@@ -197,9 +246,11 @@ class UpdateStateForStageCmdFinally(
             event.source == BS_QUALITY_PASS_STAGE -> {
                 qualityCheckOutPass(commandContext)
             }
+
             event.source == BS_QUALITY_ABORT_STAGE || event.actionType.isEnd() -> {
                 qualityCheckOutFailed(commandContext)
             }
+
             else -> {
                 val checkStatus = pipelineStageService.checkStageQuality(
                     event = event,
@@ -211,11 +262,13 @@ class UpdateStateForStageCmdFinally(
                     BuildStatus.QUALITY_CHECK_PASS -> {
                         qualityCheckOutPass(commandContext)
                     }
+
                     BuildStatus.QUALITY_CHECK_WAIT -> {
                         // #5246 如果设置了把关人则卡在运行状态等待审核
                         qualityCheckOutNeedReview(commandContext)
                         needBreak = true
                     }
+
                     else -> {
                         qualityCheckOutFailed(commandContext)
                     }
@@ -331,9 +384,11 @@ class UpdateStateForStageCmdFinally(
                     buildLogPrinter.addYellowLine(
                         buildId = c.buildId,
                         tag = VMUtils.genStartVMTaskId(c.containerId),
-                        jobId = c.containerHashId,
+                        containerHashId = c.containerHashId,
                         executeCount = c.executeCount,
-                        message = "job(${c.containerId}) stop by fast kill"
+                        message = "job(${c.containerId}) stop by fast kill",
+                        jobId = null,
+                        stepId = VMUtils.genStartVMTaskId(c.containerId)
                     )
                 }
             }

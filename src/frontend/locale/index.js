@@ -1,14 +1,15 @@
 import axios from 'axios'
 import { lang, locale } from 'bk-magic-vue'
 import cookies from 'js-cookie'
-import Vue from 'vue'
 import VueI18n from 'vue-i18n'
-const DEFAULT_LOCALE = window.INIT_LOCALE ?? 'zh-CN'
+import { createI18n } from 'vue-i18n-bridge'
+const DEFAULT_LOCALE = window.INIT_LOCALE || 'zh-CN'
 const LS_KEY = 'blueking_language'
 const loadedModule = {}
 const localeLabelMap = {
     'zh-CN': '中文',
     'zh-cn': '中文',
+    'ja-JP': '日本語',
     cn: '中文',
     'en-US': 'English',
     'en-us': 'English',
@@ -18,6 +19,8 @@ const localeLabelMap = {
 const localeAliasMap = {
     'zh-CN': 'zh-CN',
     'zh-cn': 'zh-CN',
+    'ja-JP': 'ja-JP',
+    ja: 'ja-JP',
     zh_CN: 'zh-CN',
     cn: 'zh-CN',
     'en-US': 'en-US',
@@ -59,7 +62,6 @@ function getLsLocale () {
     try {
         const cookieLocale = cookies.get(LS_KEY) || DEFAULT_LOCALE
         
-        console.log(cookieLocale, cookies.get(LS_KEY), window.INIT_LOCALE)
         return localeAliasMap[cookieLocale.toLowerCase()] ?? DEFAULT_LOCALE
     } catch (error) {
         return DEFAULT_LOCALE
@@ -67,35 +69,64 @@ function getLsLocale () {
 }
 
 function setLsLocale (locale) {
-    const formateLocale = localeAliasMap[locale] === 'zh-CN' ? 'zh-cn' : 'en'
+    let formateLocale = 'zh-cn'
+    switch (localeAliasMap[locale]) {
+        case 'en-US':
+            formateLocale = 'en'
+            break
+        case 'ja-JP':
+            formateLocale = 'ja'
+            break
+        default:
+            formateLocale = 'zh-cn'
+            break
+    }
     if (typeof cookies.set === 'function') {
         const subDomains = getSubDoamin()
         subDomains.forEach(domain => {
             cookies.remove(LS_KEY, { domain, path: '/' })
         })
-        cookies.set(LS_KEY, formateLocale, { domain: subDomains[0] ?? location.hostname, path: '/' })
+        const domain = window.LOCALE_DOMAIN || (subDomains[0] ?? location.hostname)
+        cookies.set(LS_KEY, formateLocale, { domain, path: '/', expires: 365 })
     }
 }
 
-export default (r, initSetLocale = false) => {
-    Vue.use(VueI18n)
+function getLanguageCode (lang) {
+    const languageCodeMatch = lang.match(/^[A-Za-z]{2}/)
+    
+    if (languageCodeMatch) {
+        return languageCodeMatch[0].toUpperCase()
+    }
+
+    return 'ZH'
+}
+
+export default (r, Vue, initSetLocale = false) => {
     const { messages, localeList } = importAll(r)
     
     const initLocale = getLsLocale()
-    // export localeList
-    const i18n = new VueI18n({
+    const lang = getLanguageCode(initLocale.split('_')[0].toLocaleUpperCase())
+
+    Vue.use(VueI18n, { bridge: true })
+    const i18n = createI18n({
+        legacy: false,
         locale: initLocale,
         fallbackLocale: initLocale,
-        messages
-    })
-    if (initSetLocale) {
-        setLocale(initLocale)
-    }
-
-    locale.i18n((key, value) => i18n.t(key, value))
+        messages: localeList.reduce((acc, { key }) => {
+            acc[key] = {
+                ...lang[initLocale.replace('-', '')],
+                ...messages[key]
+            }
+            return acc
+        }, {})
+    }, VueI18n)
+    Vue.use(i18n)
+    locale.i18n((...args) => i18n.t(...args))
+    setLocale(initLocale, initSetLocale)
 
     function dynamicLoadModule (module, locale = DEFAULT_LOCALE) {
         const localeModuleId = getLocalModuleId(module, locale)
+
         if (loadedModule[localeModuleId]) {
             return Promise.resolve()
         }
@@ -112,37 +143,47 @@ export default (r, initSetLocale = false) => {
         })
     }
 
-    async function setLocale (localeLang) {
-        Object.keys(loadedModule).map(mod => {
+    async function setLocale (localeLang, initSetLocale) {
+        Object.keys(loadedModule).forEach(mod => {
             const [, module] = mod.split('_')
             if (!loadedModule[getLocalModuleId(module, localeLang)]) {
                 dynamicLoadModule(module, localeLang)
             }
         })
-        if (localeLang !== localeAliasMap[window.INIT_LOCALE]) {
-            await syncLocaleBackend(localeLang)
-        }
         i18n.locale = localeLang
         setLsLocale(localeLang)
         locale.use(lang[localeLang.replace('-', '')])
+
         axios.defaults.headers.common['Accept-Language'] = localeLang
         document.querySelector('html').setAttribute('lang', localeLang)
+        
+        if (initSetLocale && localeLang !== localeAliasMap[window.INIT_LOCALE]) {
+            await syncLocaleBackend(localeLang)
+        }
         
         return localeLang
     }
 
     async function syncLocaleBackend (localeLang) {
         try {
-            console.log('sync backendLocalEnum', backendLocalEnum[localeLang], localeLang)
-            await axios.put('/ms/project/api/user/locales/update', {
-                language: backendLocalEnum[localeLang]
-            })
+            const bkLocalEnum = {
+                'zh-CN': 'zh-cn', // 简体中文
+                'en-US': 'en' // 英文
+            }
+            console.log('sync backendLocalEnum', backendLocalEnum[localeLang], localeLang, bkLocalEnum[localeLang])
+            await Promise.any([
+                axios.put('/ms/project/api/user/locales/update', {
+                    language: backendLocalEnum[localeLang] ?? localeLang
+                }),
+                jsonpLocale(bkLocalEnum[localeLang])
+            ])
         } catch (error) {
             console.error('sync locale to backend error', error)
         }
     }
      
     return {
+        lang,
         i18n,
         setLocale,
         localeList,
@@ -178,4 +219,25 @@ function importAll (r) {
         localeList,
         messages
     }
+}
+
+function jsonpLocale (language) {
+    if (!window.BK_PAAS_PRIVATE_URL) return
+    return new Promise((resolve) => {
+        try {
+            const callbackName = `jsonp_callback_${Math.round(100000 * Math.random())}`
+            window[callbackName] = function (data) {
+                delete window[callbackName]
+                document.body.removeChild(script)
+                resolve(data)
+            }
+
+            const script = document.createElement('script')
+            script.src = `${window.BK_PAAS_PRIVATE_URL}/api/c/compapi/v2/usermanage/fe_update_user_language?language=${language}&callback=${callbackName}`
+            document.body.appendChild(script)
+        } catch (e) {
+            console.error('jsonp locale error', e)
+            resolve(false)
+        }
+    })
 }

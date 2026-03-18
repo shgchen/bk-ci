@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,28 +27,34 @@
 
 package com.tencent.devops.common.pipeline.pojo.element.market
 
+import com.tencent.devops.common.pipeline.NameAndValue
 import com.tencent.devops.common.pipeline.pojo.element.Element
 import com.tencent.devops.common.pipeline.pojo.element.ElementAdditionalOptions
-import io.swagger.annotations.ApiModel
-import io.swagger.annotations.ApiModelProperty
+import com.tencent.devops.common.pipeline.pojo.transfer.PreStep
+import com.tencent.devops.common.pipeline.utils.TransferUtil
+import io.swagger.v3.oas.annotations.media.Schema
+import org.json.JSONObject
 
-@ApiModel("流水线模型-插件市场第三方构建环境类插件", description = MarketBuildAtomElement.classType)
+@Schema(title = "流水线模型-插件市场第三方构建环境类插件", description = MarketBuildAtomElement.classType)
 data class MarketBuildAtomElement(
-    @ApiModelProperty("任务名称", required = true)
+    @get:Schema(title = "任务名称", required = true)
     override val name: String = "任务名称由用户自己填写",
-    @ApiModelProperty("id将由后台生成", required = false)
+    @get:Schema(title = "id将由后台生成", required = false)
     override var id: String? = null,
-    @ApiModelProperty("状态", required = false)
+    @get:Schema(title = "状态", required = false)
     override var status: String? = null,
-    @ApiModelProperty("插件的唯一标识", required = true)
-    private val atomCode: String = "",
-    @ApiModelProperty("插件版本", required = false)
+    @get:Schema(title = "插件的唯一标识", required = true)
+    @get:JvmName("getAutoAtomCode")
+    var atomCode: String = "",
+    @get:Schema(title = "插件版本", required = false)
     override var version: String = "1.*",
-    @ApiModelProperty("用户自定义ID", required = false)
+    @get:Schema(title = "用户自定义ID", required = false)
     override var stepId: String? = null,
-    @ApiModelProperty("插件参数数据", required = true)
-    val data: Map<String, Any> = mapOf(),
-    @ApiModelProperty("附加参数", required = false)
+    @get:Schema(title = "用户自定义环境变量（插件运行时写入环境）", required = false)
+    override var customEnv: List<NameAndValue>? = null,
+    @get:Schema(title = "插件参数数据", required = true)
+    var data: Map<String, Any> = mapOf(),
+    @get:Schema(title = "附加参数", required = false)
     override var additionalOptions: ElementAdditionalOptions? = null
 ) : Element(name, id, status, additionalOptions = additionalOptions) {
 
@@ -58,6 +64,24 @@ data class MarketBuildAtomElement(
 
     override fun getAtomCode(): String {
         return atomCode
+    }
+
+    override fun transferYaml(defaultValue: JSONObject?): PreStep {
+        val input = data["input"] as Map<String, Any>? ?: emptyMap()
+        return PreStep(
+            name = name,
+            id = stepId,
+            uses = "${getAtomCode()}@$version",
+            namespace = data["namespace"]?.toString()?.ifBlank { null },
+            with = TransferUtil.simplifyParams(defaultValue, input).ifEmpty { null }
+        )
+    }
+
+    override fun transferSensitiveParam(params: List<String>) {
+        val input = data["input"] as? MutableMap<String, Any>? ?: return
+        params.forEach {
+            input[it] = "******"
+        }
     }
 
     override fun getClassType() = classType

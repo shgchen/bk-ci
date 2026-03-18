@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -50,13 +50,8 @@ class ProjectPermissionServiceImpl @Autowired constructor(
     private val projectAuthServiceCode: ProjectAuthServiceCode
 ) : ProjectPermissionService {
 
-    override fun verifyUserProjectPermission(accessToken: String?, projectCode: String, userId: String): Boolean {
-        val projectCodes = authProjectApi.getUserProjects(
-            serviceCode = projectAuthServiceCode,
-            userId = userId,
-            supplier = supplierForPermission
-        )
-        return projectCodes.contains(projectCode)
+    override fun verifyUserProjectPermission(projectCode: String, userId: String): Boolean {
+        return projectDao.countByEnglishName(dslContext, listOf(projectCode)) > 0
     }
 
     private val supplierForPermission = {
@@ -122,7 +117,6 @@ class ProjectPermissionServiceImpl @Autowired constructor(
     }
 
     override fun verifyUserProjectPermission(
-        accessToken: String?,
         projectCode: String,
         userId: String,
         permission: AuthPermission
@@ -138,5 +132,9 @@ class ProjectPermissionServiceImpl @Autowired constructor(
 
     override fun isShowUserManageIcon(): Boolean = false
 
-    override fun filterProjects(userId: String, permission: AuthPermission): List<String>? = null
+    override fun filterProjects(
+        userId: String,
+        permission: AuthPermission,
+        resourceType: String?
+    ): List<String>? = supplierForPermission()
 }

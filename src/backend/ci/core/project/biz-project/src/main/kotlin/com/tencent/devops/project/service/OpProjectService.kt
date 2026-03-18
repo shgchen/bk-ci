@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -34,11 +34,29 @@ import com.tencent.devops.project.pojo.Result
 @Suppress("ALL")
 interface OpProjectService {
 
-    fun updateProjectFromOp(userId: String, accessToken: String, projectInfoRequest: OpProjectUpdateInfoRequest): Int
+    fun updateProjectFromOp(userId: String, projectInfoRequest: OpProjectUpdateInfoRequest): Int
 
     fun synProject(projectCode: String, isRefresh: Boolean? = true): Result<Boolean>
 
     fun synProjectInit(isRefresh: Boolean? = true): Result<List<String>>
 
     fun updateProjectProperties(userId: String, projectCode: String, properties: ProjectProperties): Boolean
+
+    fun getProjectListByFlag(
+        projectName: String?,
+        englishName: String?,
+        projectType: Int?,
+        isSecrecy: Boolean?,
+        creator: String?,
+        approver: String?,
+        approvalStatus: Int?,
+        offset: Int,
+        limit: Int,
+        grayFlag: Boolean,
+        codeCCGrayFlag: Boolean,
+        repoGrayFlag: Boolean,
+        remoteDevFlag: Boolean,
+        productId: Int?,
+        channelCode: String?
+    ): Map<String, Any?>?
 }

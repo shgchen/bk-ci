@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -27,6 +27,7 @@
 
 package com.tencent.devops.process.yaml.utils
 
+import com.tencent.devops.common.pipeline.NameAndValue
 import java.lang.StringBuilder
 import java.util.ArrayDeque
 
@@ -89,5 +90,19 @@ object ModelCreateUtil {
         }
 
         return result.toString()
+    }
+
+    fun getCustomEnv(env: Map<String, Any?>?): List<NameAndValue>? {
+        if (env == null) return null
+        val nameAndValueList = mutableListOf<NameAndValue>()
+        env.forEach {
+            nameAndValueList.add(
+                NameAndValue(
+                    key = it.key,
+                    value = it.value.toString()
+                )
+            )
+        }
+        return nameAndValueList
     }
 }

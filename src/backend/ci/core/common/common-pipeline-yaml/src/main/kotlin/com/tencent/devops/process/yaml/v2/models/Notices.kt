@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,7 +30,7 @@ package com.tencent.devops.process.yaml.v2.models
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
-import io.swagger.annotations.ApiModelProperty
+import io.swagger.v3.oas.annotations.media.Schema
 
 /**
  * model Stream 通知类型基类
@@ -53,10 +53,10 @@ class GitNotices(
     val title: String?,
     val content: String?,
     val ccs: Set<String>?,
-    @ApiModelProperty(name = "if")
+    @get:Schema(title = "if")
     @JsonProperty("if")
     val ifField: String?,
-    @ApiModelProperty(name = "chat-id")
+    @get:Schema(title = "chat-id")
     @JsonProperty("chat-id")
     val chatId: Set<String>?
 ) : Notices(type, receivers)

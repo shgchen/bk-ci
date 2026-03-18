@@ -1,24 +1,40 @@
 <template>
-    <li :key="atom.id" :class="atomCls" @click.stop="handleAtomClick" :id="atom.id">
+    <li
+        :key="atom.id"
+        :class="atomCls"
+        @click.stop="handleAtomClick"
+        :id="atom.id"
+    >
         <template v-if="isQualityGateAtom">
             <span class="atom-title">
                 <i></i>
                 <span>{{ t("quality") }}</span>
                 <i></i>
             </span>
-            <template v-if="atom.isReviewing">
-                <Logo v-if="isBusy" name="circle-2-1" size="14" class="spin-icon" />
+            <template v-if="isReviewing">
+                <Logo
+                    v-if="isBusy"
+                    name="circle-2-1"
+                    size="14"
+                    class="spin-icon"
+                />
                 <span
                     v-else
                     :class="{
                         'handler-list': true,
-                        'disabled-review': atom.isReviewing && !hasReviewPerm
+                        'disabled-review': isReviewing && !hasReviewPerm
                     }"
                 >
-                    <span class="revire-btn" @click.stop="qualityApprove('PROCESS')">{{
+                    <span
+                        class="revire-btn"
+                        @click.stop="qualityApprove('PROCESS')"
+                    >{{
                         t("resume")
                     }}</span>
-                    <span class="review-btn" @click.stop="qualityApprove('ABORT')">{{
+                    <span
+                        class="review-btn"
+                        @click.stop="qualityApprove('ABORT')"
+                    >{{
                         t("terminate")
                     }}</span>
                 </span>
@@ -31,23 +47,70 @@
                 size="18"
                 class="active-atom-location-icon"
             />
+            <p class="atom-retry-indicate-icon-group">
+                <span
+                    v-for="item in retryIndicateList"
+                    :key="item.retryType"
+                    v-bk-tooltips="item.tips"
+                    class="atom-retry-indicate-icon"
+                >
+                    <Logo
+                        :name="item.retryType"
+                        size="18"
+                    />
+                </span>
+            </p>
+            <bk-round-progress
+                v-if="showProgress"
+                ext-cls="atom-progress"
+                v-bind="progressConf"
+                :percent="atom.progressRate"
+            />
+            <Logo
+                v-else-if="atom.asyncStatus && atom.asyncStatus !== 'SUCCEED'"
+                class="atom-progress"
+                :name="`sub_pipeline_${atom.asyncStatus.toLowerCase()}`"
+            />
             <status-icon
-                v-if="!isSkip && !!atomStatus"
+                v-else-if="!isSkip && !!atomStatus"
                 type="element"
                 :status="atomStatus"
                 :is-hook="isHookAtom"
             />
 
-            <img v-else-if="atom.logoUrl" :src="atom.logoUrl" :class="logoCls" />
-            <Logo v-else :class="logoCls" :name="svgAtomIcon" size="18" />
+            <img
+                v-else-if="atom.logoUrl"
+                :src="atom.logoUrl"
+                :class="logoCls"
+            />
+            <Logo
+                v-else
+                :class="logoCls"
+                :name="svgAtomIcon"
+                size="18"
+            />
             <p class="atom-name">
-                <span :title="atom.name" :class="skipSpanCls">
+                <span
+                    :title="atom.name"
+                    :class="skipSpanCls"
+                >
                     {{ atom.atomCode ? atom.name : t("pendingAtom") }}
                 </span>
             </p>
-            <span class="atom-execounter" v-if="isExecuting">{{ execTime }}</span>
-            <Logo v-if="isBusy" name="circle-2-1" size="14" class="spin-icon" />
-            <bk-popover :delay="[300, 0]" v-else-if="atom.isReviewing" placement="top">
+            <template v-if="isExecuting">
+                <span class="atom-execounter">{{ execTime }}</span>
+            </template>
+            <Logo
+                v-if="isBusy"
+                name="circle-2-1"
+                size="14"
+                class="spin-icon"
+            />
+            <bk-popover
+                :delay="[300, 0]"
+                v-else-if="isReviewing"
+                placement="top"
+            >
                 <span
                     @click.stop="reviewAtom"
                     class="atom-reviewing-tips atom-operate-area"
@@ -56,33 +119,53 @@
                     {{ t("manualCheck") }}
                 </span>
                 <template slot="content">
-                    <p>{{ t("checkUser") }}{{ atom.computedReviewers.join(";") }}</p>
+                    <p>{{ t("checkUser") }}{{ reviewUsers.join(";") }}</p>
                 </template>
             </bk-popover>
-            <bk-popover :delay="[300, 0]" v-else-if="isReviewAbort" placement="top">
+            <bk-popover
+                :delay="[300, 0]"
+                v-else-if="isReviewAbort"
+                placement="top"
+            >
                 <span class="atom-review-diasbled-tips">{{ t("aborted") }}</span>
                 <template slot="content">
                     <p>{{ t("abortTips") }}{{ t("checkUser") }}{{ reactiveData.cancelUserId }}</p>
                 </template>
             </bk-popover>
             <template v-else-if="atom.status === 'PAUSE'">
-                <bk-popover :delay="[300, 0]" placement="top" :disabled="!Array.isArray(atom.pauseReviewers)">
-                    <span :class="resumeSpanCls" @click.stop="atomExecute(true)">
+                <bk-popover
+                    :delay="[300, 0]"
+                    placement="top"
+                    :disabled="!Array.isArray(atom.pauseReviewers)"
+                >
+                    <span
+                        :class="resumeSpanCls"
+                        @click.stop="atomExecute(true)"
+                    >
                         {{ t("resume") }}
                     </span>
                     <template slot="content">
                         <p>{{ t("checkUser") }}{{ pauseReviewerStr }}</p>
                     </template>
                 </bk-popover>
-                <span @click.stop="atomExecute(false)" class="pause-button">
+                <span
+                    @click.stop="atomExecute(false)"
+                    class="pause-button"
+                >
                     <span>{{ t("stop") }}</span>
                 </span>
             </template>
             <span class="atom-operate-area">
-                <span v-if="atom.canRetry && !isBusy" @click.stop="skipOrRetry(false)">
+                <span
+                    v-if="atom.canRetry && !isBusy"
+                    @click.stop="skipOrRetry(false)"
+                >
                     {{ t("retry") }}
                 </span>
-                <span v-if="atom.canSkip && !isBusy" @click.stop="skipOrRetry(true)">
+                <span
+                    v-if="atom.canSkip && !isBusy"
+                    @click.stop="skipOrRetry(true)"
+                >
                     {{ t("SKIP") }}
                 </span>
                 <bk-popover
@@ -100,8 +183,7 @@
                     :disabled="!atom.timeCost.executeCost"
                 >
                     <span class="atom-execute-time">
-                        <span v-if="isElapsedGt1h">&gt;</span>
-                        {{ isElapsedGt1h ? "1h" : formatTime }}
+                        {{ formatTime }}
                     </span>
                     <template slot="content">
                         <p>{{ formatTime }}</p>
@@ -110,7 +192,7 @@
             </span>
 
             <Logo
-                v-if="reactiveData.editable && stageIndex !== 0 && !atom.isError"
+                v-if="reactiveData.editable && !atom.isError"
                 name="clipboard"
                 class="copy"
                 size="14"
@@ -119,20 +201,35 @@
             />
 
             <template v-if="reactiveData.editable">
-                <i @click.stop="deleteAtom(false)" class="add-plus-icon close" />
+                <i
+                    @click.stop="deleteAtom(false)"
+                    class="add-plus-icon close"
+                />
                 <Logo
                     v-if="atom.isError"
                     class="atom-invalid-icon"
                     name="exclamation-triangle-shape"
                 />
             </template>
-            <span v-if="reactiveData.canSkipElement" @click.stop="">
+            <span
+                v-if="reactiveData.canSkipElement"
+                @click.stop=""
+            >
                 <bk-checkbox
                     class="atom-canskip-checkbox"
                     v-model="atom.canElementSkip"
                     :disabled="isSkip"
                 />
             </span>
+
+            <!-- Insert atom after button -->
+            <i
+                v-if="reactiveData.editable && !isLastAtom"
+                class="add-plus-icon insert-after"
+                @click.stop="handleInsertAfter"
+                v-bk-tooltips="t('insertAfterAtom')"
+            >
+            </i>
         </template>
     </li>
 </template>
@@ -238,7 +335,7 @@
                 try {
                     return (
                         this.atom.status === 'SKIP'
-                        || !this.atom.additionalOptions.enable
+                        || this.atom.additionalOptions?.enable === false
                         || this.containerDisabled
                     )
                 } catch (error) {
@@ -278,7 +375,7 @@
             },
             atomStatusCls () {
                 try {
-                    if (this.atom.additionalOptions && this.atom.additionalOptions.enable === false) {
+                    if (this.atom.additionalOptions?.enable === false) {
                         return STATUS_MAP.DISABLED
                     }
                     return this.atomStatus
@@ -298,10 +395,11 @@
                     readonly: !this.reactiveData.editable,
                     'bk-pipeline-atom': true,
                     'trigger-atom': isTriggerContainer(this.container),
-                    [STATUS_MAP.REVIEWING]: this.atom.isReviewing,
+                    [STATUS_MAP.REVIEWING]: this.isReviewing,
                     [this.qualityStatus]: this.isQualityGateAtom && !!this.qualityStatus,
                     [this.atomStatusCls]: !!this.atomStatusCls,
                     'quality-atom': this.isQualityGateAtom,
+                    'is-sub-pipeline-atom': this.atom.atomCode === 'SubPipelineExec',
                     'is-error': this.atom.isError,
                     'is-intercept': this.isQualityCheckAtom,
                     'template-compare-atom': this.atom.templateModify,
@@ -321,7 +419,7 @@
                 return atomCode
             },
             hasReviewPerm () {
-                return this.atom.computedReviewers.includes(this.reactiveData.userName)
+                return this.reviewUsers.includes(this.reactiveData.userName)
             },
             hasExecPerm () {
                 const hasPauseReviewer = Array.isArray(this.atom.pauseReviewers)
@@ -337,9 +435,6 @@
                 return (
                     Array.isArray(this.atom.pauseReviewers) && this.atom.pauseReviewers.join(';')
                 )
-            },
-            isElapsedGt1h () {
-                return this.atom?.timeCost?.totalCost >= 36e5
             },
             formatTime () {
                 try {
@@ -365,6 +460,55 @@
             },
             isUnExecThisTime () {
                 return this.atom?.executeCount < this.reactiveData.currentExecCount
+            },
+            isReviewing () {
+                return this.atom?.status === STATUS_MAP.REVIEWING
+            },
+            reviewUsers () {
+                try {
+                    const list
+                        = this.atom?.actualReviewUsers ?? this.atom?.reviewUsers ?? this.atom?.data?.input?.reviewers ?? []
+                    const reviewUsers = list
+                        .map((user) => user.split(';').map((val) => val.trim()))
+                        .reduce((prev, curr) => {
+                            return prev.concat(curr)
+                        }, [])
+                    return reviewUsers
+                } catch (error) {
+                    console.error(error)
+                    return []
+                }
+            },
+            showProgress () {
+                return this.isExecuting && typeof this.atom.progressRate === 'number' && this.atom.progressRate < 1
+            },
+            progressConf () {
+                return {
+                    width: 28,
+                    numUnit: '',
+                    numStyle: {
+                        fontSize: '10px',
+                        color: '#333',
+                        transform: 'translate(-50%, -50%)'
+                    },
+                    config: {
+                        strokeWidth: 12,
+                        bgColor: '#f0f1f5',
+                        activeColor: '#459fff'
+                    }
+                }
+            },
+            retryIndicateList () {
+                return ['retryCountAuto', 'retryCountManual'].reduce((acc, cur) => {
+                    const count = this.atom?.[cur] ?? 0
+                    if (count > 0) {
+                        acc.push({
+                            retryType: cur,
+                            tips: this.t(`${cur}Tips`, [count])
+                        })
+                    }
+                    return acc
+                }, [])
             }
         },
         watch: {
@@ -405,7 +549,9 @@
                 }, 1000)
             },
             reviewAtom () {
-                eventBus.$emit(ATOM_REVIEW_EVENT_NAME, this.atom)
+                if (this.hasReviewPerm) {
+                    eventBus.$emit(ATOM_REVIEW_EVENT_NAME, this.atom, this.reviewUsers)
+                }
             },
             isQualityGate (atom) {
                 try {
@@ -437,6 +583,11 @@
             },
             deleteAtom () {
                 this.$emit(DELETE_EVENT_NAME, {
+                    elementIndex: this.atomIndex
+                })
+            },
+            handleInsertAfter () {
+                this.$emit('insert-after', {
                     elementIndex: this.atomIndex
                 })
             },
@@ -522,6 +673,14 @@
   transition: all 0.4s ease-in-out;
   z-index: 2;
   border: 1px solid $fontLighterColor;
+
+  .atom-progress {
+    display: inline-flex;
+    width: 42px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+  }
 
   .active-atom-location-icon {
     position: absolute;
@@ -621,6 +780,21 @@
   .pause-button {
     margin-right: 8px;
     color: $primaryColor;
+  }
+
+  .atom-retry-indicate-icon-group {
+    display: flex;
+    grid-gap: 6px;
+    position: absolute;
+    top: -9px;
+    right: 10px;
+    color: $primaryColor;
+    .atom-retry-indicate-icon {
+        width: 18px;
+        height: 18px;
+        background-color: white;
+        border-radius: 50%;
+    }
   }
 
   .add-plus-icon.close {
@@ -769,6 +943,29 @@
         height: 24px;
         top: -23px;
       }
+    }
+  }
+  
+  // Insert after button
+  .add-plus-icon.insert-after {
+    @include add-plus-icon($primaryColor, $primaryColor, white, 18px, true);
+    @include add-plus-icon-hover($primaryColor, $primaryColor, white);
+    display: none;
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: pointer;
+    z-index: 10;
+    
+    &:hover {
+      transform: translateX(-50%) scale(1.1);
+    }
+  }
+  
+  &:hover {
+    .add-plus-icon.insert-after {
+      display: block;
     }
   }
 }

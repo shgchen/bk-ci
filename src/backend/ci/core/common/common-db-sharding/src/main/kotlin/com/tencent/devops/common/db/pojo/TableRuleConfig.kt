@@ -1,7 +1,7 @@
 /*
  * Tencent is pleased to support the open source community by making BK-CI 蓝鲸持续集成平台 available.
  *
- * Copyright (C) 2019 THL A29 Limited, a Tencent company.  All rights reserved.
+ * Copyright (C) 2019 Tencent.  All rights reserved.
  *
  * BK-CI 蓝鲸持续集成平台 is licensed under the MIT license.
  *
@@ -30,8 +30,8 @@ package com.tencent.devops.common.db.pojo
 data class TableRuleConfig(
     val index: Int, // 序号
     val name: String, // 表名
-    val shardingNum: Int = 1, // 分表数量
+    var shardingNum: Int = 1, // 分表数量
     val broadcastFlag: Boolean? = null, // 是否为广播表
     val databaseShardingStrategy: DatabaseShardingStrategyEnum? = null, // 分库策略
-    val tableShardingStrategy: TableShardingStrategyEnum? = null // 分表策略
+    var tableShardingStrategy: TableShardingStrategyEnum? = null // 分表策略
 )
